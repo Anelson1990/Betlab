@@ -1,6 +1,10 @@
+// src/state.js
+
 export const EMPTY_STATE = {
   bankroll: 1000,
   startingBankroll: 1000,
+  myBankroll: 1000,
+  myStartingBankroll: 1000,
   bets: [],
   lessons: [],
   sessionLog: [],
@@ -11,7 +15,14 @@ const KEY = 'betlab_v3';
 export function loadState() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...EMPTY_STATE, ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.myBankroll === undefined) {
+        saved.myBankroll = saved.bankroll ?? 1000;
+        saved.myStartingBankroll = saved.startingBankroll ?? 1000;
+      }
+      return { ...EMPTY_STATE, ...saved };
+    }
   } catch {}
   return { ...EMPTY_STATE };
 }
