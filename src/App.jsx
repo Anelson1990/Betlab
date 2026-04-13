@@ -911,7 +911,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
               <button onClick={()=>setEditingMyBankroll(false)} style={{marginTop:8,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#475569',fontSize:10,cursor:'pointer'}}>DONE</button>
             </div>
           )}
-          <div style={{display:'none'}}>
+          <div>
           </div>
 
           {error&&<div style={{background:'#7f1d1d',border:'1px solid #ef4444',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#fca5a5',display:'flex',justifyContent:'space-between'}}>{error}<button onClick={()=>setError('')} style={{background:'none',border:'none',color:'#fca5a5',cursor:'pointer',fontSize:14}}>✕</button></div>}
