@@ -9,7 +9,7 @@ export async function fetchOdds(oddsKey, markets = 'h2h,spreads,totals') {
 
 export async function callClaude(messages, systemPrompt, useSearch = false) {
   const body = {
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 2000,
     system: systemPrompt,
     messages,
