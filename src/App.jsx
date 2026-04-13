@@ -31,7 +31,7 @@ function StatBox({ label, value, color='#e2e8f0' }) {
   );
 }
 
-function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, teaching, allowEdit }) {
+function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teaching, allowEdit }) {
   const [showLegGrader, setShowLegGrader] = useState(false);
   const [legResults, setLegResults] = useState(
     bet.legs ? bet.legs.map(l=>({...l,result:'pending'})) : []
@@ -144,10 +144,15 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, teaching, allowEdit 
         </div>
       )}
 
-      {bet.result!=='pending'&&!bet.lesson&&isAI&&(
-        <button onClick={()=>onTeach(bet.id)} disabled={teaching} style={{marginTop:10,width:'100%',padding:'7px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:teaching?'#334155':'#60a5fa',fontSize:11,fontWeight:700,cursor:teaching?'not-allowed':'pointer',letterSpacing:1,textTransform:'uppercase'}}>
-          🎓 {teaching?'Analyzing...':'Analyze This Bet'}
-        </button>
+      {bet.result!=='pending'&&(
+        <div style={{display:'flex',gap:6,marginTop:10}}>
+          {!bet.lesson&&isAI&&(
+            <button onClick={()=>onTeach(bet.id)} disabled={teaching} style={{flex:1,padding:'7px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:teaching?'#334155':'#60a5fa',fontSize:11,fontWeight:700,cursor:teaching?'not-allowed':'pointer',letterSpacing:1,textTransform:'uppercase'}}>
+              🎓 {teaching?'Analyzing...':'Analyze'}
+            </button>
+          )}
+          <button onClick={()=>onUndoGrade(bet.id)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'1px solid #f59e0b44',background:'rgba(245,158,11,0.1)',color:'#f59e0b',fontSize:11,fontWeight:700,cursor:'pointer',letterSpacing:1,textTransform:'uppercase'}}>↩ UNDO</button>
+        </div>
       )}
       {bet.lesson&&(
         <div style={{marginTop:10,padding:'10px 12px',background:'rgba(30,41,59,0.6)',borderRadius:8,border:'1px solid #1e40af44'}}>
@@ -215,10 +220,24 @@ function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartin
 function MyPickModal({ existing, onSave, onClose }) {
   const [form, setForm] = useState(existing || {
     sport:'MLB', pick:'', betType:'NRFI', betCategory:'straight',
-    odds:-115, stake:25, confidence:60, modelProb:'', reasoning:'', legs:[],
+    odds:-115, stake:25, confidence:60, modelProb:'', reasoning:'', legs:[], boost:0,
   });
   const [legInput, setLegInput] = useState('');
   const [legOdds, setLegOdds] = useState('');
+
+  const calcParlayOdds = (legs) => {
+    if (legs.length < 2) return null;
+    const hasOdds = legs.filter(l=>l.odds);
+    if (!hasOdds.length) return null;
+    const dec = hasOdds.reduce((acc,leg)=>{
+      const d = leg.odds>0 ? leg.odds/100+1 : 100/Math.abs(leg.odds)+1;
+      return acc*d;
+    },1.0);
+    const boost = form.boost>0 ? 1+(form.boost/100) : 1;
+    const boosted = dec * boost;
+    const american = boosted>=2 ? Math.round((boosted-1)*100) : Math.round(-100/(boosted-1));
+    return american;
+  };
 
   const addLeg = () => {
     if (!legInput.trim()) return;
@@ -289,16 +308,12 @@ function MyPickModal({ existing, onSave, onClose }) {
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
               <div style={{fontSize:10,color:'#fbbf24',fontWeight:700,letterSpacing:1}}>PARLAY LEGS</div>
               {form.legs.length>=2&&(()=>{
-                const parlayOdds = form.legs.reduce((acc,leg)=>{
-                  if(!leg.odds) return acc;
-                  const dec = leg.odds>0 ? leg.odds/100+1 : 100/Math.abs(leg.odds)+1;
-                  return acc*dec;
-                },1.0);
-                const american = parlayOdds>=2 ? Math.round((parlayOdds-1)*100) : Math.round(-100/(parlayOdds-1));
-                return <div style={{fontSize:11,color:'#fbbf24'}}>
-                  Parlay odds: <strong>{american>0?'+':''}{american}</strong>
+                const american = calcParlayOdds(form.legs);
+                return american ? <div style={{fontSize:11,color:'#fbbf24'}}>
+                  Calc: <strong>{american>0?'+':''}{american}</strong>
+                  {form.boost>0&&<span style={{color:'#22c55e',marginLeft:4}}>(+{form.boost}% boost)</span>}
                   <button onClick={()=>setForm(f=>({...f,odds:american}))} style={{marginLeft:8,padding:'2px 8px',borderRadius:4,border:'none',background:'#fbbf2433',color:'#fbbf24',fontSize:10,cursor:'pointer',fontWeight:700}}>USE</button>
-                </div>;
+                </div> : null;
               })()}
             </div>
             {form.legs.map((leg,i)=>(
@@ -321,6 +336,24 @@ function MyPickModal({ existing, onSave, onClose }) {
             <div style={{fontSize:11,color:'#64748b'}}>Fill in Bet Type above e.g. "Points O22.5" or "Strikeouts O5.5"</div>
           </div>
         )}
+
+        <div style={{marginBottom:12,padding:12,background:'rgba(34,197,94,0.05)',borderRadius:8,border:'1px solid rgba(34,197,94,0.2)'}}>
+          <div style={{fontSize:10,color:'#22c55e',fontWeight:700,letterSpacing:1,marginBottom:8}}>BOOST (optional)</div>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <input type="number" min="0" max="100" style={{...inp(),flex:1}} value={form.boost||0} onChange={e=>setForm(f=>({...f,boost:+e.target.value}))} placeholder="0"/>
+            <span style={{color:'#64748b',fontSize:13,flexShrink:0}}>% boost on odds</span>
+          </div>
+          {form.boost>0&&(()=>{
+            const base = parseInt(form.odds)||−110;
+            const dec = base>0 ? base/100+1 : 100/Math.abs(base)+1;
+            const boosted = dec*(1+form.boost/100);
+            const newOdds = boosted>=2 ? Math.round((boosted-1)*100) : Math.round(-100/(boosted-1));
+            return <div style={{marginTop:6,fontSize:11,color:'#22c55e'}}>
+              {base>0?'+':''}{base} + {form.boost}% boost = <strong>{newOdds>0?'+':''}{newOdds}</strong>
+              <button onClick={()=>setForm(f=>({...f,odds:newOdds}))} style={{marginLeft:8,padding:'2px 8px',borderRadius:4,border:'none',background:'#22c55e33',color:'#22c55e',fontSize:10,cursor:'pointer',fontWeight:700}}>USE</button>
+            </div>;
+          })()}
+        </div>
 
         <div style={{display:'flex',gap:8,marginTop:4}}>
           <button onClick={()=>onSave(form)} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',background:'#f97316',color:'#000',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,cursor:'pointer'}}>{existing?'SAVE CHANGES':'ADD BET'}</button>
@@ -618,6 +651,16 @@ export default function App() {
     addLog(`Graded: ${bet.pick} → ${result.toUpperCase()}${score?' ('+score+')':''} (${formatMoney(pl)})`);
   },[state.bets]);
 
+  const undoGrade = useCallback((id)=>{
+    const bet=state.bets.find(b=>b.id===id);
+    if(!bet||bet.result==='pending')return;
+    // Reverse the payout that was applied
+    const payout=bet.result==='win'?americanToDecimal(bet.odds)*bet.stake:bet.result==='push'?bet.stake:0;
+    const key=bet.source==='paste'?'myBankroll':'bankroll';
+    setState(s=>({...s,[key]:parseFloat((s[key]-payout).toFixed(2)),bets:s.bets.map(b=>b.id===id?{...b,result:'pending',score:''}:b)}));
+    addLog(`↩ Undo grade: ${bet.pick} → back to PENDING`);
+  },[state.bets]);
+
   const teachLesson = useCallback(async betId=>{
     const bet=state.bets.find(b=>b.id===betId);if(!bet)return;
     setTeaching(true);setLoadingMsg('🎓 Generating lesson...');
@@ -763,7 +806,7 @@ export default function App() {
               {filterBar(aiFilter,setAiFilter)}
               {aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🤖</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO AI BETS YET</div><div style={{fontSize:12,marginTop:6}}>Dashboard → Find Value</div></div>
-                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} teaching={teaching} allowEdit={false}/>)
+                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} teaching={teaching} allowEdit={false}/>)
               }
             </div>
           )}
@@ -790,7 +833,7 @@ export default function App() {
               </div>
               {myBets.filter(b=>myFilter==='all'||b.result===myFilter).length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>📋</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO SCRIPT PICKS YET</div><div style={{fontSize:12,marginTop:6}}>Go to 📋 Paste to import from your model</div></div>
-                :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onDelete={deleteMyPick} onEdit={b=>setMyPickModal(b)} teaching={teaching} allowEdit={true}/>)
+                :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onDelete={deleteMyPick} onEdit={b=>setMyPickModal(b)} onUndoGrade={undoGrade} teaching={teaching} allowEdit={true}/>)
               }
             </div>
           )}
