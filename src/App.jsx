@@ -669,10 +669,15 @@ export default function App() {
   const undoGrade = useCallback((id)=>{
     const bet=state.bets.find(b=>b.id===id);
     if(!bet||bet.result==='pending')return;
-    // Reverse the payout that was applied
-    const payout=bet.result==='win'?americanToDecimal(bet.odds)*bet.stake:bet.result==='push'?bet.stake:0;
     const key=bet.source==='paste'?'myBankroll':'bankroll';
-    setState(s=>({...s,[key]:parseFloat((s[key]-payout).toFixed(2)),bets:s.bets.map(b=>b.id===id?{...b,result:'pending',score:''}:b)}));
+    // gradeBet added: win=full payout, push=stake back, loss=nothing
+    // undoGrade must reverse that and restore pending state (stake already out)
+    const reversal = bet.result==='win'
+      ? -(americanToDecimal(bet.odds)-1)*bet.stake  // remove profit only
+      : bet.result==='loss'
+      ? bet.stake                                     // refund stake
+      : -bet.stake;                                   // push: remove returned stake
+    setState(s=>({...s,[key]:parseFloat((s[key]+reversal).toFixed(2)),bets:s.bets.map(b=>b.id===id?{...b,result:'pending',score:''}:b)}));
     addLog(`↩ Undo grade: ${bet.pick} → back to PENDING`);
   },[state.bets]);
 
