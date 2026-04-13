@@ -134,13 +134,13 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, teaching, allowEdit 
         </div>
       )}
 
-      {allowEdit&&bet.result==='pending'&&(
+      {allowEdit&&(
         <div style={{display:'flex',gap:6,marginTop:6}}>
           <button onClick={()=>onEdit(bet)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:10,fontWeight:700,cursor:'pointer'}}>✏️ EDIT</button>
-          {!confirmDelete
+          {bet.result==='pending'&&(!confirmDelete
             ?<button onClick={()=>setConfirmDelete(true)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'1px solid #7f1d1d44',background:'transparent',color:'#ef444488',fontSize:10,fontWeight:700,cursor:'pointer'}}>🗑 DELETE</button>
             :<button onClick={()=>onDelete(bet.id)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'none',background:'#7f1d1d',color:'#fca5a5',fontSize:10,fontWeight:700,cursor:'pointer'}}>CONFIRM DELETE</button>
-          }
+          )}
         </div>
       )}
 
@@ -286,7 +286,21 @@ function MyPickModal({ existing, onSave, onClose }) {
 
         {form.betCategory==='parlay'&&(
           <div style={{marginBottom:12,padding:12,background:'rgba(251,191,36,0.05)',borderRadius:8,border:'1px solid rgba(251,191,36,0.2)'}}>
-            <div style={{fontSize:10,color:'#fbbf24',fontWeight:700,letterSpacing:1,marginBottom:10}}>PARLAY LEGS</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <div style={{fontSize:10,color:'#fbbf24',fontWeight:700,letterSpacing:1}}>PARLAY LEGS</div>
+              {form.legs.length>=2&&(()=>{
+                const parlayOdds = form.legs.reduce((acc,leg)=>{
+                  if(!leg.odds) return acc;
+                  const dec = leg.odds>0 ? leg.odds/100+1 : 100/Math.abs(leg.odds)+1;
+                  return acc*dec;
+                },1.0);
+                const american = parlayOdds>=2 ? Math.round((parlayOdds-1)*100) : Math.round(-100/(parlayOdds-1));
+                return <div style={{fontSize:11,color:'#fbbf24'}}>
+                  Parlay odds: <strong>{american>0?'+':''}{american}</strong>
+                  <button onClick={()=>setForm(f=>({...f,odds:american}))} style={{marginLeft:8,padding:'2px 8px',borderRadius:4,border:'none',background:'#fbbf2433',color:'#fbbf24',fontSize:10,cursor:'pointer',fontWeight:700}}>USE</button>
+                </div>;
+              })()}
+            </div>
             {form.legs.map((leg,i)=>(
               <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
                 <div style={{flex:1,fontSize:12,color:'#94a3b8'}}>{leg.desc}{leg.odds?` (${leg.odds>0?'+':''}${leg.odds})`:''}</div>
@@ -534,7 +548,15 @@ export default function App() {
     if (!form.id) {
       addMyPick(form);
     } else {
-      setState(s=>({...s,bets:s.bets.map(b=>b.id===form.id?{...b,...form}:b)}));
+      setState(s=>{
+        const old = s.bets.find(b=>b.id===form.id);
+        const stakeDiff = (old?.stake||0) - (form.stake||0);
+        return {
+          ...s,
+          myBankroll: parseFloat((s.myBankroll + stakeDiff).toFixed(2)),
+          bets: s.bets.map(b=>b.id===form.id?{...b,...form,odds:parseInt(form.odds)||b.odds,stake:parseFloat(form.stake)||b.stake}:b),
+        };
+      });
       addLog(`✏️ Edited: ${form.pick}`);
     }
     setMyPickModal(null);
