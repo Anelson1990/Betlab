@@ -602,6 +602,10 @@ export default function App() {
   const [bankrollInput, setBankrollInput] = useState('');
   const [editingMyBankroll, setEditingMyBankroll] = useState(false);
   const [myBankrollInput, setMyBankrollInput] = useState('');
+  const [editingStartBankroll, setEditingStartBankroll] = useState(false);
+  const [startBankrollInput, setStartBankrollInput] = useState('');
+  const [editingMyStartBankroll, setEditingMyStartBankroll] = useState(false);
+  const [myStartBankrollInput, setMyStartBankrollInput] = useState('');
   const [myPickModal, setMyPickModal] = useState(null);
   const logEndRef = useRef(null);
 
@@ -861,11 +865,19 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
                   <button onClick={()=>setState(s=>({...s,startingBankroll:parseFloat(bankrollInput)||s.startingBankroll}))} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'4px 6px',cursor:'pointer',fontSize:9,fontWeight:700}}>SET START</button>
                 </div>
               )}
-              <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
-                <span style={{fontSize:10,color:'#475569'}}>start ${state.startingBankroll.toFixed(0)}</span>
-                <button onClick={()=>{const v=prompt('Set starting bankroll:',state.startingBankroll);if(v&&!isNaN(v))setState(s=>({...s,startingBankroll:parseFloat(v)}));}} style={{background:'transparent',border:'none',color:'#60a5fa',fontSize:11,cursor:'pointer',padding:0}}>✏️</button>
-                <span style={{fontSize:10,color:'#475569'}}>· {aiBets.filter(b=>b.result==='pending').length} pending</span>
-              </div>
+              {editingStartBankroll?(
+                <div style={{display:'flex',gap:4,marginTop:4}}>
+                  <input autoFocus type="number" value={startBankrollInput} onChange={e=>setStartBankrollInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){setState(s=>({...s,startingBankroll:parseFloat(startBankrollInput)||s.startingBankroll}));setEditingStartBankroll(false);}if(e.key==='Escape')setEditingStartBankroll(false);}} style={{flex:1,background:'#0f172a',border:'1px solid #1d4ed8',borderRadius:6,color:'#f1f5f9',padding:'4px 8px',fontSize:13,fontFamily:"'Orbitron',sans-serif"}} placeholder="Starting bankroll"/>
+                  <button onClick={()=>{setState(s=>({...s,startingBankroll:parseFloat(startBankrollInput)||s.startingBankroll}));setEditingStartBankroll(false);}} style={{background:'#1d4ed8',border:'none',borderRadius:6,color:'#fff',padding:'4px 8px',cursor:'pointer',fontSize:10,fontWeight:700}}>SET</button>
+                  <button onClick={()=>setEditingStartBankroll(false)} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'4px 6px',cursor:'pointer',fontSize:10}}>✕</button>
+                </div>
+              ):(
+                <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
+                  <span style={{fontSize:10,color:'#475569'}}>start ${state.startingBankroll.toFixed(0)}</span>
+                  <button onClick={()=>{setStartBankrollInput(state.startingBankroll.toFixed(0));setEditingStartBankroll(true);}} style={{background:'transparent',border:'none',color:'#60a5fa',fontSize:11,cursor:'pointer',padding:0}}>✏️</button>
+                  <span style={{fontSize:10,color:'#475569'}}>· {aiBets.filter(b=>b.result==='pending').length} pending</span>
+                </div>
+              )}
             </div>
             <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
               <div style={{fontSize:9,color:'#f97316',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>📋 My Scripts</div>
@@ -880,11 +892,19 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
                   <button onClick={()=>setState(s=>({...s,myStartingBankroll:parseFloat(myBankrollInput)||s.myStartingBankroll}))} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'4px 6px',cursor:'pointer',fontSize:9,fontWeight:700}}>SET START</button>
                 </div>
               )}
-              <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
-                <span style={{fontSize:10,color:'#475569'}}>start ${state.myStartingBankroll.toFixed(0)}</span>
-                <button onClick={()=>{const v=prompt('Set starting bankroll:',state.myStartingBankroll);if(v&&!isNaN(v))setState(s=>({...s,myStartingBankroll:parseFloat(v)}));}} style={{background:'transparent',border:'none',color:'#60a5fa',fontSize:11,cursor:'pointer',padding:0}}>✏️</button>
-                <span style={{fontSize:10,color:'#475569'}}>· {myBets.filter(b=>b.result==='pending').length} pending</span>
-              </div>
+              {editingMyStartBankroll?(
+                <div style={{display:'flex',gap:4,marginTop:4}}>
+                  <input autoFocus type="number" value={myStartBankrollInput} onChange={e=>setMyStartBankrollInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){setState(s=>({...s,myStartingBankroll:parseFloat(myStartBankrollInput)||s.myStartingBankroll}));setEditingMyStartBankroll(false);}if(e.key==='Escape')setEditingMyStartBankroll(false);}} style={{flex:1,background:'#0f172a',border:'1px solid #f97316',borderRadius:6,color:'#f1f5f9',padding:'4px 8px',fontSize:13,fontFamily:"'Orbitron',sans-serif"}} placeholder="Starting bankroll"/>
+                  <button onClick={()=>{setState(s=>({...s,myStartingBankroll:parseFloat(myStartBankrollInput)||s.myStartingBankroll}));setEditingMyStartBankroll(false);}} style={{background:'#f97316',border:'none',borderRadius:6,color:'#000',padding:'4px 8px',cursor:'pointer',fontSize:10,fontWeight:700}}>SET</button>
+                  <button onClick={()=>setEditingMyStartBankroll(false)} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'4px 6px',cursor:'pointer',fontSize:10}}>✕</button>
+                </div>
+              ):(
+                <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
+                  <span style={{fontSize:10,color:'#475569'}}>start ${state.myStartingBankroll.toFixed(0)}</span>
+                  <button onClick={()=>{setMyStartBankrollInput(state.myStartingBankroll.toFixed(0));setEditingMyStartBankroll(true);}} style={{background:'transparent',border:'none',color:'#f97316',fontSize:11,cursor:'pointer',padding:0}}>✏️</button>
+                  <span style={{fontSize:10,color:'#475569'}}>· {myBets.filter(b=>b.result==='pending').length} pending</span>
+                </div>
+              )}
             </div>
           </div>
 
