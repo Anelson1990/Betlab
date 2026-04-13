@@ -874,7 +874,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
               ):(
                 <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
                   <span style={{fontSize:10,color:'#475569'}}>start ${state.startingBankroll.toFixed(0)}</span>
-                  <button onClick={()=>{setStartBankrollInput(state.startingBankroll.toFixed(0));setEditingStartBankroll(true);}} style={{background:'transparent',border:'none',color:'#60a5fa',fontSize:11,cursor:'pointer',padding:0}}>✏️</button>
+                  <button onClick={()=>{setStartBankrollInput(state.startingBankroll.toFixed(0));setEditingStartBankroll(true);}} style={{background:'rgba(29,78,216,.2)',border:'1px solid #1d4ed844',borderRadius:4,color:'#60a5fa',fontSize:9,cursor:'pointer',padding:'1px 5px',fontWeight:700}}>SET</button>
                   <span style={{fontSize:10,color:'#475569'}}>· {aiBets.filter(b=>b.result==='pending').length} pending</span>
                 </div>
               )}
@@ -901,7 +901,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
               ):(
                 <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
                   <span style={{fontSize:10,color:'#475569'}}>start ${state.myStartingBankroll.toFixed(0)}</span>
-                  <button onClick={()=>{setMyStartBankrollInput(state.myStartingBankroll.toFixed(0));setEditingMyStartBankroll(true);}} style={{background:'transparent',border:'none',color:'#f97316',fontSize:11,cursor:'pointer',padding:0}}>✏️</button>
+                  <button onClick={()=>{setMyStartBankrollInput(state.myStartingBankroll.toFixed(0));setEditingMyStartBankroll(true);}} style={{background:'rgba(249,115,22,.2)',border:'1px solid #f9731644',borderRadius:4,color:'#f97316',fontSize:9,cursor:'pointer',padding:'1px 5px',fontWeight:700}}>SET</button>
                   <span style={{fontSize:10,color:'#475569'}}>· {myBets.filter(b=>b.result==='pending').length} pending</span>
                 </div>
               )}
