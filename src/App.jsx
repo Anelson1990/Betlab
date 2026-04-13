@@ -37,6 +37,8 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, teaching, allowEdit 
     bet.legs ? bet.legs.map(l=>({...l,result:'pending'})) : []
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [grading, setGrading] = useState(null);
+  const [score, setScore] = useState('');
   const profit = bet.result==='win'?(americanToDecimal(bet.odds)-1)*bet.stake:bet.result==='loss'?-bet.stake:0;
   const col = RC[bet.result]||'#334155';
   const isAI = bet.source==='ai';
@@ -76,6 +78,7 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, teaching, allowEdit 
             Conf {bet.confidence}% · Implied {impliedProb(bet.odds).toFixed(1)}% · {new Date(bet.date).toLocaleDateString()}
             {bet.modelProb?` · Model: ${bet.modelProb}%`:''}
           </div>
+          {bet.score&&<div style={{marginTop:4,fontSize:11,color:'#38bdf8',fontWeight:700}}>📊 {bet.score}</div>}
         </div>
         <div style={{textAlign:'right',flexShrink:0}}>
           <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:'#e2e8f0'}}>{formatOdds(bet.odds)}</div>
@@ -85,14 +88,29 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, teaching, allowEdit 
         </div>
       </div>
 
-      {bet.result==='pending'&&!showLegGrader&&(
+      {bet.result==='pending'&&!showLegGrader&&!grading&&(
         <div style={{display:'flex',gap:6,marginTop:10}}>
           {bet.betCategory==='parlay'&&bet.legs?.length>0
             ?<button onClick={()=>setShowLegGrader(true)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'1px solid #fbbf2444',background:'rgba(251,191,36,0.1)',color:'#fbbf24',fontSize:11,fontWeight:700,cursor:'pointer'}}>GRADE LEGS</button>
             :['win','loss','push'].map(r=>(
-              <button key={r} onClick={()=>onGrade(bet.id,r)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'none',cursor:'pointer',background:r==='win'?'#14532d':r==='loss'?'#7f1d1d':'#1e293b',color:r==='win'?'#86efac':r==='loss'?'#fca5a5':'#94a3b8',fontSize:11,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>{r}</button>
+              <button key={r} onClick={()=>setGrading(r)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'none',cursor:'pointer',background:r==='win'?'#14532d':r==='loss'?'#7f1d1d':'#1e293b',color:r==='win'?'#86efac':r==='loss'?'#fca5a5':'#94a3b8',fontSize:11,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>{r}</button>
             ))
           }
+        </div>
+      )}
+      {bet.result==='pending'&&grading&&(
+        <div style={{marginTop:10,padding:12,background:'rgba(15,23,42,0.8)',borderRadius:8,border:'1px solid #334155'}}>
+          <div style={{fontSize:10,color:'#64748b',fontWeight:700,letterSpacing:1,marginBottom:8}}>ENTER SCORE (optional)</div>
+          <input
+            value={score}
+            onChange={e=>setScore(e.target.value)}
+            placeholder={bet.sport==='MLB'?'e.g. 3-1 or 1st inn: 2-0':bet.sport==='NHL'?'e.g. 4-2 OT':bet.sport==='NBA'?'e.g. 114-108':'e.g. 24-17'}
+            style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px 10px',fontSize:13,fontFamily:"'Rajdhani',sans-serif",marginBottom:10}}
+          />
+          <div style={{display:'flex',gap:6}}>
+            <button onClick={()=>{onGrade(bet.id,grading,score);setGrading(null);setScore('');}} style={{flex:2,padding:'8px 0',borderRadius:6,border:'none',cursor:'pointer',background:grading==='win'?'#14532d':grading==='loss'?'#7f1d1d':'#1e293b',color:grading==='win'?'#86efac':grading==='loss'?'#fca5a5':'#94a3b8',fontSize:11,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>CONFIRM {grading.toUpperCase()}</button>
+            <button onClick={()=>{setGrading(null);setScore('');}} style={{flex:1,padding:'8px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:11,fontWeight:700,cursor:'pointer'}}>CANCEL</button>
+          </div>
         </div>
       )}
 
@@ -568,14 +586,14 @@ export default function App() {
     setLoadingMsg('');setLoading(false);
   },[pickSport,pickContext,state.bankroll,addAIPick]);
 
-  const gradeBet = useCallback((id,result)=>{
+  const gradeBet = useCallback((id,result,score='')=>{
     const bet=state.bets.find(b=>b.id===id);
     if(!bet)return;
     const payout=result==='win'?americanToDecimal(bet.odds)*bet.stake:result==='push'?bet.stake:0;
     const pl=result==='win'?(americanToDecimal(bet.odds)-1)*bet.stake:result==='loss'?-bet.stake:0;
     const key=bet.source==='paste'?'myBankroll':'bankroll';
-    setState(s=>({...s,[key]:parseFloat((s[key]+payout).toFixed(2)),bets:s.bets.map(b=>b.id===id?{...b,result}:b)}));
-    addLog(`Graded: ${bet.pick} → ${result.toUpperCase()} (${formatMoney(pl)})`);
+    setState(s=>({...s,[key]:parseFloat((s[key]+payout).toFixed(2)),bets:s.bets.map(b=>b.id===id?{...b,result,score}:b)}));
+    addLog(`Graded: ${bet.pick} → ${result.toUpperCase()}${score?' ('+score+')':''} (${formatMoney(pl)})`);
   },[state.bets]);
 
   const teachLesson = useCallback(async betId=>{
