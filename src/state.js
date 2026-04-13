@@ -15,20 +15,29 @@ const KEY = 'betlab_v3';
 export function loadState() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const saved = JSON.parse(raw);
-      if (saved.myBankroll === undefined) {
-        saved.myBankroll = saved.bankroll ?? 1000;
-        saved.myStartingBankroll = saved.startingBankroll ?? 1000;
-      }
-      return { ...EMPTY_STATE, ...saved };
-    }
-  } catch {}
-  return { ...EMPTY_STATE };
+    if (!raw) return { ...EMPTY_STATE };
+    const saved = JSON.parse(raw);
+    return {
+      ...EMPTY_STATE,
+      ...saved,
+      myBankroll: saved.myBankroll ?? saved.bankroll ?? 1000,
+      myStartingBankroll: saved.myStartingBankroll ?? saved.startingBankroll ?? 1000,
+      bets: Array.isArray(saved.bets) ? saved.bets : [],
+      lessons: Array.isArray(saved.lessons) ? saved.lessons : [],
+      sessionLog: Array.isArray(saved.sessionLog) ? saved.sessionLog : [],
+    };
+  } catch (e) {
+    console.warn('loadState error:', e);
+    return { ...EMPTY_STATE };
+  }
 }
 
 export function persist(s) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
+  try {
+    localStorage.setItem(KEY, JSON.stringify(s));
+  } catch (e) {
+    console.warn('persist failed:', e);
+  }
 }
 
 export function uid() {

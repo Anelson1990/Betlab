@@ -9,19 +9,17 @@ import {
 } from './state.js';
 
 const RC = { pending:'#f59e0b', win:'#22c55e', loss:'#ef4444', push:'#94a3b8' };
-
 const SPORT_COLORS = {
   NHL:{ accent:'#38bdf8', dim:'rgba(56,189,248,0.1)',  border:'rgba(56,189,248,0.25)' },
   MLB:{ accent:'#f97316', dim:'rgba(249,115,22,0.1)',  border:'rgba(249,115,22,0.25)' },
   NBA:{ accent:'#a78bfa', dim:'rgba(167,139,250,0.1)', border:'rgba(167,139,250,0.25)' },
   NFL:{ accent:'#22c55e', dim:'rgba(34,197,94,0.1)',   border:'rgba(34,197,94,0.25)'  },
 };
-
 const SPORT_HINTS = {
-  NHL:'Paste your nhl_v11.py terminal output here — predictions, edge tiers, Kelly sizing...',
-  MLB:'Paste your mlb_nrfi_v7.py terminal output here — NRFI%, ratings, top plays...',
-  NBA:'Paste any NBA model output here — picks, odds, edge, reasoning...',
-  NFL:'Paste any NFL model output here — picks, odds, edge, reasoning...',
+  NHL:'Paste your nhl_v11.py terminal output here',
+  MLB:'Paste your mlb_nrfi_v7.py terminal output here',
+  NBA:'Paste any NBA model output here',
+  NFL:'Paste any NFL model output here',
 };
 
 function StatBox({ label, value, color='#e2e8f0' }) {
@@ -33,22 +31,45 @@ function StatBox({ label, value, color='#e2e8f0' }) {
   );
 }
 
-function BetCard({ bet, onGrade, onTeach, teaching }) {
+function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, teaching, allowEdit }) {
+  const [showLegGrader, setShowLegGrader] = useState(false);
+  const [legResults, setLegResults] = useState(
+    bet.legs ? bet.legs.map(l=>({...l,result:'pending'})) : []
+  );
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const profit = bet.result==='win'?(americanToDecimal(bet.odds)-1)*bet.stake:bet.result==='loss'?-bet.stake:0;
   const col = RC[bet.result]||'#334155';
+  const isAI = bet.source==='ai';
+  const accentColor = isAI?'#60a5fa':'#f97316';
+
+  const handleLegGrade = () => {
+    const allWon=legResults.every(l=>l.result==='win');
+    const anyLoss=legResults.some(l=>l.result==='loss');
+    onGrade(bet.id, allWon?'win':anyLoss?'loss':'push');
+    setShowLegGrader(false);
+  };
+
   return (
-    <div style={{background:'rgba(10,18,35,0.9)',border:`1px solid ${col}44`,borderLeft:`3px solid ${col}`,borderRadius:10,padding:'14px 16px',marginBottom:10}}>
+    <div style={{background:'rgba(10,18,35,0.9)',border:`1px solid ${col}44`,borderLeft:`3px solid ${accentColor}`,borderRadius:10,padding:'14px 16px',marginBottom:10}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
         <div style={{flex:1}}>
           <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginBottom:4}}>
             <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:13,color:'#f1f5f9',fontWeight:700}}>{bet.pick}</span>
             <span style={{fontSize:9,background:'#1e293b',color:'#64748b',padding:'2px 6px',borderRadius:20,textTransform:'uppercase'}}>{bet.sport}</span>
             <span style={{fontSize:9,background:'#1e293b',color:'#64748b',padding:'2px 6px',borderRadius:20}}>{bet.betType}</span>
+            {bet.betCategory==='parlay'&&<span style={{fontSize:9,background:'rgba(251,191,36,0.15)',color:'#fbbf24',padding:'2px 6px',borderRadius:20,border:'1px solid rgba(251,191,36,0.3)'}}>PARLAY</span>}
+            {bet.betCategory==='prop'&&<span style={{fontSize:9,background:'rgba(167,139,250,0.15)',color:'#a78bfa',padding:'2px 6px',borderRadius:20,border:'1px solid rgba(167,139,250,0.3)'}}>PROP</span>}
           </div>
           <div style={{fontSize:12,color:'#94a3b8',lineHeight:1.5}}>{bet.reasoning}</div>
           {bet.keyFactors?.length>0&&(
             <div style={{marginTop:6,display:'flex',gap:4,flexWrap:'wrap'}}>
               {bet.keyFactors.map((f,i)=><span key={i} style={{fontSize:9,background:'rgba(59,130,246,0.15)',color:'#60a5fa',padding:'2px 7px',borderRadius:20,border:'1px solid rgba(59,130,246,0.2)'}}>{f}</span>)}
+            </div>
+          )}
+          {bet.legs?.length>0&&(
+            <div style={{marginTop:8,padding:'8px 10px',background:'rgba(251,191,36,0.05)',borderRadius:6,border:'1px solid rgba(251,191,36,0.15)'}}>
+              <div style={{fontSize:10,color:'#fbbf24',fontWeight:700,marginBottom:4}}>LEGS ({bet.legs.length})</div>
+              {bet.legs.map((leg,i)=><div key={i} style={{fontSize:11,color:'#94a3b8',marginBottom:2}}>• {leg.desc}{leg.odds?` (${leg.odds>0?'+':''}${leg.odds})`:''}</div>)}
             </div>
           )}
           <div style={{fontSize:10,color:'#475569',marginTop:6}}>
@@ -59,18 +80,53 @@ function BetCard({ bet, onGrade, onTeach, teaching }) {
         <div style={{textAlign:'right',flexShrink:0}}>
           <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:'#e2e8f0'}}>{formatOdds(bet.odds)}</div>
           <div style={{fontSize:11,color:'#64748b'}}>${bet.stake} stake</div>
-          {bet.result!=='pending'&&<div style={{fontSize:14,fontWeight:700,color:col,marginTop:4}}>{bet.result==='push'?'PUSH':formatMoney(profit)}</div>}
+          {bet.result!=='pending'&&<div style={{fontSize:14,fontWeight:700,color:RC[bet.result]||col,marginTop:4}}>{bet.result==='push'?'PUSH':formatMoney(profit)}</div>}
           {bet.result==='pending'&&<div style={{fontSize:10,color:'#f59e0b',marginTop:4}}>PENDING</div>}
         </div>
       </div>
-      {bet.result==='pending'&&(
+
+      {bet.result==='pending'&&!showLegGrader&&(
         <div style={{display:'flex',gap:6,marginTop:10}}>
-          {['win','loss','push'].map(r=>(
-            <button key={r} onClick={()=>onGrade(bet.id,r)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'none',cursor:'pointer',background:r==='win'?'#14532d':r==='loss'?'#7f1d1d':'#1e293b',color:r==='win'?'#86efac':r==='loss'?'#fca5a5':'#94a3b8',fontSize:11,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>{r}</button>
-          ))}
+          {bet.betCategory==='parlay'&&bet.legs?.length>0
+            ?<button onClick={()=>setShowLegGrader(true)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'1px solid #fbbf2444',background:'rgba(251,191,36,0.1)',color:'#fbbf24',fontSize:11,fontWeight:700,cursor:'pointer'}}>GRADE LEGS</button>
+            :['win','loss','push'].map(r=>(
+              <button key={r} onClick={()=>onGrade(bet.id,r)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'none',cursor:'pointer',background:r==='win'?'#14532d':r==='loss'?'#7f1d1d':'#1e293b',color:r==='win'?'#86efac':r==='loss'?'#fca5a5':'#94a3b8',fontSize:11,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>{r}</button>
+            ))
+          }
         </div>
       )}
-      {bet.result!=='pending'&&!bet.lesson&&bet.source==='ai'&&(
+
+      {showLegGrader&&(
+        <div style={{marginTop:10,padding:12,background:'rgba(251,191,36,0.05)',borderRadius:8,border:'1px solid rgba(251,191,36,0.2)'}}>
+          <div style={{fontSize:10,color:'#fbbf24',fontWeight:700,letterSpacing:1,marginBottom:10}}>MARK EACH LEG</div>
+          {legResults.map((leg,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              <div style={{flex:1,fontSize:12,color:'#94a3b8'}}>{leg.desc}</div>
+              <div style={{display:'flex',gap:4}}>
+                {['win','loss','push'].map(r=>(
+                  <button key={r} onClick={()=>setLegResults(p=>p.map((l,j)=>j===i?{...l,result:r}:l))} style={{padding:'3px 8px',borderRadius:4,border:'none',cursor:'pointer',background:legResults[i].result===r?(r==='win'?'#14532d':r==='loss'?'#7f1d1d':'#334155'):'#1e293b',color:legResults[i].result===r?(r==='win'?'#86efac':r==='loss'?'#fca5a5':'#94a3b8'):'#475569',fontSize:10,fontWeight:700}}>{r}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div style={{display:'flex',gap:6,marginTop:8}}>
+            <button onClick={handleLegGrade} style={{flex:1,padding:'7px 0',borderRadius:6,border:'none',background:'#1d4ed8',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>CONFIRM</button>
+            <button onClick={()=>setShowLegGrader(false)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:11,fontWeight:700,cursor:'pointer'}}>CANCEL</button>
+          </div>
+        </div>
+      )}
+
+      {allowEdit&&bet.result==='pending'&&(
+        <div style={{display:'flex',gap:6,marginTop:6}}>
+          <button onClick={()=>onEdit(bet)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:10,fontWeight:700,cursor:'pointer'}}>✏️ EDIT</button>
+          {!confirmDelete
+            ?<button onClick={()=>setConfirmDelete(true)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'1px solid #7f1d1d44',background:'transparent',color:'#ef444488',fontSize:10,fontWeight:700,cursor:'pointer'}}>🗑 DELETE</button>
+            :<button onClick={()=>onDelete(bet.id)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'none',background:'#7f1d1d',color:'#fca5a5',fontSize:10,fontWeight:700,cursor:'pointer'}}>CONFIRM DELETE</button>
+          }
+        </div>
+      )}
+
+      {bet.result!=='pending'&&!bet.lesson&&isAI&&(
         <button onClick={()=>onTeach(bet.id)} disabled={teaching} style={{marginTop:10,width:'100%',padding:'7px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:teaching?'#334155':'#60a5fa',fontSize:11,fontWeight:700,cursor:teaching?'not-allowed':'pointer',letterSpacing:1,textTransform:'uppercase'}}>
           🎓 {teaching?'Analyzing...':'Analyze This Bet'}
         </button>
@@ -111,7 +167,7 @@ function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartin
   }
   const ai=calcStats(aiBets),my=calcStats(myBets);
   const roiC=v=>v>5?'#22c55e':v>0?'#86efac':v>-5?'#fbbf24':'#f87171';
-  const aiPnL=bankroll-startingBankroll, myPnL=myBankroll-myStartingBankroll;
+  const aiPnL=bankroll-startingBankroll,myPnL=myBankroll-myStartingBankroll;
   return (
     <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
       <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#1d4ed8',letterSpacing:2,marginBottom:14,textTransform:'uppercase'}}>📊 Head to Head</div>
@@ -138,6 +194,111 @@ function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartin
   );
 }
 
+function MyPickModal({ existing, onSave, onClose }) {
+  const [form, setForm] = useState(existing || {
+    sport:'MLB', pick:'', betType:'NRFI', betCategory:'straight',
+    odds:-115, stake:25, confidence:60, modelProb:'', reasoning:'', legs:[],
+  });
+  const [legInput, setLegInput] = useState('');
+  const [legOdds, setLegOdds] = useState('');
+
+  const addLeg = () => {
+    if (!legInput.trim()) return;
+    setForm(f=>({...f,legs:[...f.legs,{desc:legInput.trim(),odds:legOdds?parseInt(legOdds):null,result:'pending'}]}));
+    setLegInput(''); setLegOdds('');
+  };
+  const removeLeg = i => setForm(f=>({...f,legs:f.legs.filter((_,j)=>j!==i)}));
+
+  const inp = extra=>({background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'8px 12px',fontSize:13,fontFamily:"'Rajdhani',sans-serif",width:'100%',...extra});
+  const lbl = {fontSize:10,color:'#475569',letterSpacing:1.5,textTransform:'uppercase',marginBottom:4,display:'block'};
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}}>
+      <div style={{background:'#0a1220',border:'1px solid #1e293b',borderRadius:14,padding:20,width:'100%',maxWidth:440,maxHeight:'90vh',overflowY:'auto'}}>
+        <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:13,color:'#f97316',marginBottom:16}}>{existing?'EDIT MY BET':'LOG MY BET'}</div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+          <div>
+            <label style={lbl}>SPORT</label>
+            <select style={inp()} value={form.sport} onChange={e=>setForm(f=>({...f,sport:e.target.value}))}>
+              {['MLB','NHL','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>CATEGORY</label>
+            <select style={inp()} value={form.betCategory} onChange={e=>setForm(f=>({...f,betCategory:e.target.value}))}>
+              <option value="straight">Straight</option>
+              <option value="parlay">Parlay</option>
+              <option value="prop">Player Prop</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{marginBottom:10}}>
+          <label style={lbl}>PICK / DESCRIPTION</label>
+          <input style={inp()} value={form.pick} onChange={e=>setForm(f=>({...f,pick:e.target.value}))}
+            placeholder={form.betCategory==='parlay'?'e.g. 3-leg parlay':form.betCategory==='prop'?'e.g. Matthews O0.5 goals':'e.g. BOS @ NYY — NRFI'}/>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:10}}>
+          <div>
+            <label style={lbl}>ODDS</label>
+            <input type="number" style={inp()} value={form.odds} onChange={e=>setForm(f=>({...f,odds:+e.target.value}))}/>
+          </div>
+          <div>
+            <label style={lbl}>STAKE $</label>
+            <input type="number" style={inp()} value={form.stake} onChange={e=>setForm(f=>({...f,stake:+e.target.value}))}/>
+          </div>
+          <div>
+            <label style={lbl}>MODEL %</label>
+            <input style={inp()} value={form.modelProb} onChange={e=>setForm(f=>({...f,modelProb:e.target.value}))} placeholder="58"/>
+          </div>
+        </div>
+
+        <div style={{marginBottom:10}}>
+          <label style={lbl}>BET TYPE</label>
+          <input style={inp()} value={form.betType} onChange={e=>setForm(f=>({...f,betType:e.target.value}))}
+            placeholder={form.betCategory==='prop'?'e.g. Goals O0.5':'NRFI / Moneyline / Spread'}/>
+        </div>
+
+        <div style={{marginBottom:10}}>
+          <label style={lbl}>REASONING</label>
+          <textarea style={{...inp(),resize:'none',minHeight:56,lineHeight:1.5}} value={form.reasoning} onChange={e=>setForm(f=>({...f,reasoning:e.target.value}))} placeholder="Why are you taking this bet?"/>
+        </div>
+
+        {form.betCategory==='parlay'&&(
+          <div style={{marginBottom:12,padding:12,background:'rgba(251,191,36,0.05)',borderRadius:8,border:'1px solid rgba(251,191,36,0.2)'}}>
+            <div style={{fontSize:10,color:'#fbbf24',fontWeight:700,letterSpacing:1,marginBottom:10}}>PARLAY LEGS</div>
+            {form.legs.map((leg,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                <div style={{flex:1,fontSize:12,color:'#94a3b8'}}>{leg.desc}{leg.odds?` (${leg.odds>0?'+':''}${leg.odds})`:''}</div>
+                <button onClick={()=>removeLeg(i)} style={{background:'#7f1d1d',border:'none',borderRadius:4,color:'#fca5a5',padding:'2px 8px',fontSize:10,cursor:'pointer'}}>✕</button>
+              </div>
+            ))}
+            <div style={{display:'flex',gap:6,marginTop:8}}>
+              <input style={{...inp(),flex:2,width:'auto'}} value={legInput} onChange={e=>setLegInput(e.target.value)} placeholder="Leg e.g. BOS ML"/>
+              <input type="number" style={{...inp(),flex:1,width:'auto'}} value={legOdds} onChange={e=>setLegOdds(e.target.value)} placeholder="Odds"/>
+              <button onClick={addLeg} style={{padding:'8px 12px',borderRadius:8,border:'none',background:'#1d4ed8',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',flexShrink:0}}>+ADD</button>
+            </div>
+          </div>
+        )}
+
+        {form.betCategory==='prop'&&(
+          <div style={{marginBottom:12,padding:12,background:'rgba(167,139,250,0.05)',borderRadius:8,border:'1px solid rgba(167,139,250,0.2)'}}>
+            <div style={{fontSize:10,color:'#a78bfa',fontWeight:700,letterSpacing:1,marginBottom:6}}>PROP DETAILS</div>
+            <div style={{fontSize:11,color:'#64748b'}}>Fill in Bet Type above e.g. "Points O22.5" or "Strikeouts O5.5"</div>
+          </div>
+        )}
+
+        <div style={{display:'flex',gap:8,marginTop:4}}>
+          <button onClick={()=>onSave(form)} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',background:'#f97316',color:'#000',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,cursor:'pointer'}}>{existing?'SAVE CHANGES':'ADD BET'}</button>
+          <button onClick={onClose} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:11,fontWeight:700,cursor:'pointer'}}>CANCEL</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PasteTab({ onConfirmPicks, callClaude: claudeFn }) {
   const [activeSport, setActiveSport] = useState('NHL');
   const [pastes, setPastes] = useState({ NHL:'', MLB:'', NBA:'', NFL:'' });
@@ -152,24 +313,27 @@ function PasteTab({ onConfirmPicks, callClaude: claudeFn }) {
     if (!text) { setError('Paste your model output first.'); return; }
     setParsing(true); setError(''); setPreview(null);
     const systemPrompt = `You are parsing raw terminal output from a sports prediction model.
-Extract every distinct bet recommendation and return a JSON array.
+Extract the TOP 3 best bet recommendations and return them as a JSON array.
 Each object must have exactly:
   pick       - string: short description e.g. "NYY @ BOS — NRFI" or "BOS ML"
   betType    - string: "NRFI","YRFI","Moneyline","Spread","Total","Player Prop"
   odds       - integer: American odds. If not stated use -110.
   modelProb  - number: model probability as percentage e.g. 57.3. null if not found.
-  confidence - integer 55-85: strength of model signal
-  reasoning  - string: 1-2 sentences from the output explaining why
-  keyFactors - array of 3-5 short strings: stats, edge tier, pitcher info etc
-  rating     - string: model rating label if present e.g. "STRONG NRFI", "T1_STRONG"
+  confidence - integer 55-85: strength of signal
+  reasoning  - string: 2-3 sentences with specific stats, edge size, pitcher names, xG values, Kelly% from the output
+  keyFactors - array of exactly 5 short strings: most important data points (K%, xG, edge tier, NRFI%, rest days, park factor, GSAx etc.)
+  rating     - string: model rating label e.g. "STRONG NRFI", "T1_STRONG", "LEAN"
+  edge       - string: edge percentage if present e.g. "+6.2%" or "STRONG BET"
 Rules:
-- Only include bets the model explicitly recommends — no SKIPs, no NO EDGE
+- Return TOP 3 ranked by model confidence/edge, or fewer if fewer exist
+- Only include bets model explicitly recommends — NO SKIPs, NO NO EDGE
 - Prioritize TOP PLAYS section if present
+- Be specific in reasoning — use exact stats and numbers from the output
 - Return [] if no actionable picks
 - Respond ONLY with a JSON array, no markdown`;
     try {
       const raw = await claudeFn(
-        [{role:'user',content:`Sport: ${activeSport}\n\nModel output:\n${text.slice(0,8000)}`}],
+        [{role:'user',content:`Sport: ${activeSport}\n\nModel output:\n${text.slice(0,10000)}`}],
         systemPrompt, false
       );
       let picks=[];
@@ -177,9 +341,9 @@ Rules:
       const start=clean.indexOf('['),end=clean.lastIndexOf(']');
       if (start!==-1&&end!==-1) picks=JSON.parse(clean.slice(start,end+1));
       if (!Array.isArray(picks)||picks.length===0) {
-        setError('No actionable picks found. Make sure you pasted the full output including TOP PLAYS or recommendations.');
+        setError('No actionable picks found. Paste the full output including TOP PLAYS section.');
       } else {
-        setPreview({sport:activeSport,picks});
+        setPreview({sport:activeSport,picks:picks.slice(0,3)});
       }
     } catch(e) { setError('Parse failed: '+e.message); }
     setParsing(false);
@@ -200,29 +364,22 @@ Rules:
       <div style={{display:'flex',gap:4,marginBottom:14,background:'rgba(10,18,35,0.8)',padding:4,borderRadius:10,border:'1px solid #1e293b'}}>
         {['NHL','MLB','NBA','NFL'].map(s=>{
           const c=SPORT_COLORS[s];
-          return (
-            <button key={s} onClick={()=>{setActiveSport(s);setPreview(null);setError('');}} style={{flex:1,padding:'8px 0',borderRadius:7,border:'none',cursor:'pointer',background:activeSport===s?c.dim:'transparent',color:activeSport===s?c.accent:'#64748b',fontSize:12,fontWeight:700,letterSpacing:1,transition:'all .2s',boxShadow:activeSport===s?`inset 0 0 0 1px ${c.border}`:'none'}}>{s}</button>
-          );
+          return <button key={s} onClick={()=>{setActiveSport(s);setPreview(null);setError('');}} style={{flex:1,padding:'8px 0',borderRadius:7,border:'none',cursor:'pointer',background:activeSport===s?c.dim:'transparent',color:activeSport===s?c.accent:'#64748b',fontSize:12,fontWeight:700,letterSpacing:1,transition:'all .2s',boxShadow:activeSport===s?`inset 0 0 0 1px ${c.border}`:'none'}}>{s}</button>;
         })}
       </div>
 
       <div style={{background:'rgba(10,18,35,0.95)',border:`1px solid ${sc.border}`,borderRadius:14,padding:18,marginBottom:14}}>
         <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:sc.accent,letterSpacing:2,marginBottom:12}}>
-          PASTE {activeSport} MODEL OUTPUT
+          PASTE {activeSport} OUTPUT → TOP 3 PICKS
         </div>
-        <textarea
-          value={pastes[activeSport]}
-          onChange={e=>setPastes(p=>({...p,[activeSport]:e.target.value}))}
-          placeholder={SPORT_HINTS[activeSport]}
-          style={{...inp({width:'100%',resize:'vertical',minHeight:180,lineHeight:1.6,fontSize:12,color:'#64748b'})}}
-        />
+        <textarea value={pastes[activeSport]} onChange={e=>setPastes(p=>({...p,[activeSport]:e.target.value}))} placeholder={SPORT_HINTS[activeSport]} style={{...inp({width:'100%',resize:'vertical',minHeight:180,lineHeight:1.6,fontSize:12,color:'#64748b'})}}/>
         <div style={{display:'flex',gap:8,marginTop:12,alignItems:'flex-end'}}>
           <div style={{flex:1}}>
-            <div style={lbl}>DEFAULT STAKE $</div>
+            <div style={lbl}>STAKE $ EACH</div>
             <input type="number" value={stake} onChange={e=>setStake(+e.target.value)} style={{...inp({width:'100%'})}}/>
           </div>
           <button onClick={parse} disabled={parsing||!pastes[activeSport].trim()} style={{flex:2,padding:'12px 0',borderRadius:8,border:'none',cursor:parsing||!pastes[activeSport].trim()?'not-allowed':'pointer',background:parsing||!pastes[activeSport].trim()?'#1e293b':`linear-gradient(135deg,${sc.accent}cc,${sc.accent})`,color:parsing||!pastes[activeSport].trim()?'#475569':'#000',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
-            {parsing?'PARSING...':'🧠 PARSE OUTPUT'}
+            {parsing?'PARSING...':'🧠 GET TOP 3 PICKS'}
           </button>
         </div>
         {error&&<div style={{marginTop:10,padding:'10px 12px',background:'rgba(127,29,29,0.4)',borderRadius:8,border:'1px solid #ef444444',fontSize:12,color:'#fca5a5'}}>{error}</div>}
@@ -231,36 +388,38 @@ Rules:
       {preview&&(
         <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
           <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#22c55e',letterSpacing:2,marginBottom:14}}>
-            ✅ {preview.picks.length} PICK{preview.picks.length!==1?'S':''} FOUND — REVIEW & CONFIRM
+            ✅ TOP {preview.picks.length} {preview.sport} PICKS
           </div>
           {preview.picks.map((pick,i)=>(
             <div key={i} style={{background:'rgba(5,8,16,0.8)',border:`1px solid ${SPORT_COLORS[preview.sport].border}`,borderRadius:10,padding:14,marginBottom:10}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,marginBottom:8}}>
-                <div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:10,color:SPORT_COLORS[preview.sport].accent,fontWeight:700,marginBottom:4}}>#{i+1} PICK</div>
                   <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:13,color:'#f1f5f9',fontWeight:700,marginBottom:4}}>{pick.pick}</div>
                   <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                     <span style={{fontSize:9,background:'#1e293b',color:'#64748b',padding:'2px 6px',borderRadius:20}}>{pick.betType}</span>
                     {pick.rating&&<span style={{fontSize:9,background:'rgba(34,197,94,0.15)',color:'#22c55e',padding:'2px 6px',borderRadius:20,border:'1px solid rgba(34,197,94,0.25)'}}>{pick.rating}</span>}
+                    {pick.edge&&<span style={{fontSize:9,background:'rgba(251,191,36,0.15)',color:'#fbbf24',padding:'2px 6px',borderRadius:20,border:'1px solid rgba(251,191,36,0.25)'}}>{pick.edge}</span>}
                   </div>
                 </div>
                 <div style={{textAlign:'right',flexShrink:0}}>
                   <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#e2e8f0'}}>{pick.odds>0?'+':''}{pick.odds}</div>
-                  {pick.modelProb&&<div style={{fontSize:11,color:SPORT_COLORS[preview.sport].accent}}>Model: {pick.modelProb}%</div>}
+                  {pick.modelProb!=null&&<div style={{fontSize:11,color:SPORT_COLORS[preview.sport].accent}}>Model: {pick.modelProb}%</div>}
                   <div style={{fontSize:11,color:'#475569'}}>Conf: {pick.confidence}%</div>
                 </div>
               </div>
-              <div style={{fontSize:12,color:'#94a3b8',lineHeight:1.5,marginBottom:8}}>{pick.reasoning}</div>
+              <div style={{fontSize:12,color:'#94a3b8',lineHeight:1.6,marginBottom:8}}>{pick.reasoning}</div>
               {pick.keyFactors?.length>0&&(
                 <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                   {pick.keyFactors.map((f,j)=><span key={j} style={{fontSize:9,background:'rgba(59,130,246,0.15)',color:'#60a5fa',padding:'2px 7px',borderRadius:20,border:'1px solid rgba(59,130,246,0.2)'}}>{f}</span>)}
                 </div>
               )}
-              <div style={{marginTop:8,fontSize:10,color:'#334155'}}>Stake: ${stake} · logs to MY SCRIPTS bankroll</div>
+              <div style={{marginTop:8,fontSize:10,color:'#334155'}}>Stake ${stake} · logs to MY SCRIPTS bankroll</div>
             </div>
           ))}
           <div style={{display:'flex',gap:8,marginTop:4}}>
             <button onClick={confirm} style={{flex:2,padding:'12px 0',borderRadius:8,border:'none',cursor:'pointer',background:'linear-gradient(135deg,#22c55e,#16a34a)',color:'#000',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
-              ✅ LOG TO MY SCRIPTS TRACKER
+              ✅ LOG ALL {preview.picks.length} PICKS
             </button>
             <button onClick={()=>setPreview(null)} style={{flex:1,padding:'12px 0',borderRadius:8,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:12,fontWeight:700,cursor:'pointer'}}>DISCARD</button>
           </div>
@@ -271,12 +430,12 @@ Rules:
         <div style={{background:'rgba(10,18,35,0.8)',border:'1px solid #1e293b',borderRadius:12,padding:'16px 18px'}}>
           <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:10,color:'#334155',letterSpacing:2,marginBottom:12,textTransform:'uppercase'}}>How It Works</div>
           {[
-            ['1','Run your Python script in Termux','python mlb_nrfi_v7.py  or  python nhl_v11.py'],
-            ['2','Copy the full terminal output','Long-press → Select All → Copy'],
-            ['3','Pick the sport tab above','NHL · MLB · NBA · NFL'],
-            ['4','Paste and hit Parse','AI extracts picks with odds, confidence & reasoning'],
-            ['5','Review then confirm','Picks log into YOUR SCRIPTS bankroll'],
-            ['6','Check Dashboard','See your scripts vs AI head to head'],
+            ['1','Run your Python script','python mlb_nrfi_v7.py  or  python nhl_v11.py'],
+            ['2','Copy full terminal output','Long-press → Select All → Copy'],
+            ['3','Pick sport tab above','NHL · MLB · NBA · NFL'],
+            ['4','Paste and hit Parse','AI extracts TOP 3 with full breakdowns'],
+            ['5','Review each pick','Odds · Model% · Reasoning · 5 key factors'],
+            ['6','Confirm → My Scripts','Grade as results come in'],
           ].map(([n,title,desc])=>(
             <div key={n} style={{display:'flex',gap:12,marginBottom:10,alignItems:'flex-start'}}>
               <div style={{width:22,height:22,borderRadius:'50%',background:'rgba(249,115,22,0.15)',border:'1px solid rgba(249,115,22,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'#f97316',fontWeight:700,flexShrink:0}}>{n}</div>
@@ -307,6 +466,7 @@ export default function App() {
   const [bankrollInput, setBankrollInput] = useState('');
   const [editingMyBankroll, setEditingMyBankroll] = useState(false);
   const [myBankrollInput, setMyBankrollInput] = useState('');
+  const [myPickModal, setMyPickModal] = useState(null);
   const logEndRef = useRef(null);
 
   useEffect(()=>{ persist(state); },[state]);
@@ -317,14 +477,13 @@ export default function App() {
   const aiGraded = aiBets.filter(b=>b.result!=='pending');
   const myGraded = myBets.filter(b=>b.result!=='pending');
 
-  const calcROI = (graded) => {
-    const wins=graded.filter(b=>b.result==='win');
+  const calcROI = graded => {
+    const wins=graded.filter(b=>b.result==='win').length;
     const staked=graded.reduce((a,b)=>a+b.stake,0);
     const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
-    return { wins:wins.length, total:graded.length, staked, profit, roi:staked?profit/staked*100:0, wr:graded.length?wins.length/graded.length*100:0 };
+    return {wins,total:graded.length,staked,profit,roi:staked?profit/staked*100:0,wr:graded.length?wins/graded.length*100:0};
   };
-  const aiStats = calcROI(aiGraded);
-  const myStats = calcROI(myGraded);
+  const aiStats=calcROI(aiGraded), myStats=calcROI(myGraded);
 
   function addLog(msg) {
     setState(s=>({...s,sessionLog:[...s.sessionLog.slice(-99),{id:uid(),msg,time:Date.now()}]}));
@@ -332,122 +491,86 @@ export default function App() {
 
   function saveBankroll() {
     const val=parseFloat(bankrollInput);
-    if (!isNaN(val)&&val>0) {
-      const r=parseFloat(val.toFixed(2));
-      setState(s=>({...s,bankroll:r,startingBankroll:r}));
-      addLog(`💰 AI bankroll set to $${r.toFixed(2)}`);
-    }
+    if (!isNaN(val)&&val>0){const r=parseFloat(val.toFixed(2));setState(s=>({...s,bankroll:r,startingBankroll:r}));addLog(`💰 AI bankroll → $${r}`);}
     setEditingBankroll(false);
   }
   function saveMyBankroll() {
     const val=parseFloat(myBankrollInput);
-    if (!isNaN(val)&&val>0) {
-      const r=parseFloat(val.toFixed(2));
-      setState(s=>({...s,myBankroll:r,myStartingBankroll:r}));
-      addLog(`💰 My bankroll set to $${r.toFixed(2)}`);
-    }
+    if (!isNaN(val)&&val>0){const r=parseFloat(val.toFixed(2));setState(s=>({...s,myBankroll:r,myStartingBankroll:r}));addLog(`💰 My bankroll → $${r}`);}
     setEditingMyBankroll(false);
   }
 
-  const addAIPick = useCallback((pickData) => {
-    const bet={
-      id:uid(), pick:pickData.pick||'Unknown', sport:pickData.sport||'NHL',
-      betType:pickData.betType||'Moneyline', odds:parseInt(pickData.odds)||-110,
-      stake:pickData.stake||25, result:'pending', date:new Date().toISOString(),
-      reasoning:pickData.reasoning||'', keyFactors:pickData.keyFactors||[],
-      confidence:pickData.confidence||60, edge:pickData.edge||'',
-      modelProb:pickData.modelProb||null, lesson:null, source:'ai',
-    };
+  const addAIPick = useCallback(pickData=>{
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'ai'};
     setState(s=>({...s,bankroll:parseFloat((s.bankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
-    addLog(`🤖 AI pick: ${bet.pick}`);
+    addLog(`🤖 AI: ${bet.pick}`);
   },[]);
 
-  const addMyPick = useCallback((pickData) => {
-    const bet={
-      id:uid(), pick:pickData.pick||'Unknown', sport:pickData.sport||'NHL',
-      betType:pickData.betType||'Moneyline', odds:parseInt(pickData.odds)||-110,
-      stake:pickData.stake||25, result:'pending', date:new Date().toISOString(),
-      reasoning:pickData.reasoning||'', keyFactors:pickData.keyFactors||[],
-      confidence:pickData.confidence||60, modelProb:pickData.modelProb||null,
-      rating:pickData.rating||'', lesson:null, source:'paste',
-    };
+  const addMyPick = useCallback(pickData=>{
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'MLB',betType:pickData.betType||'Moneyline',betCategory:pickData.betCategory||'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,modelProb:pickData.modelProb||null,rating:pickData.rating||'',edge:pickData.edge||'',legs:pickData.legs||[],lesson:null,source:'paste'};
     setState(s=>({...s,myBankroll:parseFloat((s.myBankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`📋 My pick: ${bet.pick}`);
   },[]);
 
-  const confirmPicks = useCallback((picks, sport, stake) => {
-    picks.forEach(p=>addMyPick({
-      pick:p.pick, sport, betType:p.betType||'Moneyline',
-      odds:parseInt(p.odds)||-110, stake,
-      confidence:p.confidence||60, reasoning:p.reasoning||'',
-      keyFactors:p.keyFactors||[], modelProb:p.modelProb||null, rating:p.rating||'',
-    }));
-    addLog(`📋 Logged ${picks.length} ${sport} pick(s) from script output`);
+  const editMyPick = useCallback(form=>{
+    if (!form.id) {
+      addMyPick(form);
+    } else {
+      setState(s=>({...s,bets:s.bets.map(b=>b.id===form.id?{...b,...form}:b)}));
+      addLog(`✏️ Edited: ${form.pick}`);
+    }
+    setMyPickModal(null);
+  },[addMyPick]);
+
+  const deleteMyPick = useCallback(id=>{
+    const bet=state.bets.find(b=>b.id===id);
+    if (!bet) return;
+    setState(s=>({...s,myBankroll:parseFloat((s.myBankroll+bet.stake).toFixed(2)),bets:s.bets.filter(b=>b.id!==id)}));
+    addLog(`🗑 Deleted: ${bet.pick} (stake refunded)`);
+  },[state.bets]);
+
+  const confirmPicks = useCallback((picks,sport,stake)=>{
+    picks.forEach(p=>addMyPick({pick:p.pick,sport,betType:p.betType||'Moneyline',betCategory:'straight',odds:parseInt(p.odds)||-110,stake,confidence:p.confidence||60,reasoning:p.reasoning||'',keyFactors:p.keyFactors||[],modelProb:p.modelProb||null,rating:p.rating||'',edge:p.edge||'',legs:[]}));
+    addLog(`📋 Logged ${picks.length} ${sport} pick(s)`);
     setTab('mine');
   },[addMyPick]);
 
-  const generatePicks = useCallback(async () => {
-    setLoading(true); setError('');
+  const generatePicks = useCallback(async ()=>{
+    setLoading(true);setError('');
     const cfg=SPORT_CONFIG[pickSport];
-    addLog(`🔍 Fetching live ${pickSport} odds...`);
-    setLoadingMsg('📡 Pulling live odds...');
+    addLog(`🔍 Fetching ${pickSport} odds...`);setLoadingMsg('📡 Pulling live odds...');
     let oddsText='';
     try {
       const games=await fetchOdds(cfg.oddsKey,cfg.markets);
       oddsText=formatOddsForClaude(games);
-      addLog(`✅ Got odds for ${games.length} games`);
-    } catch(err) {
-      oddsText="Live odds unavailable — use your knowledge of today's games.";
-      addLog(`⚠️ Odds fetch failed: ${err.message}`);
-    }
+      addLog(`✅ ${games.length} games`);
+    } catch(err){oddsText='Live odds unavailable.';addLog(`⚠️ ${err.message}`);}
     const stakeAmount=Math.max(10,Math.round(state.bankroll*0.03/5)*5);
-    const systemPrompt=`You are a sharp sports bettor finding value bets from live odds.
-LIVE ODDS DATA:\n${oddsText}\n
-Rules:
-- Only bet games listed. Use EXACT odds shown.
-- Respond ONLY with a JSON array, no markdown.
-- Each object: { "pick", "sport", "betType", "odds"(integer), "reasoning", "keyFactors"(3-5 strings), "confidence"(55-80), "edge" }
-- Return [] if no value found today.
-${pickContext?`Focus: ${pickContext}`:''}`;
+    const sys=`You are a sharp sports bettor. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}\nReturn ONLY a JSON array. Each: {"pick","sport","betType","odds"(integer),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nReturn [] if no value. No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
     setLoadingMsg('🧠 Finding value...');
     try {
-      const raw=await callClaude(
-        [{role:'user',content:`Today is ${new Date().toLocaleDateString()}. Review live ${pickSport} odds, search for injury/news, return best value bets as JSON array.`}],
-        systemPrompt,true
-      );
+      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,true);
       let picks=[];
       const s=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
       const start=s.indexOf('[');
-      if (start!==-1) {
+      if (start!==-1){
         let depth=0,inStr=false,esc=false,end=-1;
-        for (let i=start;i<s.length;i++) {
-          const c=s[i];
-          if (esc){esc=false;continue;}
-          if (c==='\\'&&inStr){esc=true;continue;}
-          if (c==='"'){inStr=!inStr;continue;}
-          if (inStr) continue;
-          if (c==='[') depth++;
-          else if (c===']'){depth--;if(depth===0){end=i;break;}}
+        for(let i=start;i<s.length;i++){
+          const c=s[i];if(esc){esc=false;continue;}if(c==='\\'&&inStr){esc=true;continue;}if(c==='"'){inStr=!inStr;continue;}if(inStr)continue;
+          if(c==='[')depth++;else if(c===']'){depth--;if(depth===0){end=i;break;}}
         }
-        if (end!==-1) picks=JSON.parse(s.slice(start,end+1));
+        if(end!==-1)picks=JSON.parse(s.slice(start,end+1));
       }
-      if (!Array.isArray(picks)||picks.length===0) {
-        addLog('No strong value found today.');
-        setLoadingMsg('');setLoading(false);return;
-      }
-      picks.forEach(p=>addAIPick({...p,sport:pickSport,stake:stakeAmount,source:'ai'}));
-      addLog(`✅ AI placed ${picks.length} pick(s)`);
-      setTab('ai');
-    } catch(err) {
-      setError('Failed: '+err.message);
-      addLog('❌ '+err.message);
-    }
+      if(!Array.isArray(picks)||picks.length===0){addLog('No strong value found.');setLoadingMsg('');setLoading(false);return;}
+      picks.forEach(p=>addAIPick({...p,sport:pickSport,stake:stakeAmount}));
+      addLog(`✅ AI placed ${picks.length} pick(s)`);setTab('ai');
+    } catch(err){setError('Failed: '+err.message);addLog('❌ '+err.message);}
     setLoadingMsg('');setLoading(false);
   },[pickSport,pickContext,state.bankroll,addAIPick]);
 
   const gradeBet = useCallback((id,result)=>{
     const bet=state.bets.find(b=>b.id===id);
-    if (!bet) return;
+    if(!bet)return;
     const payout=result==='win'?americanToDecimal(bet.odds)*bet.stake:result==='push'?bet.stake:0;
     const pl=result==='win'?(americanToDecimal(bet.odds)-1)*bet.stake:result==='loss'?-bet.stake:0;
     const key=bet.source==='paste'?'myBankroll':'bankroll';
@@ -455,59 +578,40 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
     addLog(`Graded: ${bet.pick} → ${result.toUpperCase()} (${formatMoney(pl)})`);
   },[state.bets]);
 
-  const teachLesson = useCallback(async (betId)=>{
-    const bet=state.bets.find(b=>b.id===betId);
-    if (!bet) return;
+  const teachLesson = useCallback(async betId=>{
+    const bet=state.bets.find(b=>b.id===betId);if(!bet)return;
     setTeaching(true);setLoadingMsg('🎓 Generating lesson...');
     const pl=bet.result==='win'?(americanToDecimal(bet.odds)-1)*bet.stake:-bet.stake;
     try {
-      const lesson=await callClaude(
-        [{role:'user',content:`Analyze this ${bet.result} bet:\nPick: ${bet.pick} (${bet.sport}, ${bet.betType})\nOdds: ${formatOdds(bet.odds)} (implied ${impliedProb(bet.odds).toFixed(1)}%)\nReasoning: ${bet.reasoning}\nResult: ${bet.result} (${formatMoney(pl)})\n\nWas the reasoning sound? What should a sharper bettor do differently? 3-4 sentences.`}],
-        'You are a sharp sports betting coach. Be direct and specific. Plain text only.',false
-      );
+      const lesson=await callClaude([{role:'user',content:`Analyze this ${bet.result} bet:\nPick: ${bet.pick} (${bet.sport}, ${bet.betType})\nOdds: ${formatOdds(bet.odds)} implied ${impliedProb(bet.odds).toFixed(1)}%\nReasoning: ${bet.reasoning}\nResult: ${bet.result} (${formatMoney(pl)})\n\nWas the reasoning sound? What should a sharper bettor do differently? 3-4 sentences.`}],'Sharp betting coach. Direct and specific. Plain text only.',false);
       const card={id:uid(),date:new Date().toISOString(),title:`${bet.result==='win'?'✅':'❌'} ${bet.pick}`,category:bet.sport,body:lesson,takeaway:null,betId};
       setState(s=>({...s,bets:s.bets.map(b=>b.id===betId?{...b,lesson}:b),lessons:[card,...s.lessons]}));
-      addLog(`📘 Lesson for ${bet.pick}`);
+      addLog(`📘 Lesson: ${bet.pick}`);
     } catch(err){setError('Lesson failed: '+err.message);}
     setTeaching(false);setLoadingMsg('');
   },[state.bets]);
 
   const runReview = useCallback(async ()=>{
-    if (aiGraded.length<3){setError('Need at least 3 graded AI bets.');return;}
+    if(aiGraded.length<3){setError('Need at least 3 graded AI bets.');return;}
     setLoading(true);setLoadingMsg('📊 Running review...');
     const summary=aiGraded.slice(0,20).map(b=>({pick:b.pick,sport:b.sport,odds:b.odds,confidence:b.confidence,result:b.result}));
     try {
-      const raw=await callClaude(
-        [{role:'user',content:`Review ${aiGraded.length} AI bets:\n${JSON.stringify(summary)}\nStats: WR ${aiStats.wr.toFixed(1)}%, ROI ${aiStats.roi.toFixed(1)}%, Net ${formatMoney(aiStats.profit)}\nReturn ONLY: {"title":"...","category":"AI Review","body":"3-4 sentences","takeaway":"key improvement"}`}],
-        'You are a professional betting analyst. Respond ONLY with JSON, no markdown.',false
-      );
+      const raw=await callClaude([{role:'user',content:`Review ${aiGraded.length} AI bets:\n${JSON.stringify(summary)}\nWR ${aiStats.wr.toFixed(1)}%, ROI ${aiStats.roi.toFixed(1)}%\nReturn ONLY: {"title":"...","category":"AI Review","body":"3-4 sentences","takeaway":"key improvement"}`}],'Professional betting analyst. JSON only, no markdown.',false);
       let review={};
-      try{const clean=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();const s=clean.indexOf('{'),e=clean.lastIndexOf('}');if(s!==-1&&e!==-1)review=JSON.parse(clean.slice(s,e+1));}catch{}
+      try{const c=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();const si=c.indexOf('{'),ei=c.lastIndexOf('}');if(si!==-1&&ei!==-1)review=JSON.parse(c.slice(si,ei+1));}catch{}
       setState(s=>({...s,lessons:[{id:uid(),date:new Date().toISOString(),title:review.title||'AI Review',category:'AI Review',body:review.body||raw,takeaway:review.takeaway||null},...s.lessons]}));
       addLog('📊 Review done');setTab('lessons');
     } catch(err){setError('Review failed: '+err.message);}
     setLoading(false);setLoadingMsg('');
   },[aiGraded,aiStats]);
 
-  const resetAll=()=>{
-    if (!confirm('Reset ALL data?')) return;
-    setState({...EMPTY_STATE});
-  };
-
-  const inp=extra=>({background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'8px 12px',fontSize:13,fontFamily:"'Rajdhani',sans-serif",...extra});
+  const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
   const TABS=['dashboard','ai','paste','mine','lessons','log'];
-  const TLABELS={
-    dashboard:'📊 Dash',
-    ai:'🤖 AI Bets',
-    paste:'📋 Paste',
-    mine:'📈 My Scripts',
-    lessons:`🎓 (${state.lessons.length})`,
-    log:'🪵 Log',
-  };
+  const TLABELS={dashboard:'📊 Dash',ai:'🤖 AI Bets',paste:'📋 Paste',mine:'📈 My Scripts',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
 
-  const filterBar = (filter, setFilter) => (
-    <div style={{display:'flex',gap:6,marginBottom:12}}>
+  const filterBar=(filter,setFilter)=>(
+    <div style={{display:'flex',gap:5,marginBottom:12,flexWrap:'wrap'}}>
       {['all','pending','win','loss','push'].map(r=>(
         <button key={r} onClick={()=>setFilter(r)} style={{padding:'5px 10px',borderRadius:6,border:'none',cursor:'pointer',background:filter===r?'#1d4ed8':'#1e293b',color:filter===r?'#fff':'#64748b',fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:0.5}}>{r}</button>
       ))}
@@ -535,7 +639,6 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
             <div style={{fontSize:11,color:'#475569',marginTop:3}}>AI picks its own · You paste yours · Compare head to head</div>
           </div>
 
-          {/* Dual bankrolls */}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
             <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
               <div style={{fontSize:9,color:'#60a5fa',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>🤖 AI Bankroll</div>
@@ -572,14 +675,12 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
           {error&&<div style={{background:'#7f1d1d',border:'1px solid #ef4444',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#fca5a5',display:'flex',justifyContent:'space-between'}}>{error}<button onClick={()=>setError('')} style={{background:'none',border:'none',color:'#fca5a5',cursor:'pointer',fontSize:14}}>✕</button></div>}
           {(loading||teaching)&&<div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1d4ed8',borderRadius:10,padding:'12px 16px',marginBottom:12,fontSize:13,color:'#60a5fa',animation:'pulse 1.5s infinite',display:'flex',alignItems:'center',gap:10}}><div style={{width:8,height:8,background:'#3b82f6',borderRadius:'50%',flexShrink:0}}/>{loadingMsg||'Working...'}</div>}
 
-          {/* Tabs */}
           <div style={{display:'flex',gap:2,marginBottom:14,background:'rgba(10,18,35,0.8)',padding:4,borderRadius:10,border:'1px solid #1e293b',overflowX:'auto'}}>
             {TABS.map(t=>(
-              <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:'8px 2px',borderRadius:7,border:'none',cursor:'pointer',background:tab===t?(t==='ai'?'#1d4ed8':t==='paste'||t==='mine'?'#92400e':'#1e293b'):'transparent',color:tab===t?'#fff':'#64748b',fontSize:10,fontWeight:700,transition:'all .2s',whiteSpace:'nowrap'}}>{TLABELS[t]}</button>
+              <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:'8px 2px',borderRadius:7,border:'none',cursor:'pointer',background:tab===t?(t==='ai'?'#1d4ed8':t==='paste'||t==='mine'?'#7c2d12':'#1e293b'):'transparent',color:tab===t?'#fff':'#64748b',fontSize:10,fontWeight:700,transition:'all .2s',whiteSpace:'nowrap'}}>{TLABELS[t]}</button>
             ))}
           </div>
 
-          {/* DASHBOARD */}
           {tab==='dashboard'&&(
             <div style={{animation:'slideIn .3s ease'}}>
               <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
@@ -599,7 +700,7 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
                     {loading?'WORKING...':'FIND VALUE'}
                   </button>
                 </div>
-                <textarea value={pickContext} onChange={e=>setPickContext(e.target.value)} placeholder="Optional focus: 'road underdogs', 'NRFI only', 'player props'..." style={{width:'100%',background:'#0f172a',border:'1px solid #1e293b',borderRadius:8,color:'#94a3b8',padding:'10px 12px',fontSize:12,resize:'none',height:52,lineHeight:1.5}}/>
+                <textarea value={pickContext} onChange={e=>setPickContext(e.target.value)} placeholder="Optional: 'road underdogs', 'NRFI only', 'player props'..." style={{width:'100%',background:'#0f172a',border:'1px solid #1e293b',borderRadius:8,color:'#94a3b8',padding:'10px 12px',fontSize:12,resize:'none',height:52,lineHeight:1.5}}/>
               </div>
               <button onClick={runReview} disabled={loading||aiGraded.length<3} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #1e40af44',background:'rgba(29,78,216,.1)',color:aiGraded.length>=3?'#60a5fa':'#475569',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:14}}>
                 📊 AI PERFORMANCE REVIEW {aiGraded.length<3?`(${3-aiGraded.length} more needed)`:''}
@@ -607,7 +708,6 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
             </div>
           )}
 
-          {/* AI BETS */}
           {tab==='ai'&&(
             <div style={{animation:'slideIn .3s ease'}}>
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:10,padding:'12px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -622,16 +722,14 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
               </div>
               {filterBar(aiFilter,setAiFilter)}
               {aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).length===0
-                ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🤖</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO AI BETS YET</div><div style={{fontSize:12,marginTop:6}}>Go to Dashboard → Find Value</div></div>
-                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} teaching={teaching}/>)
+                ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🤖</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO AI BETS YET</div><div style={{fontSize:12,marginTop:6}}>Dashboard → Find Value</div></div>
+                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} teaching={teaching} allowEdit={false}/>)
               }
             </div>
           )}
 
-          {/* PASTE */}
           {tab==='paste'&&<PasteTab onConfirmPicks={confirmPicks} callClaude={callClaude}/>}
 
-          {/* MY SCRIPTS */}
           {tab==='mine'&&(
             <div style={{animation:'slideIn .3s ease'}}>
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:10,padding:'12px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -644,15 +742,19 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
                   <div style={{fontSize:11,color:'#64748b'}}>{myStats.wins}W-{myStats.total-myStats.wins}L</div>
                 </div>
               </div>
-              {filterBar(myFilter,setMyFilter)}
+              <div style={{display:'flex',gap:6,marginBottom:12,alignItems:'center',flexWrap:'wrap'}}>
+                {['all','pending','win','loss','push'].map(r=>(
+                  <button key={r} onClick={()=>setMyFilter(r)} style={{padding:'5px 10px',borderRadius:6,border:'none',cursor:'pointer',background:myFilter===r?'#7c2d12':'#1e293b',color:myFilter===r?'#fb923c':'#64748b',fontSize:10,fontWeight:700,textTransform:'uppercase'}}>{r}</button>
+                ))}
+                <button onClick={()=>setMyPickModal('new')} style={{marginLeft:'auto',padding:'6px 12px',borderRadius:6,border:'1px solid #f9731644',background:'rgba(249,115,22,0.1)',color:'#f97316',fontSize:10,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>+ ADD BET</button>
+              </div>
               {myBets.filter(b=>myFilter==='all'||b.result===myFilter).length===0
-                ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>📋</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO SCRIPT PICKS YET</div><div style={{fontSize:12,marginTop:6}}>Go to 📋 Paste → drop in your model output</div></div>
-                :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} teaching={teaching}/>)
+                ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>📋</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO SCRIPT PICKS YET</div><div style={{fontSize:12,marginTop:6}}>Go to 📋 Paste to import from your model</div></div>
+                :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onDelete={deleteMyPick} onEdit={b=>setMyPickModal(b)} teaching={teaching} allowEdit={true}/>)
               }
             </div>
           )}
 
-          {/* LESSONS */}
           {tab==='lessons'&&(
             <div style={{animation:'slideIn .3s ease'}}>
               {state.lessons.length===0
@@ -662,7 +764,6 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
             </div>
           )}
 
-          {/* LOG */}
           {tab==='log'&&(
             <div style={{animation:'slideIn .3s ease'}}>
               <div style={{background:'rgba(5,8,16,0.95)',border:'1px solid #1e293b',borderRadius:12,padding:14,fontFamily:'monospace',fontSize:11,color:'#64748b',maxHeight:420,overflowY:'auto'}}>
@@ -681,6 +782,14 @@ ${pickContext?`Focus: ${pickContext}`:''}`;
 
         </div>
       </div>
+
+      {myPickModal&&(
+        <MyPickModal
+          existing={myPickModal==='new'?null:myPickModal}
+          onSave={editMyPick}
+          onClose={()=>setMyPickModal(null)}
+        />
+      )}
     </>
   );
 }
