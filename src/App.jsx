@@ -51,7 +51,7 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teachin
         body: JSON.stringify({
           model:'claude-sonnet-4-5',
           max_tokens:300,
-          system:'You are a sharp sports betting analyst. Give a brief 2-3 sentence opinion on this bet — does the reasoning hold up, is there real edge, and would you take it? Be direct and specific.',
+          system:'You are a sharp sports betting analyst. Give a brief 2-3 sentence opinion on this bet — does the reasoning hold up, is there real edge, and would you take it? Be direct and specific. Consider the bettor\'s history when giving advice.',
           messages:[{role:'user',content:`Bet: ${bet.pick}
 Sport: ${bet.sport}
 Odds: ${bet.odds}
@@ -679,6 +679,54 @@ export default function App() {
     setTab('mine');
   },[addMyPick]);
 
+  const buildHistorySummary = () => {
+    const graded = state.bets.filter(b=>b.result!=='pending');
+    if (!graded.length) return '';
+    const wins=graded.filter(b=>b.result==='win').length;
+    const staked=graded.reduce((a,b)=>a+b.stake,0);
+    const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+    const roi=staked?profit/staked*100:0;
+    const bySport={};
+    graded.forEach(b=>{
+      if(!bySport[b.sport])bySport[b.sport]={w:0,l:0};
+      if(b.result==='win')bySport[b.sport].w++;
+      else if(b.result==='loss')bySport[b.sport].l++;
+    });
+    const sportStr=Object.entries(bySport).map(([s,v])=>`${s}:${v.w}W-${v.l}L`).join(', ');
+    const recent=graded.slice(0,5).map(b=>`${b.pick}(${b.result}${b.score?' '+b.score:''})`).join(', ');
+    return `
+
+YOUR BETTING HISTORY (${graded.length} graded bets):
+Record: ${wins}W-${graded.length-wins}L | ROI: ${roi.toFixed(1)}% | Net: ${formatMoney(profit)}
+By sport: ${sportStr}
+Recent: ${recent}
+Use this history to adapt your picks — avoid bet types that are losing, favor what's working.`;
+  };
+
+  const buildHistorySummary = () => {
+    const graded = state.bets.filter(b=>b.result!=='pending');
+    if (!graded.length) return '';
+    const wins=graded.filter(b=>b.result==='win').length;
+    const staked=graded.reduce((a,b)=>a+b.stake,0);
+    const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+    const roi=staked?profit/staked*100:0;
+    const bySport={};
+    graded.forEach(b=>{
+      if(!bySport[b.sport])bySport[b.sport]={w:0,l:0};
+      if(b.result==='win')bySport[b.sport].w++;
+      else if(b.result==='loss')bySport[b.sport].l++;
+    });
+    const sportStr=Object.entries(bySport).map(([s,v])=>`${s}:${v.w}W-${v.l}L`).join(', ');
+    const recent=graded.slice(0,5).map(b=>`${b.pick}(${b.result}${b.score?' '+b.score:''})`).join(', ');
+    return `
+
+YOUR BETTING HISTORY (${graded.length} graded bets):
+Record: ${wins}W-${graded.length-wins}L | ROI: ${roi.toFixed(1)}% | Net: ${formatMoney(profit)}
+By sport: ${sportStr}
+Recent: ${recent}
+Use this history to adapt your picks — avoid bet types that are losing, favor what's working.`;
+  };
+
   const generatePicks = useCallback(async ()=>{
     setLoading(true);setError('');
     const cfg=SPORT_CONFIG[pickSport];
@@ -690,7 +738,8 @@ export default function App() {
       addLog(`✅ ${games.length} games`);
     } catch(err){oddsText='Live odds unavailable.';addLog(`⚠️ ${err.message}`);}
     const stakeAmount=Math.max(10,Math.round(state.bankroll*0.03/5)*5);
-    const sys=`You are a sharp sports bettor. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}\nReturn ONLY a JSON array. Each: {"pick","sport","betType","odds"(integer),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nReturn [] if no value. No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
+    const history=buildHistorySummary();
+    const sys=`You are a sharp sports bettor. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${history}\nReturn ONLY a JSON array. Each: {"pick","sport","betType","odds"(integer),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nReturn [] if no value. No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
     setLoadingMsg('🧠 Finding value...');
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,true);
