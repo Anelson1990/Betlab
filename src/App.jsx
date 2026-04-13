@@ -174,13 +174,13 @@ function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartin
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
         <div style={{borderRight:'1px solid #1e293b',paddingRight:12}}>
           <div style={{fontSize:10,color:'#60a5fa',letterSpacing:2,marginBottom:6,fontWeight:700}}>🤖 AI PAPER BETS</div>
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:aiPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{aiPnL>=0?'+':''}{formatMoney(Math.abs(aiPnL))}</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:aiPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(aiPnL)}</div>
           <div style={{fontSize:10,color:'#475569',marginBottom:6}}>vs ${startingBankroll.toFixed(0)} start</div>
           {ai?<><div style={{fontSize:12,color:roiC(ai.roi),fontWeight:700}}>ROI {ai.roi>=0?'+':''}{ai.roi.toFixed(1)}%</div><div style={{fontSize:11,color:'#64748b'}}>{ai.wins}W-{ai.total-ai.wins}L · {ai.wr.toFixed(0)}% WR</div></>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
         </div>
         <div style={{paddingLeft:12}}>
           <div style={{fontSize:10,color:'#f97316',letterSpacing:2,marginBottom:6,fontWeight:700}}>📋 MY SCRIPTS</div>
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:myPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{myPnL>=0?'+':''}{formatMoney(Math.abs(myPnL))}</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:myPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(myPnL)}</div>
           <div style={{fontSize:10,color:'#475569',marginBottom:6}}>vs ${myStartingBankroll.toFixed(0)} start</div>
           {my?<><div style={{fontSize:12,color:roiC(my.roi),fontWeight:700}}>ROI {my.roi>=0?'+':''}{my.roi.toFixed(1)}%</div><div style={{fontSize:11,color:'#64748b'}}>{my.wins}W-{my.total-my.wins}L · {my.wr.toFixed(0)}% WR</div></>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
         </div>
