@@ -609,7 +609,10 @@ export default function App() {
   const [myPickModal, setMyPickModal] = useState(null);
   const logEndRef = useRef(null);
 
-  useEffect(()=>{ persist(state); },[state]);
+  useEffect(()=>{
+    const {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog} = state;
+    persist({bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog});
+  },[state]);
   useEffect(()=>{ logEndRef.current?.scrollIntoView({behavior:'smooth'}); },[state.sessionLog]);
 
   const aiBets   = state.bets.filter(b=>b.source==='ai');
