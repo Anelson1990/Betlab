@@ -863,7 +863,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
               )}
               <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
                 <span style={{fontSize:10,color:'#475569'}}>start ${state.startingBankroll.toFixed(0)}</span>
-                <button onClick={()=>{const v=prompt('Set starting bankroll:',state.startingBankroll);if(v&&!isNaN(v))setState(s=>({...s,startingBankroll:parseFloat(v)}));}} style={{background:'transparent',border:'none',color:'#334155',fontSize:9,cursor:'pointer',padding:0}}>✏️</button>
+                <button onClick={()=>{const v=prompt('Set starting bankroll:',state.startingBankroll);if(v&&!isNaN(v))setState(s=>({...s,startingBankroll:parseFloat(v)}));}} style={{background:'transparent',border:'none',color:'#60a5fa',fontSize:11,cursor:'pointer',padding:0}}>✏️</button>
                 <span style={{fontSize:10,color:'#475569'}}>· {aiBets.filter(b=>b.result==='pending').length} pending</span>
               </div>
             </div>
@@ -882,7 +882,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
               )}
               <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
                 <span style={{fontSize:10,color:'#475569'}}>start ${state.myStartingBankroll.toFixed(0)}</span>
-                <button onClick={()=>{const v=prompt('Set starting bankroll:',state.myStartingBankroll);if(v&&!isNaN(v))setState(s=>({...s,myStartingBankroll:parseFloat(v)}));}} style={{background:'transparent',border:'none',color:'#334155',fontSize:9,cursor:'pointer',padding:0}}>✏️</button>
+                <button onClick={()=>{const v=prompt('Set starting bankroll:',state.myStartingBankroll);if(v&&!isNaN(v))setState(s=>({...s,myStartingBankroll:parseFloat(v)}));}} style={{background:'transparent',border:'none',color:'#60a5fa',fontSize:11,cursor:'pointer',padding:0}}>✏️</button>
                 <span style={{fontSize:10,color:'#475569'}}>· {myBets.filter(b=>b.result==='pending').length} pending</span>
               </div>
             </div>
