@@ -851,7 +851,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
             <div style={{fontSize:11,color:'#475569',marginTop:3}}>AI picks its own · You paste yours · Compare head to head</div>
           </div>
 
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+          <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:14}}>
             <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
               <div style={{fontSize:9,color:'#60a5fa',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>🤖 AI Bankroll</div>
               <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:state.bankroll>=state.startingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.bankroll.toFixed(0)}</div>
