@@ -860,14 +860,14 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:'#475569',marginBottom:3}}>CURRENT</div>
                   <div style={{display:'flex',gap:3}}>
-                    <input type="number" value={bankrollInput||state.bankroll} onChange={e=>setBankrollInput(e.target.value)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'4px 6px',fontSize:12,fontFamily:"'Orbitron',sans-serif",width:0}}/>
+                    <input type="number" value={bankrollInput} onChange={e=>setBankrollInput(e.target.value)} placeholder={state.bankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'4px 6px',fontSize:12,fontFamily:"'Orbitron',sans-serif",width:0}}/>
                     <button onClick={saveBankroll} style={{background:'#1d4ed8',border:'none',borderRadius:6,color:'#fff',padding:'4px 8px',cursor:'pointer',fontSize:10,fontWeight:700,flexShrink:0}}>SET</button>
                   </div>
                 </div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:'#475569',marginBottom:3}}>START</div>
                   <div style={{display:'flex',gap:3}}>
-                    <input type="number" value={startBankrollInput||state.startingBankroll} onChange={e=>setStartBankrollInput(e.target.value)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'4px 6px',fontSize:12,fontFamily:"'Orbitron',sans-serif",width:0}}/>
+                    <input type="number" value={startBankrollInput} onChange={e=>setStartBankrollInput(e.target.value)} placeholder={state.startingBankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'4px 6px',fontSize:12,fontFamily:"'Orbitron',sans-serif",width:0}}/>
                     <button onClick={()=>setState(s=>({...s,startingBankroll:parseFloat(startBankrollInput)||s.startingBankroll}))} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'4px 8px',cursor:'pointer',fontSize:10,fontWeight:700,flexShrink:0}}>SET</button>
                   </div>
                 </div>
@@ -882,14 +882,14 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:'#475569',marginBottom:3}}>CURRENT</div>
                   <div style={{display:'flex',gap:3}}>
-                    <input type="number" value={myBankrollInput||state.myBankroll} onChange={e=>setMyBankrollInput(e.target.value)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'4px 6px',fontSize:12,fontFamily:"'Orbitron',sans-serif",width:0}}/>
+                    <input type="number" value={myBankrollInput} onChange={e=>setMyBankrollInput(e.target.value)} placeholder={state.myBankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'4px 6px',fontSize:12,fontFamily:"'Orbitron',sans-serif",width:0}}/>
                     <button onClick={saveMyBankroll} style={{background:'#f97316',border:'none',borderRadius:6,color:'#000',padding:'4px 8px',cursor:'pointer',fontSize:10,fontWeight:700,flexShrink:0}}>SET</button>
                   </div>
                 </div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:'#475569',marginBottom:3}}>START</div>
                   <div style={{display:'flex',gap:3}}>
-                    <input type="number" value={myStartBankrollInput||state.myStartingBankroll} onChange={e=>setMyStartBankrollInput(e.target.value)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'4px 6px',fontSize:12,fontFamily:"'Orbitron',sans-serif",width:0}}/>
+                    <input type="number" value={myStartBankrollInput} onChange={e=>setMyStartBankrollInput(e.target.value)} placeholder={state.myStartingBankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'4px 6px',fontSize:12,fontFamily:"'Orbitron',sans-serif",width:0}}/>
                     <button onClick={()=>setState(s=>({...s,myStartingBankroll:parseFloat(myStartBankrollInput)||s.myStartingBankroll}))} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'4px 8px',cursor:'pointer',fontSize:10,fontWeight:700,flexShrink:0}}>SET</button>
                   </div>
                 </div>
