@@ -52,7 +52,7 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teachin
         return boosted>=2?Math.round((boosted-1)*100):Math.round(-100/(boosted-1));
       }
     }
-    return parseInt(bet.odds)||−110;
+    return parseInt(bet.odds)||-110;
   })();
   const profit = bet.result==='win'?(americanToDecimal(effectiveOdds)-1)*bet.stake:bet.result==='loss'?-bet.stake:0;
   const col = RC[bet.result]||'#334155';
@@ -359,7 +359,7 @@ function MyPickModal({ existing, onSave, onClose }) {
             <span style={{color:'#64748b',fontSize:13,flexShrink:0}}>% boost on odds</span>
           </div>
           {form.boost>0&&(()=>{
-            const base = parseInt(form.odds)||−110;
+            const base = parseInt(form.odds)||-110;
             const dec = base>0 ? base/100+1 : 100/Math.abs(base)+1;
             const boosted = dec*(1+form.boost/100);
             const newOdds = boosted>=2 ? Math.round((boosted-1)*100) : Math.round(-100/(boosted-1));
