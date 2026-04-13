@@ -39,6 +39,35 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teachin
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [grading, setGrading] = useState(null);
   const [score, setScore] = useState('');
+  const [aiSuggestion, setAiSuggestion] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  const getAISuggestion = async () => {
+    setLoadingAI(true);
+    try {
+      const res = await fetch('/api/claude', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-5',
+          max_tokens:300,
+          system:'You are a sharp sports betting analyst. Give a brief 2-3 sentence opinion on this bet — does the reasoning hold up, is there real edge, and would you take it? Be direct and specific.',
+          messages:[{role:'user',content:`Bet: ${bet.pick}
+Sport: ${bet.sport}
+Odds: ${bet.odds}
+Reasoning: ${bet.reasoning}
+Key factors: ${bet.keyFactors?.join(', ')}
+Model prob: ${bet.modelProb}%
+
+Is this a good bet?`}],
+        }),
+      });
+      const data = await res.json();
+      const text = data.content?.filter(b=>b.type==='text').map(b=>b.text).join('') || 'No response';
+      setAiSuggestion(text);
+    } catch(e) { setAiSuggestion('Error: '+e.message); }
+    setLoadingAI(false);
+  };
   // Recalculate parlay odds from legs if available
   const effectiveOdds = (()=>{
     if (bet.betCategory==='parlay'&&bet.legs?.length>=2) {
@@ -159,6 +188,19 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teachin
         </div>
       )}
 
+      {!isAI&&bet.result==='pending'&&(
+        <div style={{marginTop:8}}>
+          <button onClick={getAISuggestion} disabled={loadingAI} style={{width:'100%',padding:'7px 0',borderRadius:6,border:'1px solid #a78bfa44',background:'rgba(167,139,250,0.1)',color:loadingAI?'#334155':'#a78bfa',fontSize:11,fontWeight:700,cursor:loadingAI?'not-allowed':'pointer',letterSpacing:1,textTransform:'uppercase'}}>
+            🤖 {loadingAI?'ANALYZING...':'GET AI OPINION'}
+          </button>
+          {aiSuggestion&&(
+            <div style={{marginTop:8,padding:'10px 12px',background:'rgba(167,139,250,0.05)',borderRadius:8,border:'1px solid rgba(167,139,250,0.2)'}}>
+              <div style={{fontSize:10,color:'#a78bfa',fontWeight:700,letterSpacing:1,marginBottom:4}}>🤖 AI SAYS</div>
+              <div style={{fontSize:12,color:'#cbd5e1',lineHeight:1.6}}>{aiSuggestion}</div>
+            </div>
+          )}
+        </div>
+      )}
       {bet.result!=='pending'&&(
         <div style={{display:'flex',gap:6,marginTop:10}}>
           {!bet.lesson&&isAI&&(
@@ -193,34 +235,48 @@ function LessonCard({ lesson }) {
   );
 }
 
-function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartingBankroll }) {
-  const aiBets=bets.filter(b=>b.source==='ai'&&b.result!=='pending');
-  const myBets=bets.filter(b=>b.source==='paste'&&b.result!=='pending');
-  function calcStats(s) {
-    if (!s.length) return null;
-    const wins=s.filter(b=>b.result==='win').length;
-    const staked=s.reduce((a,b)=>a+b.stake,0);
-    const profit=s.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
-    return {wins,total:s.length,wr:wins/s.length*100,roi:staked?profit/staked*100:0};
+function ROIComparison({ bets }) {
+  function calcStats(source) {
+    const graded=bets.filter(b=>b.source===source&&b.result!=='pending');
+    if (!graded.length) return null;
+    const wins=graded.filter(b=>b.result==='win').length;
+    const staked=graded.reduce((a,b)=>a+b.stake,0);
+    const profit=graded.reduce((a,b)=>{
+      if(b.result==='win'){
+        const eff=b.betCategory==='parlay'&&b.legs?.length>=2
+          ? (()=>{const dec=b.legs.filter(l=>l.odds).reduce((acc,l)=>{const d=l.odds>0?l.odds/100+1:100/Math.abs(l.odds)+1;return acc*d;},1.0);const boosted=b.boost>0?dec*(1+b.boost/100):dec;return boosted>=2?Math.round((boosted-1)*100):Math.round(-100/(boosted-1));})()
+          : parseInt(b.odds)||-110;
+        return a+(americanToDecimal(eff)-1)*b.stake;
+      }
+      if(b.result==='loss') return a-b.stake;
+      return a;
+    },0);
+    const roi=staked?profit/staked*100:0;
+    return {wins,total:graded.length,wr:wins/graded.length*100,roi,profit,staked};
   }
-  const ai=calcStats(aiBets),my=calcStats(myBets);
+  const ai=calcStats('ai'), my=calcStats('paste');
   const roiC=v=>v>5?'#22c55e':v>0?'#86efac':v>-5?'#fbbf24':'#f87171';
-  const aiPnL=bankroll-startingBankroll,myPnL=myBankroll-myStartingBankroll;
   return (
     <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
       <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#1d4ed8',letterSpacing:2,marginBottom:14,textTransform:'uppercase'}}>📊 Head to Head</div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
         <div style={{borderRight:'1px solid #1e293b',paddingRight:12}}>
           <div style={{fontSize:10,color:'#60a5fa',letterSpacing:2,marginBottom:6,fontWeight:700}}>🤖 AI PAPER BETS</div>
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:aiPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(aiPnL)}</div>
-          <div style={{fontSize:10,color:'#475569',marginBottom:6}}>vs ${startingBankroll.toFixed(0)} start</div>
-          {ai?<><div style={{fontSize:12,color:roiC(ai.roi),fontWeight:700}}>ROI {ai.roi>=0?'+':''}{ai.roi.toFixed(1)}%</div><div style={{fontSize:11,color:'#64748b'}}>{ai.wins}W-{ai.total-ai.wins}L · {ai.wr.toFixed(0)}% WR</div></>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
+          {ai?<>
+            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:ai.profit>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(ai.profit)}</div>
+            <div style={{fontSize:10,color:'#475569',marginBottom:6}}>net profit · {ai.total} graded</div>
+            <div style={{fontSize:12,color:roiC(ai.roi),fontWeight:700}}>ROI {ai.roi>=0?'+':''}{ai.roi.toFixed(1)}%</div>
+            <div style={{fontSize:11,color:'#64748b'}}>{ai.wins}W-{ai.total-ai.wins}L · {ai.wr.toFixed(0)}% WR</div>
+          </>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
         </div>
         <div style={{paddingLeft:12}}>
           <div style={{fontSize:10,color:'#f97316',letterSpacing:2,marginBottom:6,fontWeight:700}}>📋 MY SCRIPTS</div>
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:myPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(myPnL)}</div>
-          <div style={{fontSize:10,color:'#475569',marginBottom:6}}>vs ${myStartingBankroll.toFixed(0)} start</div>
-          {my?<><div style={{fontSize:12,color:roiC(my.roi),fontWeight:700}}>ROI {my.roi>=0?'+':''}{my.roi.toFixed(1)}%</div><div style={{fontSize:11,color:'#64748b'}}>{my.wins}W-{my.total-my.wins}L · {my.wr.toFixed(0)}% WR</div></>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
+          {my?<>
+            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:my.profit>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(my.profit)}</div>
+            <div style={{fontSize:10,color:'#475569',marginBottom:6}}>net profit · {my.total} graded</div>
+            <div style={{fontSize:12,color:roiC(my.roi),fontWeight:700}}>ROI {my.roi>=0?'+':''}{my.roi.toFixed(1)}%</div>
+            <div style={{fontSize:11,color:'#64748b'}}>{my.wins}W-{my.total-my.wins}L · {my.wr.toFixed(0)}% WR</div>
+          </>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
         </div>
       </div>
       {ai&&my&&(
@@ -571,12 +627,12 @@ export default function App() {
 
   function saveBankroll() {
     const val=parseFloat(bankrollInput);
-    if (!isNaN(val)&&val>0){const r=parseFloat(val.toFixed(2));setState(s=>({...s,bankroll:r,startingBankroll:r}));addLog(`💰 AI bankroll → $${r}`);}
+    if (!isNaN(val)&&val>0){const r=parseFloat(val.toFixed(2));setState(s=>({...s,bankroll:r}));addLog(`💰 AI bankroll → $${r}`);}
     setEditingBankroll(false);
   }
   function saveMyBankroll() {
     const val=parseFloat(myBankrollInput);
-    if (!isNaN(val)&&val>0){const r=parseFloat(val.toFixed(2));setState(s=>({...s,myBankroll:r,myStartingBankroll:r}));addLog(`💰 My bankroll → $${r}`);}
+    if (!isNaN(val)&&val>0){const r=parseFloat(val.toFixed(2));setState(s=>({...s,myBankroll:r}));addLog(`💰 My bankroll → $${r}`);}
     setEditingMyBankroll(false);
   }
 
@@ -792,7 +848,7 @@ export default function App() {
                 <StatBox label="My W/L" value={myGraded.length?`${myStats.wins}-${myStats.total-myStats.wins}`:'—'} color="#f97316"/>
                 <StatBox label="My ROI" value={myGraded.length?`${myStats.roi>=0?'+':''}${myStats.roi.toFixed(0)}%`:'—'} color={myStats.roi>=0?'#22c55e':'#ef4444'}/>
               </div>
-              <ROIComparison bets={state.bets} bankroll={state.bankroll} startingBankroll={state.startingBankroll} myBankroll={state.myBankroll} myStartingBankroll={state.myStartingBankroll}/>
+              <ROIComparison bets={state.bets}/>
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
                 <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#1d4ed8',letterSpacing:2,marginBottom:14}}>🤖 AI LIVE ODDS PICKER</div>
                 <div style={{display:'flex',gap:8,marginBottom:10}}>
