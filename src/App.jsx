@@ -39,7 +39,22 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teachin
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [grading, setGrading] = useState(null);
   const [score, setScore] = useState('');
-  const profit = bet.result==='win'?(americanToDecimal(bet.odds)-1)*bet.stake:bet.result==='loss'?-bet.stake:0;
+  // Recalculate parlay odds from legs if available
+  const effectiveOdds = (()=>{
+    if (bet.betCategory==='parlay'&&bet.legs?.length>=2) {
+      const hasOdds = bet.legs.filter(l=>l.odds);
+      if (hasOdds.length>=2) {
+        const dec = hasOdds.reduce((acc,leg)=>{
+          const d = leg.odds>0?leg.odds/100+1:100/Math.abs(leg.odds)+1;
+          return acc*d;
+        },1.0);
+        const boosted = bet.boost>0 ? dec*(1+bet.boost/100) : dec;
+        return boosted>=2?Math.round((boosted-1)*100):Math.round(-100/(boosted-1));
+      }
+    }
+    return parseInt(bet.odds)||−110;
+  })();
+  const profit = bet.result==='win'?(americanToDecimal(effectiveOdds)-1)*bet.stake:bet.result==='loss'?-bet.stake:0;
   const col = RC[bet.result]||'#334155';
   const isAI = bet.source==='ai';
   const accentColor = isAI?'#60a5fa':'#f97316';
@@ -81,7 +96,7 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teachin
           {bet.score&&<div style={{marginTop:4,fontSize:11,color:'#38bdf8',fontWeight:700}}>📊 {bet.score}</div>}
         </div>
         <div style={{textAlign:'right',flexShrink:0}}>
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:'#e2e8f0'}}>{formatOdds(bet.odds)}</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:'#e2e8f0'}}>{formatOdds(effectiveOdds)}{bet.boost>0&&<span style={{fontSize:9,color:'#22c55e',display:'block'}}>+{bet.boost}% boost</span>}</div>
           <div style={{fontSize:11,color:'#64748b'}}>${bet.stake} stake</div>
           {bet.result!=='pending'&&<div style={{fontSize:14,fontWeight:700,color:RC[bet.result]||col,marginTop:4}}>{bet.result==='push'?'PUSH':formatMoney(profit)}</div>}
           {bet.result==='pending'&&<div style={{fontSize:10,color:'#f59e0b',marginTop:4}}>PENDING</div>}
