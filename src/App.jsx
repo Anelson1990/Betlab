@@ -123,6 +123,12 @@ Is this a good bet?`}],
             {bet.modelProb?` · Model: ${bet.modelProb}%`:''}
           </div>
           {bet.score&&<div style={{marginTop:4,fontSize:11,color:'#38bdf8',fontWeight:700}}>📊 {bet.score}</div>}
+          {bet.weather&&bet.weather.source&&(
+            <div style={{marginTop:4,fontSize:10,color:'#64748b'}}>
+              🌤 {bet.weather.temp_f}°F · {bet.weather.wind_mph}mph wind
+              {bet.weather.notes?.[0]&&<span style={{color:'#fbbf24'}}> · {bet.weather.notes[0]}</span>}
+            </div>
+          )}
           {bet.modelProb&&bet.result==='pending'&&(()=>{
             const p=parseFloat(bet.modelProb)/100;
             const dec=bet.odds>0?bet.odds/100+1:100/Math.abs(bet.odds)+1;
@@ -703,11 +709,33 @@ export default function App() {
     addLog(`🗑 Deleted: ${bet.pick} (stake refunded)`);
   },[state.bets]);
 
-  const confirmPicks = useCallback((picks,sport,stake)=>{
-    picks.forEach(p=>addMyPick({pick:p.pick,sport,betType:p.betType||'Moneyline',betCategory:'straight',odds:parseInt(p.odds)||-110,stake,confidence:p.confidence||60,reasoning:p.reasoning||'',keyFactors:p.keyFactors||[],modelProb:p.modelProb||null,rating:p.rating||'',edge:p.edge||'',legs:[]}));
+  const confirmPicks = useCallback(async (picks,sport,stake)=>{
+    // Try to get weather for MLB and NFL picks
+    const weatherCache = {};
+    if (sport==='MLB'||sport==='NFL') {
+      for (const p of picks) {
+        const cityMatch = p.pick.match(/([A-Z]{2,3})\s*[@v]\s*([A-Z]{2,3})/);
+        if (cityMatch) {
+          const homeTeam = cityMatch[2];
+          const MLB_CITIES = {LAD:'Los Angeles',NYY:'New York',BOS:'Boston',CHC:'Chicago',HOU:'Houston',ATL:'Atlanta',PHI:'Philadelphia',MIL:'Milwaukee',STL:'St Louis',SFG:'San Francisco',SDP:'San Diego',COL:'Denver',CIN:'Cincinnati',PIT:'Pittsburgh',MIA:'Miami',NYM:'New York',WSH:'Washington DC',BAL:'Baltimore',TOR:'Toronto',MIN:'Minneapolis',CLE:'Cleveland',DET:'Detroit',KCR:'Kansas City',TEX:'Arlington',SEA:'Seattle',OAK:'Oakland',LAA:'Anaheim',TBR:'St Petersburg',ARI:'Phoenix',CHW:'Chicago'};
+          const NFL_CITIES = {BUF:'Buffalo',NE:'Boston',NYJ:'New York',NYG:'New York',PHI:'Philadelphia',DAL:'Dallas',WAS:'Washington DC',BAL:'Baltimore',PIT:'Pittsburgh',CLE:'Cleveland',CIN:'Cincinnati',MIA:'Miami',JAX:'Jacksonville',TEN:'Nashville',HOU:'Houston',IND:'Indianapolis',KC:'Kansas City',LV:'Las Vegas',LAC:'Los Angeles',DEN:'Denver',MIN:'Minneapolis',GB:'Green Bay',CHI:'Chicago',DET:'Detroit',ATL:'Atlanta',CAR:'Charlotte',NO:'New Orleans',TB:'Tampa',SF:'San Francisco',SEA:'Seattle',LAR:'Los Angeles',ARI:'Phoenix'};
+          const cities = sport==='MLB'?MLB_CITIES:NFL_CITIES;
+          const city = cities[homeTeam];
+          if (city && !weatherCache[homeTeam]) {
+            weatherCache[homeTeam] = await fetchWeather(city, sport, homeTeam);
+          }
+          p._weather = weatherCache[homeTeam];
+        }
+      }
+    }
+    picks.forEach(p=>{
+      const w = p._weather;
+      const weatherNote = w?.notes?.length ? ` | Weather: ${w.notes[0]}` : '';
+      addMyPick({pick:p.pick,sport,betType:p.betType||'Moneyline',betCategory:'straight',odds:parseInt(p.odds)||-110,stake,confidence:p.confidence||60,reasoning:(p.reasoning||'')+weatherNote,keyFactors:p.keyFactors||[],modelProb:p.modelProb||null,rating:p.rating||'',edge:p.edge||'',legs:[],weather:w||null});
+    });
     addLog(`📋 Logged ${picks.length} ${sport} pick(s)`);
     setTab('mine');
-  },[addMyPick]);
+  },[addMyPick,fetchWeather]);
 
   const buildHistorySummary = () => {
     const graded = state.bets.filter(b=>b.result!=='pending');
@@ -734,6 +762,14 @@ Recent: ${recent}
 Use this history to adapt your picks — avoid bet types that are losing, favor what's working.${recentLessons?'\nLessons from past bets: '+recentLessons:''}`;
   };
 
+
+  const fetchWeather = async (city, sport, team='') => {
+    try {
+      const r = await fetch(`/api/weather?city=${encodeURIComponent(city)}&sport=${sport}&team=${team}`);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch { return null; }
+  };
 
   const generatePicks = useCallback(async ()=>{
     setLoading(true);setError('');
