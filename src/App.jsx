@@ -31,7 +31,7 @@ function StatBox({ label, value, color='#e2e8f0' }) {
   );
 }
 
-function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teaching, allowEdit }) {
+function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teaching, allowEdit, bankroll=1000 }) {
   const [showLegGrader, setShowLegGrader] = useState(false);
   const [legResults, setLegResults] = useState(
     bet.legs ? bet.legs.map(l=>({...l,result:'pending'})) : []
@@ -149,9 +149,13 @@ Is this a good bet?`}],
             const edge=p-imp;
             const kelly=edge>0?((dec-1)*p-(1-p))/(dec-1)*0.25*100:0;
             if(edge<=0) return null;
-            return <div style={{marginTop:4,padding:'4px 8px',background:'rgba(34,197,94,0.05)',borderRadius:4,border:'1px solid rgba(34,197,94,0.15)',display:'flex',justifyContent:'space-between'}}>
-              <span style={{fontSize:10,color:'#22c55e'}}>Edge: +{(edge*100).toFixed(1)}%</span>
-              <span style={{fontSize:10,color:'#22c55e'}}>Kelly: {kelly.toFixed(1)}% of bankroll</span>
+            const bankrollForKelly = bet.source==='paste'?null:null; // accessed via closure not available here
+            const kellyDollars = (kelly/100*bankroll).toFixed(0);
+            return <div style={{marginTop:4,padding:'4px 8px',background:'rgba(34,197,94,0.05)',borderRadius:4,border:'1px solid rgba(34,197,94,0.15)'}}>
+              <div style={{display:'flex',justifyContent:'space-between'}}>
+                <span style={{fontSize:10,color:'#22c55e'}}>Edge: +{(edge*100).toFixed(1)}%</span>
+                <span style={{fontSize:10,color:'#22c55e'}}>Kelly: {kelly.toFixed(1)}% · ${kellyDollars}</span>
+              </div>
             </div>;
           })()}
         </div>
@@ -690,6 +694,43 @@ export default function App() {
   };
   const aiStats=calcROI(aiGraded), myStats=calcROI(myGraded);
 
+  // Streak tracker - auto calculated
+  const calcStreak = (bets) => {
+    const graded = [...bets].filter(b=>b.result!=='pending').sort((a,b)=>new Date(b.date)-new Date(a.date));
+    if (!graded.length) return {current:0,type:'none',longest_win:0,longest_loss:0};
+    let current=1, type=graded[0].result==='win'?'win':'loss';
+    for (let i=1;i<graded.length;i++) {
+      if(graded[i].result===graded[0].result) current++;
+      else break;
+    }
+    let lw=0,ll=0,cw=0,cl=0;
+    graded.forEach(b=>{
+      if(b.result==='win'){cw++;cl=0;lw=Math.max(lw,cw);}
+      else if(b.result==='loss'){cl++;cw=0;ll=Math.max(ll,cl);}
+    });
+    return {current,type,longest_win:lw,longest_loss:ll};
+  };
+  const aiStreak = calcStreak(aiBets);
+  const myStreak = calcStreak(myBets);
+
+  // Discipline tracker - compares model recommendations vs what was logged
+  const calcDiscipline = () => {
+    const modelPicks = state.trackedPicks.filter(p=>p.result!=='pending');
+    const myGradedPicks = myBets.filter(b=>b.result!=='pending');
+    if (!modelPicks.length || !myGradedPicks.length) return null;
+    // Find picks where model said STRONG but user didn't take
+    const strongModelPicks = modelPicks.filter(p=>p.rating&&(p.rating.includes('STRONG')||p.rating.includes('T1')));
+    const takenStrong = strongModelPicks.filter(sp=>
+      myGradedPicks.some(mp=>mp.pick.toLowerCase().includes(sp.pick.toLowerCase().slice(0,10)))
+    );
+    const skippedStrong = strongModelPicks.length - takenStrong.length;
+    // Win rates
+    const modelWR = modelPicks.length?modelPicks.filter(p=>p.result==='win').length/modelPicks.length*100:0;
+    const myWR = myGradedPicks.length?myGradedPicks.filter(b=>b.result==='win').length/myGradedPicks.length*100:0;
+    return {modelWR,myWR,strongModelPicks:strongModelPicks.length,skippedStrong,takenStrong:takenStrong.length};
+  };
+  const discipline = calcDiscipline();
+
   function addLog(msg) {
     setState(s=>({...s,sessionLog:[...s.sessionLog.slice(-99),{id:uid(),msg,time:Date.now()}]}));
   }
@@ -1168,6 +1209,60 @@ Analyze:
                 <StatBox label="My ROI" value={myGraded.length?`${(state.myBankroll-state.myStartingBankroll)>=0?'+':''}${myGraded.length?((state.myBankroll-state.myStartingBankroll)/myGraded.reduce((a,b)=>a+b.stake,1)*100).toFixed(0):0}%`:'—'} color={(state.myBankroll-state.myStartingBankroll)>=0?'#22c55e':'#ef4444'}/>
               </div>
               <ROIComparison bets={state.bets} bankroll={state.bankroll} startingBankroll={state.startingBankroll} myBankroll={state.myBankroll} myStartingBankroll={state.myStartingBankroll}/>
+
+              {/* Streak Tracker */}
+              {(aiStreak.current>0||myStreak.current>0)&&(
+                <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:14,marginBottom:14}}>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#fbbf24',letterSpacing:2,marginBottom:10}}>🔥 STREAK TRACKER</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    <div style={{padding:'10px 12px',background:'rgba(5,8,16,0.5)',borderRadius:8,border:`1px solid ${aiStreak.type==='win'?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)'}`}}>
+                      <div style={{fontSize:9,color:'#60a5fa',fontWeight:700,marginBottom:4}}>🤖 AI BETS</div>
+                      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:aiStreak.type==='win'?'#22c55e':'#ef4444',fontWeight:700}}>{aiStreak.current} {aiStreak.type==='win'?'W':'L'}</div>
+                      <div style={{fontSize:10,color:'#475569',marginTop:2}}>Best win streak: {aiStreak.longest_win} · Worst loss: {aiStreak.longest_loss}</div>
+                    </div>
+                    <div style={{padding:'10px 12px',background:'rgba(5,8,16,0.5)',borderRadius:8,border:`1px solid ${myStreak.type==='win'?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)'}`}}>
+                      <div style={{fontSize:9,color:'#f97316',fontWeight:700,marginBottom:4}}>📋 MY SCRIPTS</div>
+                      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:myStreak.type==='win'?'#22c55e':'#ef4444',fontWeight:700}}>{myStreak.current} {myStreak.type==='win'?'W':'L'}</div>
+                      <div style={{fontSize:10,color:'#475569',marginTop:2}}>Best win streak: {myStreak.longest_win} · Worst loss: {myStreak.longest_loss}</div>
+                    </div>
+                  </div>
+                  {aiStreak.type==='loss'&&aiStreak.current>=3&&<div style={{marginTop:8,padding:'6px 10px',background:'rgba(239,68,68,0.05)',borderRadius:6,border:'1px solid rgba(239,68,68,0.2)',fontSize:11,color:'#fca5a5'}}>⚠️ AI on {aiStreak.current}-game loss streak — review recent picks before continuing</div>}
+                  {myStreak.type==='loss'&&myStreak.current>=3&&<div style={{marginTop:8,padding:'6px 10px',background:'rgba(239,68,68,0.05)',borderRadius:6,border:'1px solid rgba(239,68,68,0.2)',fontSize:11,color:'#fca5a5'}}>⚠️ Your scripts on {myStreak.current}-game loss streak — check model calibration</div>}
+                  {aiStreak.type==='win'&&aiStreak.current>=5&&<div style={{marginTop:8,padding:'6px 10px',background:'rgba(251,191,36,0.05)',borderRadius:6,border:'1px solid rgba(251,191,36,0.2)',fontSize:11,color:'#fbbf24'}}>🔥 AI on {aiStreak.current}-game win streak — variance may be inflating results</div>}
+                </div>
+              )}
+
+              {/* Discipline Tracker */}
+              {discipline&&(
+                <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:14,marginBottom:14}}>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#a78bfa',letterSpacing:2,marginBottom:10}}>🎯 DISCIPLINE TRACKER</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                    <div style={{textAlign:'center'}}>
+                      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:'#38bdf8'}}>{discipline.modelWR.toFixed(0)}%</div>
+                      <div style={{fontSize:9,color:'#475569'}}>MODEL WIN RATE</div>
+                    </div>
+                    <div style={{textAlign:'center'}}>
+                      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:'#f97316'}}>{discipline.myWR.toFixed(0)}%</div>
+                      <div style={{fontSize:9,color:'#475569'}}>YOUR WIN RATE</div>
+                    </div>
+                  </div>
+                  {discipline.skippedStrong>0&&(
+                    <div style={{padding:'8px 10px',background:'rgba(251,191,36,0.05)',borderRadius:6,border:'1px solid rgba(251,191,36,0.2)',fontSize:11,color:'#fbbf24'}}>
+                      📋 You skipped {discipline.skippedStrong} STRONG model pick{discipline.skippedStrong!==1?'s':''} — check tracker to see what happened
+                    </div>
+                  )}
+                  {discipline.myWR>discipline.modelWR&&(
+                    <div style={{marginTop:6,padding:'8px 10px',background:'rgba(34,197,94,0.05)',borderRadius:6,border:'1px solid rgba(34,197,94,0.2)',fontSize:11,color:'#22c55e'}}>
+                      ✅ Your instincts are outperforming the model — trust your reads
+                    </div>
+                  )}
+                  {discipline.modelWR>discipline.myWR+10&&(
+                    <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,0.05)',borderRadius:6,border:'1px solid rgba(239,68,68,0.2)',fontSize:11,color:'#fca5a5'}}>
+                      ⚠️ Model is beating your picks by {(discipline.modelWR-discipline.myWR).toFixed(0)}% — consider following model more closely
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
                 <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#1d4ed8',letterSpacing:2,marginBottom:14}}>🤖 AI LIVE ODDS PICKER</div>
                 <div style={{display:'flex',gap:8,marginBottom:10}}>
@@ -1345,7 +1440,7 @@ Analyze:
               {filterBar(aiFilter,setAiFilter)}
               {aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🤖</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO AI BETS YET</div><div style={{fontSize:12,marginTop:6}}>Dashboard → Find Value</div></div>
-                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} teaching={teaching} allowEdit={false}/>)
+                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} teaching={teaching} allowEdit={false} bankroll={state.bankroll}/>)
               }
             </div>
           )}
@@ -1372,7 +1467,7 @@ Analyze:
               </div>
               {myBets.filter(b=>myFilter==='all'||b.result===myFilter).length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>📋</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO SCRIPT PICKS YET</div><div style={{fontSize:12,marginTop:6}}>Go to 📋 Paste to import from your model</div></div>
-                :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onDelete={deleteMyPick} onEdit={b=>setMyPickModal(b)} onUndoGrade={undoGrade} teaching={teaching} allowEdit={true}/>)
+                :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onDelete={deleteMyPick} onEdit={b=>setMyPickModal(b)} onUndoGrade={undoGrade} teaching={teaching} allowEdit={true} bankroll={state.myBankroll}/>)
               }
             </div>
           )}
