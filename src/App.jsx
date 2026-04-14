@@ -123,6 +123,18 @@ Is this a good bet?`}],
             {bet.modelProb?` · Model: ${bet.modelProb}%`:''}
           </div>
           {bet.score&&<div style={{marginTop:4,fontSize:11,color:'#38bdf8',fontWeight:700}}>📊 {bet.score}</div>}
+          {bet.modelProb&&bet.result==='pending'&&(()=>{
+            const p=parseFloat(bet.modelProb)/100;
+            const dec=bet.odds>0?bet.odds/100+1:100/Math.abs(bet.odds)+1;
+            const imp=1/dec;
+            const edge=p-imp;
+            const kelly=edge>0?((dec-1)*p-(1-p))/(dec-1)*0.25*100:0;
+            if(edge<=0) return null;
+            return <div style={{marginTop:4,padding:'4px 8px',background:'rgba(34,197,94,0.05)',borderRadius:4,border:'1px solid rgba(34,197,94,0.15)',display:'flex',justifyContent:'space-between'}}>
+              <span style={{fontSize:10,color:'#22c55e'}}>Edge: +{(edge*100).toFixed(1)}%</span>
+              <span style={{fontSize:10,color:'#22c55e'}}>Kelly: {kelly.toFixed(1)}% of bankroll</span>
+            </div>;
+          })()}
         </div>
         <div style={{textAlign:'right',flexShrink:0}}>
           <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:'#e2e8f0'}}>{formatOdds(effectiveOdds)}{bet.boost>0&&<span style={{fontSize:9,color:'#22c55e',display:'block'}}>+{bet.boost}% boost</span>}</div>
