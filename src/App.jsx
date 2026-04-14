@@ -1453,7 +1453,7 @@ Analyze:
                     <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#38bdf8',letterSpacing:2,marginBottom:12}}>📊 MODEL PERFORMANCE</div>
                     {/* Overall */}
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,textAlign:'center',marginBottom:12}}>
-                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#e2e8f0'}}>{state.trackedPicks.length}</div><div style={{fontSize:9,color:'#475569'}}>TOTAL</div></div>
+                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#e2e8f0'}}>{sportPicks.length}</div><div style={{fontSize:9,color:'#475569'}}>{trackerSport} TOTAL</div></div>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#f59e0b'}}>{pending}</div><div style={{fontSize:9,color:'#475569'}}>PENDING</div></div>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=55?'#22c55e':'#ef4444'}}>{actualWR.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>WIN RATE</div></div>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=avgProb?'#22c55e':'#ef4444'}}>{avgProb.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>AVG PROB</div></div>
