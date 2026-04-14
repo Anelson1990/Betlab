@@ -440,6 +440,7 @@ function PasteTab({ onConfirmPicks, callClaude: claudeFn }) {
   const [pastes, setPastes] = useState({ NHL:'', MLB:'', NBA:'', NFL:'' });
   const [parsing, setParsing] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [selected, setSelected] = useState([]);
   const [error, setError] = useState('');
   const [stake, setStake] = useState(25);
   const sc = SPORT_COLORS[activeSport];
@@ -479,7 +480,9 @@ Rules:
       if (!Array.isArray(picks)||picks.length===0) {
         setError('No actionable picks found. Paste the full output including TOP PLAYS section.');
       } else {
-        setPreview({sport:activeSport,picks:picks.slice(0,3)});
+        const top = picks.slice(0,3);
+        setPreview({sport:activeSport,picks:top});
+        setSelected(top.map((_,i)=>i));
       }
     } catch(e) { setError('Parse failed: '+e.message); }
     setParsing(false);
@@ -487,8 +490,11 @@ Rules:
 
   const confirm = () => {
     if (!preview) return;
-    onConfirmPicks(preview.picks, preview.sport, stake);
+    const picksToLog = preview.picks.filter((_,i)=>selected.includes(i));
+    if (!picksToLog.length) { setError('Select at least one pick.'); return; }
+    onConfirmPicks(picksToLog, preview.sport, stake);
     setPreview(null);
+    setSelected([]);
     setPastes(p=>({...p,[activeSport]:''}));
   };
 
@@ -527,10 +533,13 @@ Rules:
             ✅ TOP {preview.picks.length} {preview.sport} PICKS
           </div>
           {preview.picks.map((pick,i)=>(
-            <div key={i} style={{background:'rgba(5,8,16,0.8)',border:`1px solid ${SPORT_COLORS[preview.sport].border}`,borderRadius:10,padding:14,marginBottom:10}}>
+            <div key={i} style={{background:selected.includes(i)?'rgba(5,8,16,0.9)':'rgba(5,8,16,0.4)',border:`1px solid ${selected.includes(i)?SPORT_COLORS[preview.sport].border:'#1e293b'}`,borderRadius:10,padding:14,marginBottom:10,opacity:selected.includes(i)?1:0.5}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,marginBottom:8}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:10,color:SPORT_COLORS[preview.sport].accent,fontWeight:700,marginBottom:4}}>#{i+1} PICK</div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    <input type="checkbox" checked={selected.includes(i)} onChange={()=>setSelected(s=>s.includes(i)?s.filter(x=>x!==i):[...s,i])} style={{width:16,height:16,cursor:'pointer',accentColor:SPORT_COLORS[preview.sport].accent}}/>
+                    <div style={{fontSize:10,color:SPORT_COLORS[preview.sport].accent,fontWeight:700}}>#{i+1} PICK</div>
+                  </div>
                   <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:13,color:'#f1f5f9',fontWeight:700,marginBottom:4}}>{pick.pick}</div>
                   <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                     <span style={{fontSize:9,background:'#1e293b',color:'#64748b',padding:'2px 6px',borderRadius:20}}>{pick.betType}</span>
@@ -555,7 +564,7 @@ Rules:
           ))}
           <div style={{display:'flex',gap:8,marginTop:4}}>
             <button onClick={confirm} style={{flex:2,padding:'12px 0',borderRadius:8,border:'none',cursor:'pointer',background:'linear-gradient(135deg,#22c55e,#16a34a)',color:'#000',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
-              ✅ LOG ALL {preview.picks.length} PICKS
+              ✅ LOG {selected.length} OF {preview.picks.length} PICKS
             </button>
             <button onClick={()=>setPreview(null)} style={{flex:1,padding:'12px 0',borderRadius:8,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:12,fontWeight:700,cursor:'pointer'}}>DISCARD</button>
           </div>
@@ -701,13 +710,14 @@ export default function App() {
     });
     const sportStr=Object.entries(bySport).map(([s,v])=>`${s}:${v.w}W-${v.l}L`).join(', ');
     const recent=graded.slice(0,5).map(b=>`${b.pick}(${b.result}${b.score?' '+b.score:''})`).join(', ');
+    const recentLessons=state.lessons.slice(0,5).map(l=>l.takeaway||l.body).filter(Boolean).map(l=>l.slice(0,100)).join(' | ');
     return `
 
 YOUR BETTING HISTORY (${graded.length} graded bets):
 Record: ${wins}W-${graded.length-wins}L | ROI: ${roi.toFixed(1)}% | Net: ${formatMoney(profit)}
 By sport: ${sportStr}
 Recent: ${recent}
-Use this history to adapt your picks — avoid bet types that are losing, favor what's working.`;
+Use this history to adapt your picks — avoid bet types that are losing, favor what's working.${recentLessons?'\nLessons from past bets: '+recentLessons:''}`;
   };
 
 
