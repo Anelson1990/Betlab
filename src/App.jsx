@@ -129,6 +129,19 @@ Is this a good bet?`}],
               {bet.weather.notes?.[0]&&<span style={{color:'#fbbf24'}}> · {bet.weather.notes[0]}</span>}
             </div>
           )}
+          {bet.official&&<div style={{marginTop:4,padding:'4px 8px',background:'rgba(56,189,248,0.05)',borderRadius:4,border:'1px solid rgba(56,189,248,0.15)'}}>
+            <span style={{fontSize:9,color:'#38bdf8',fontWeight:700}}>👨‍⚖️ </span>
+            <span style={{fontSize:10,color:'#64748b'}}>{bet.official.name} — {bet.official.tendency}</span>
+            {bet.official.impact&&<span style={{fontSize:10,color:'#fbbf24'}}> · {bet.official.impact}</span>}
+          </div>}
+          {bet.opponent&&<div style={{marginTop:4,padding:'4px 8px',background:'rgba(167,139,250,0.05)',borderRadius:4,border:'1px solid rgba(167,139,250,0.15)'}}>
+            <span style={{fontSize:9,color:'#a78bfa',fontWeight:700}}>⚔️ </span>
+            <span style={{fontSize:10,color:'#64748b'}}>{bet.opponent.quality} · {bet.opponent.keyStats}</span>
+          </div>}
+          {bet.restTravel&&(bet.restTravel.backToBack||bet.restTravel.travelNote)&&<div style={{marginTop:4,padding:'4px 8px',background:'rgba(34,197,94,0.05)',borderRadius:4,border:'1px solid rgba(34,197,94,0.15)'}}>
+            <span style={{fontSize:9,color:'#22c55e',fontWeight:700}}>😴 </span>
+            <span style={{fontSize:10,color:'#64748b'}}>{bet.restTravel.restDays!=null?`${bet.restTravel.restDays}d rest`:''}{bet.restTravel.backToBack?' · B2B':''}{bet.restTravel.travelNote?` · ${bet.restTravel.travelNote}`:''}</span>
+          </div>}
           {bet.modelProb&&bet.result==='pending'&&(()=>{
             const p=parseFloat(bet.modelProb)/100;
             const dec=bet.odds>0?bet.odds/100+1:100/Math.abs(bet.odds)+1;
@@ -577,6 +590,20 @@ Rules:
                   {pick.keyFactors.map((f,j)=><span key={j} style={{fontSize:9,background:'rgba(59,130,246,0.15)',color:'#60a5fa',padding:'2px 7px',borderRadius:20,border:'1px solid rgba(59,130,246,0.2)'}}>{f}</span>)}
                 </div>
               )}
+              {pick.official&&<div style={{marginTop:6,padding:'6px 10px',background:'rgba(56,189,248,0.05)',borderRadius:6,border:'1px solid rgba(56,189,248,0.15)'}}>
+                <div style={{fontSize:9,color:'#38bdf8',fontWeight:700,marginBottom:2}}>👨‍⚖️ OFFICIAL</div>
+                <div style={{fontSize:11,color:'#94a3b8'}}>{pick.official.name} · {pick.official.tendency}</div>
+                {pick.official.impact&&<div style={{fontSize:10,color:'#fbbf24',marginTop:2}}>{pick.official.impact}</div>}
+              </div>}
+              {pick.opponent&&<div style={{marginTop:6,padding:'6px 10px',background:'rgba(167,139,250,0.05)',borderRadius:6,border:'1px solid rgba(167,139,250,0.15)'}}>
+                <div style={{fontSize:9,color:'#a78bfa',fontWeight:700,marginBottom:2}}>⚔️ OPPONENT</div>
+                <div style={{fontSize:11,color:'#94a3b8'}}>{pick.opponent.quality} · {pick.opponent.rating}</div>
+                {pick.opponent.keyStats&&<div style={{fontSize:10,color:'#94a3b8',marginTop:2}}>{pick.opponent.keyStats}</div>}
+              </div>}
+              {pick.restTravel&&<div style={{marginTop:6,padding:'6px 10px',background:'rgba(34,197,94,0.05)',borderRadius:6,border:'1px solid rgba(34,197,94,0.15)'}}>
+                <div style={{fontSize:9,color:'#22c55e',fontWeight:700,marginBottom:2}}>😴 REST & TRAVEL</div>
+                <div style={{fontSize:11,color:'#94a3b8'}}>{pick.restTravel.restDays!=null?`${pick.restTravel.restDays} rest days`:''}{pick.restTravel.backToBack?' · Back-to-back':''}{pick.restTravel.travelNote?` · ${pick.restTravel.travelNote}`:''}</div>
+              </div>}
               <div style={{marginTop:8,fontSize:10,color:'#334155'}}>Stake ${stake} · logs to MY SCRIPTS bankroll</div>
             </div>
           ))}
@@ -731,7 +758,7 @@ export default function App() {
     picks.forEach(p=>{
       const w = p._weather;
       const weatherNote = w?.notes?.length ? ` | Weather: ${w.notes[0]}` : '';
-      addMyPick({pick:p.pick,sport,betType:p.betType||'Moneyline',betCategory:'straight',odds:parseInt(p.odds)||-110,stake,confidence:p.confidence||60,reasoning:(p.reasoning||'')+weatherNote,keyFactors:p.keyFactors||[],modelProb:p.modelProb||null,rating:p.rating||'',edge:p.edge||'',legs:[],weather:w||null});
+      addMyPick({pick:p.pick,sport,betType:p.betType||'Moneyline',betCategory:'straight',odds:parseInt(p.odds)||-110,stake,confidence:p.confidence||60,reasoning:(p.reasoning||'')+weatherNote,keyFactors:p.keyFactors||[],modelProb:p.modelProb||null,rating:p.rating||'',edge:p.edge||'',legs:[],weather:w||null,official:p.official||null,opponent:p.opponent||null,restTravel:p.restTravel||null});
     });
     addLog(`📋 Logged ${picks.length} ${sport} pick(s)`);
     setTab('mine');
