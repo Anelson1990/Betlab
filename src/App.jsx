@@ -382,7 +382,11 @@ function MyPickModal({ existing, onSave, onClose }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:10}}>
           <div>
             <label style={lbl}>ODDS</label>
-            <input type="number" style={inp()} value={form.odds} onChange={e=>setForm(f=>({...f,odds:+e.target.value}))}/>
+            <div style={{display:'flex',gap:4}}>
+              <button onClick={()=>setForm(f=>({...f,odds:-Math.abs(f.odds)}))} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #334155',background:form.odds<0?'#7f1d1d':'#1e293b',color:form.odds<0?'#fca5a5':'#64748b',fontSize:14,fontWeight:700,cursor:'pointer',flexShrink:0}}>−</button>
+              <input type="number" style={{...inp(),flex:1,textAlign:'center'}} value={Math.abs(form.odds)} onChange={e=>setForm(f=>({...f,odds:f.odds<0?-Math.abs(+e.target.value):Math.abs(+e.target.value)}))}/>
+              <button onClick={()=>setForm(f=>({...f,odds:Math.abs(f.odds)}))} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #334155',background:form.odds>0?'#14532d':'#1e293b',color:form.odds>0?'#86efac':'#64748b',fontSize:14,fontWeight:700,cursor:'pointer',flexShrink:0}}>+</button>
+            </div>
           </div>
           <div>
             <label style={lbl}>STAKE $</label>
