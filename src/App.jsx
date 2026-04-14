@@ -757,14 +757,45 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     setLoadingMsg('');setLoading(false);
   },[pickSport,pickContext,state.bankroll,addAIPick]);
 
-  const gradeBet = useCallback((id,result,score='')=>{
+  const gradeBet = useCallback(async (id,result,score='')=>{
     const bet=state.bets.find(b=>b.id===id);
     if(!bet)return;
     const payout=result==='win'?americanToDecimal(bet.odds)*bet.stake:result==='push'?bet.stake:0;
     const pl=result==='win'?(americanToDecimal(bet.odds)-1)*bet.stake:result==='loss'?-bet.stake:0;
     const key=bet.source==='paste'?'myBankroll':'bankroll';
-    setState(s=>({...s,[key]:parseFloat((s[key]+payout).toFixed(2)),bets:s.bets.map(b=>b.id===id?{...b,result,score}:b)}));
+    const updatedBets = state.bets.map(b=>b.id===id?{...b,result,score}:b);
+    setState(s=>({...s,[key]:parseFloat((s[key]+payout).toFixed(2)),bets:updatedBets}));
     addLog(`Graded: ${bet.pick} → ${result.toUpperCase()}${score?' ('+score+')':''} (${formatMoney(pl)})`);
+
+    // Auto-coach: run lightweight analysis in background after every 5th graded bet
+    const newGraded = updatedBets.filter(b=>b.result!=='pending');
+    if (newGraded.length>=5 && newGraded.length%5===0) {
+      try {
+        const wins=newGraded.filter(b=>b.result==='win').length;
+        const staked=newGraded.reduce((a,b)=>a+b.stake,0);
+        const profit=newGraded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+        const recent=newGraded.slice(0,10).map(b=>({pick:b.pick,sport:b.sport,betType:b.betType,odds:b.odds,confidence:b.confidence,result:b.result,score:b.score||''}));
+        const raw=await callClaude([{role:'user',content:`Quick coaching note after ${newGraded.length} bets:
+Record: ${wins}W-${newGraded.length-wins}L | ROI: ${staked?(profit/staked*100).toFixed(1):0}%
+Recent: ${JSON.stringify(recent)}
+
+Return ONLY JSON: {"takeaway":"one specific actionable insight","pattern":"one pattern spotted","warning":"one thing to watch out for"}`}],
+          'Sharp betting coach. Extremely concise. JSON only.',false);
+        let note={};
+        try{const c=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();const s=c.indexOf('{'),e=c.lastIndexOf('}');if(s!==-1&&e!==-1)note=JSON.parse(c.slice(s,e+1));}catch{}
+        if(note.takeaway){
+          setState(s=>({...s,lessons:[{
+            id:uid(),date:new Date().toISOString(),
+            title:`🎯 Auto-Coach Note (${newGraded.length} bets)`,
+            category:'Auto-Coach',
+            body:`Pattern: ${note.pattern||''}
+Warning: ${note.warning||''}`,
+            takeaway:note.takeaway,
+          },...s.lessons]}));
+          addLog(`🎯 Auto-coach updated after ${newGraded.length} bets`);
+        }
+      } catch(e){ console.warn('Auto-coach failed:',e); }
+    }
   },[state.bets]);
 
   const undoGrade = useCallback((id)=>{
@@ -1051,6 +1082,89 @@ Provide a deep coach analysis. Return ONLY this JSON:
                   <div style={{marginTop:10,fontSize:10,color:'#334155',textAlign:'right'}}>Generated {new Date(coachReport.date).toLocaleDateString()}</div>
                 </div>
               )}
+
+              {(()=>{
+                const graded=state.bets.filter(b=>b.result!=='pending'&&b.confidence);
+                if(graded.length<5) return null;
+                const buckets={};
+                graded.forEach(b=>{
+                  const bucket=Math.floor(b.confidence/10)*10;
+                  if(!buckets[bucket])buckets[bucket]={pred:[],actual:[]};
+                  buckets[bucket].pred.push(b.confidence/100);
+                  buckets[bucket].actual.push(b.result==='win'?1:0);
+                });
+                const rows=Object.entries(buckets).sort(([a],[b])=>+a-+b).map(([bucket,data])=>({
+                  bucket:+bucket,
+                  pred:(data.pred.reduce((a,b)=>a+b,0)/data.pred.length*100).toFixed(0),
+                  actual:(data.actual.reduce((a,b)=>a+b,0)/data.actual.length*100).toFixed(0),
+                  n:data.pred.length,
+                }));
+                return (
+                  <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
+                    <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#38bdf8',letterSpacing:2,marginBottom:14}}>📊 CONFIDENCE CALIBRATION</div>
+                    <div style={{fontSize:10,color:'#475569',marginBottom:10}}>Are your confidence scores accurate? Predicted % vs actual win rate.</div>
+                    {rows.map(r=>{
+                      const diff=r.actual-r.pred;
+                      const barW=Math.min(100,+r.actual);
+                      return (
+                        <div key={r.bucket} style={{marginBottom:10}}>
+                          <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
+                            <span style={{color:'#64748b'}}>{r.bucket}-{r.bucket+9}% conf ({r.n} bets)</span>
+                            <span style={{color:Math.abs(diff)>10?'#ef4444':'#22c55e',fontWeight:700}}>{r.actual}% actual {diff>=0?'↑':'↓'}{Math.abs(diff)}%</span>
+                          </div>
+                          <div style={{height:8,background:'#1e293b',borderRadius:4,overflow:'hidden'}}>
+                            <div style={{height:'100%',width:`${barW}%`,background:Math.abs(diff)>10?'#ef4444':'#22c55e',borderRadius:4}}/>
+                          </div>
+                          <div style={{height:2,background:'#334155',borderRadius:4,marginTop:2,position:'relative'}}>
+                            <div style={{position:'absolute',left:`${Math.min(100,+r.pred)}%`,top:-3,width:2,height:8,background:'#38bdf8',borderRadius:1}}/>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{fontSize:10,color:'#334155',marginTop:6}}>🔵 blue line = predicted · bar = actual</div>
+                  </div>
+                );
+              })()}
+
+              {(()=>{
+                const graded=state.bets.filter(b=>b.result!=='pending');
+                if(graded.length<5) return null;
+                const wins=graded.filter(b=>b.result==='win').length;
+                const wr=wins/graded.length;
+                const avgOdds=graded.reduce((a,b)=>a+(b.odds>0?b.odds/100+1:100/Math.abs(b.odds)+1),0)/graded.length;
+                const expectedWR=1/avgOdds;
+                const staked=graded.reduce((a,b)=>a+b.stake,0);
+                const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+                const expectedProfit=graded.reduce((a,b)=>{
+                  const dec=b.odds>0?b.odds/100+1:100/Math.abs(b.odds)+1;
+                  return a+(dec-1)*b.stake*expectedWR-b.stake*(1-expectedWR);
+                },0);
+                const variance=profit-expectedProfit;
+                return (
+                  <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
+                    <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#fbbf24',letterSpacing:2,marginBottom:14}}>📈 VARIANCE TRACKER</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,textAlign:'center'}}>
+                      <div>
+                        <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#e2e8f0'}}>{(wr*100).toFixed(0)}%</div>
+                        <div style={{fontSize:10,color:'#475569'}}>Actual WR</div>
+                      </div>
+                      <div>
+                        <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#64748b'}}>{(expectedWR*100).toFixed(0)}%</div>
+                        <div style={{fontSize:10,color:'#475569'}}>Expected WR</div>
+                      </div>
+                      <div>
+                        <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:variance>=0?'#22c55e':'#ef4444'}}>{variance>=0?'+':''}{formatMoney(variance)}</div>
+                        <div style={{fontSize:10,color:'#475569'}}>Luck Factor</div>
+                      </div>
+                    </div>
+                    <div style={{marginTop:12,padding:'10px 12px',background:variance>20?'rgba(34,197,94,0.05)':variance<-20?'rgba(239,68,68,0.05)':'rgba(251,191,36,0.05)',borderRadius:8,border:`1px solid ${variance>20?'rgba(34,197,94,0.2)':variance<-20?'rgba(239,68,68,0.2)':'rgba(251,191,36,0.2)'}`}}>
+                      <div style={{fontSize:12,color:'#94a3b8'}}>
+                        {variance>20?`Running hot — ${formatMoney(variance)} above expected. Results likely to regress.`:variance<-20?`Running cold — ${formatMoney(Math.abs(variance))} below expected. Results likely to improve.`:'Results are close to expectation. Variance is normal.'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
