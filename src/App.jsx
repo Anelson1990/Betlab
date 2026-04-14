@@ -736,6 +736,14 @@ export default function App() {
     addLog(`🗑 Deleted: ${bet.pick} (stake refunded)`);
   },[state.bets]);
 
+  const fetchWeather = async (city, sport, team='') => {
+    try {
+      const r = await fetch(`/api/weather?city=${encodeURIComponent(city)}&sport=${sport}&team=${team}`);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch { return null; }
+  };
+
   const confirmPicks = useCallback(async (picks,sport,stake)=>{
     // Try to get weather for MLB and NFL picks
     const weatherCache = {};
@@ -789,14 +797,6 @@ Recent: ${recent}
 Use this history to adapt your picks — avoid bet types that are losing, favor what's working.${recentLessons?'\nLessons from past bets: '+recentLessons:''}`;
   };
 
-
-  const fetchWeather = async (city, sport, team='') => {
-    try {
-      const r = await fetch(`/api/weather?city=${encodeURIComponent(city)}&sport=${sport}&team=${team}`);
-      if (!r.ok) return null;
-      return await r.json();
-    } catch { return null; }
-  };
 
   const generatePicks = useCallback(async ()=>{
     setLoading(true);setError('');
