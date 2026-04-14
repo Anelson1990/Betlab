@@ -676,8 +676,8 @@ export default function App() {
   const logEndRef = useRef(null);
 
   useEffect(()=>{
-    const {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog} = state;
-    persist({bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog});
+    const {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks} = state;
+    persist({bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks});
   },[state]);
   useEffect(()=>{ logEndRef.current?.scrollIntoView({behavior:'smooth'}); },[state.sessionLog]);
 
