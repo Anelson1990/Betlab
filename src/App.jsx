@@ -670,6 +670,14 @@ export default function App() {
   const [myPickModal, setMyPickModal] = useState(null);
   const [coachReport, setCoachReport] = useState(null);
   const [coachLoading, setCoachLoading] = useState(false);
+  const [trackerSport, setTrackerSport] = useState('MLB');
+  const [trackerPaste, setTrackerPaste] = useState('');
+  const [trackerParsing, setTrackerParsing] = useState(false);
+  const [trackerError, setTrackerError] = useState('');
+  const [trackerAnalysis, setTrackerAnalysis] = useState('');
+  const [trackerAnalyzing, setTrackerAnalyzing] = useState(false);
+  const [manualTrack, setManualTrack] = useState({sport:'MLB',pick:'',modelProb:'',odds:-110,rating:'',result:'pending',score:''});
+  const [showManualTrack, setShowManualTrack] = useState(false);
   const logEndRef = useRef(null);
 
   useEffect(()=>{
@@ -973,10 +981,91 @@ Provide a deep coach analysis. Return ONLY this JSON:
     setCoachLoading(false);
   },[state.bets,state.lessons]);
 
+  const parseTrackerOutput = async () => {
+    if (!trackerPaste.trim()) { setTrackerError('Paste model output first.'); return; }
+    setTrackerParsing(true); setTrackerError('');
+    const sys = `You are parsing sports model terminal output. Extract ALL picks/recommendations.
+Return a JSON array where each object has:
+  pick - string: matchup and bet e.g. "TBR @ CHW — NRFI"
+  sport - string: MLB/NHL/NBA/NFL
+  modelProb - number: model probability % e.g. 81.7
+  odds - integer: American odds e.g. -446
+  rating - string: model rating e.g. "STRONG NRFI" "T1_STRONG" "LEAN"
+  pitchers - string: pitcher names if MLB e.g. "McClanahan vs Schultz"
+  keyStats - string: key model stats in one line
+  recommendation - string: NRFI/YRFI/HOME/AWAY/OVER/UNDER/SKIP
+Respond ONLY with a JSON array.`;
+    try {
+      const raw = await callClaude([{role:'user',content:`Sport: ${trackerSport}
+
+${trackerPaste.slice(0,10000)}`}],sys,false);
+      let picks=[];
+      const clean=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+      const s=clean.indexOf('['),e=clean.lastIndexOf(']');
+      if(s!==-1&&e!==-1) picks=JSON.parse(clean.slice(s,e+1));
+      if(!picks.length){setTrackerError('No picks found.');setTrackerParsing(false);return;}
+      const newPicks = picks.map(p=>({
+        id:uid(), date:new Date().toISOString().split('T')[0],
+        sport:trackerSport, pick:p.pick||'', modelProb:p.modelProb||null,
+        odds:parseInt(p.odds)||null, rating:p.rating||'', pitchers:p.pitchers||'',
+        keyStats:p.keyStats||'', recommendation:p.recommendation||'',
+        result:'pending', score:'', source:'model',
+      }));
+      setState(s=>({...s,trackedPicks:[...newPicks,...s.trackedPicks]}));
+      setTrackerPaste('');
+      addLog(`📡 Tracked ${newPicks.length} ${trackerSport} model picks`);
+    } catch(e){setTrackerError('Parse failed: '+e.message);}
+    setTrackerParsing(false);
+  };
+
+  const gradeTracked = (id, result, score='') => {
+    setState(s=>({...s,trackedPicks:s.trackedPicks.map(p=>p.id===id?{...p,result,score}:p)}));
+    addLog(`📡 Graded tracked pick: ${result.toUpperCase()}`);
+  };
+
+  const deleteTracked = (id) => {
+    setState(s=>({...s,trackedPicks:s.trackedPicks.filter(p=>p.id!==id)}));
+  };
+
+  const analyzeTracker = async () => {
+    const graded = state.trackedPicks.filter(p=>p.result!=='pending');
+    if(graded.length<5){setTrackerError('Need at least 5 graded picks for analysis.');return;}
+    setTrackerAnalyzing(true); setTrackerAnalysis('');
+    const wins=graded.filter(p=>p.result==='win').length;
+    const byRating={};
+    graded.forEach(p=>{
+      const r=p.rating||'Unknown';
+      if(!byRating[r])byRating[r]={w:0,l:0,probs:[]};
+      if(p.result==='win')byRating[r].w++;
+      else if(p.result==='loss')byRating[r].l++;
+      if(p.modelProb)byRating[r].probs.push(p.modelProb);
+    });
+    const ratingStr=Object.entries(byRating).map(([r,v])=>`${r}: ${v.w}W-${v.l}L avg_prob=${v.probs.length?((v.probs.reduce((a,b)=>a+b,0)/v.probs.length).toFixed(1)):'-'}%`).join(', ');
+    try {
+      const analysis = await callClaude([{role:'user',content:`Analyze this sports model performance data:
+Total: ${graded.length} graded picks | ${wins}W-${graded.length-wins}L | ${(wins/graded.length*100).toFixed(1)}% win rate
+By rating tier: ${ratingStr}
+Recent picks: ${JSON.stringify(graded.slice(0,15).map(p=>({pick:p.pick,prob:p.modelProb,rating:p.rating,result:p.result,score:p.score})))}
+
+Analyze:
+1. Is the model well-calibrated? (predicted prob vs actual win rate)
+2. Which rating tiers are performing vs underperforming?
+3. What patterns do you see in the losses?
+4. Specific recommendations to improve model usage
+5. Overall model grade A-F with explanation`}],
+      'You are a quantitative sports model analyst. Be specific and data-driven. Plain text.',false);
+      setTrackerAnalysis(analysis);
+      // Feed into lessons for AI coach
+      setState(s=>({...s,lessons:[{id:uid(),date:new Date().toISOString(),title:`📡 Model Analysis (${graded.length} picks)`,category:'Model Tracker',body:analysis,takeaway:analysis.split('.')[0]},...s.lessons]}));
+      addLog('📡 Model analysis complete');
+    } catch(e){setTrackerError('Analysis failed: '+e.message);}
+    setTrackerAnalyzing(false);
+  };
+
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
-  const TABS=['dashboard','ai','paste','mine','lessons','log'];
-  const TLABELS={dashboard:'📊 Dash',ai:'🤖 AI Bets',paste:'📋 Paste',mine:'📈 My Scripts',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
+  const TABS=['dashboard','ai','paste','mine','tracker','lessons','log'];
+  const TLABELS={dashboard:'📊 Dash',ai:'🤖 AI Bets',paste:'📋 Paste',mine:'📈 My Scripts',tracker:'📡 Tracker',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
 
   const filterBar=(filter,setFilter)=>(
     <div style={{display:'flex',gap:5,marginBottom:12,flexWrap:'wrap'}}>
@@ -1294,6 +1383,147 @@ Provide a deep coach analysis. Return ONLY this JSON:
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>📋</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO SCRIPT PICKS YET</div><div style={{fontSize:12,marginTop:6}}>Go to 📋 Paste to import from your model</div></div>
                 :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onDelete={deleteMyPick} onEdit={b=>setMyPickModal(b)} onUndoGrade={undoGrade} teaching={teaching} allowEdit={true}/>)
               }
+            </div>
+          )}
+
+          {tab==='tracker'&&(
+            <div style={{animation:'slideIn .3s ease'}}>
+              {/* Sport selector */}
+              <div style={{display:'flex',gap:4,marginBottom:14,background:'rgba(10,18,35,0.8)',padding:4,borderRadius:10,border:'1px solid #1e293b'}}>
+                {['NHL','MLB','NBA','NFL'].map(s=>{
+                  const c={NHL:'#38bdf8',MLB:'#f97316',NBA:'#a78bfa',NFL:'#22c55e'}[s];
+                  return <button key={s} onClick={()=>setTrackerSport(s)} style={{flex:1,padding:'8px 0',borderRadius:7,border:'none',cursor:'pointer',background:trackerSport===s?`rgba(${s==='NHL'?'56,189,248':s==='MLB'?'249,115,22':s==='NBA'?'167,139,250':'34,197,94'},0.15)`:'transparent',color:trackerSport===s?c:'#64748b',fontSize:12,fontWeight:700,letterSpacing:1,transition:'all .2s'}}>{s}</button>;
+                })}
+              </div>
+
+              {/* Paste model output */}
+              <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#38bdf8',letterSpacing:2,marginBottom:12}}>📡 PASTE {trackerSport} MODEL OUTPUT</div>
+                <textarea value={trackerPaste} onChange={e=>setTrackerPaste(e.target.value)} placeholder={`Paste full ${trackerSport} model terminal output here — all picks will be extracted and tracked`} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#64748b',padding:'10px 12px',fontSize:12,resize:'vertical',minHeight:150,lineHeight:1.6,fontFamily:"'Rajdhani',sans-serif"}}/>
+                <button onClick={parseTrackerOutput} disabled={trackerParsing||!trackerPaste.trim()} style={{width:'100%',marginTop:10,padding:'12px 0',borderRadius:8,border:'none',cursor:trackerParsing||!trackerPaste.trim()?'not-allowed':'pointer',background:trackerParsing||!trackerPaste.trim()?'#1e293b':'linear-gradient(135deg,#38bdf8,#0ea5e9)',color:trackerParsing||!trackerPaste.trim()?'#475569':'#000',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
+                  {trackerParsing?'PARSING...':'📡 TRACK ALL PICKS'}
+                </button>
+                {trackerError&&<div style={{marginTop:8,padding:'8px 12px',background:'rgba(127,29,29,0.4)',borderRadius:6,fontSize:12,color:'#fca5a5'}}>{trackerError}</div>}
+              </div>
+
+              {/* Manual add */}
+              <button onClick={()=>setShowManualTrack(t=>!t)} style={{width:'100%',padding:'10px 0',borderRadius:10,border:'1px solid #334155',background:'rgba(51,65,85,0.3)',color:'#94a3b8',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:14}}>
+                {showManualTrack?'▲ HIDE':'✏️ ADD MANUAL PICK TO TRACK'}
+              </button>
+
+              {showManualTrack&&(
+                <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #334155',borderRadius:14,padding:18,marginBottom:14}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,textTransform:'uppercase',marginBottom:4}}>SPORT</div>
+                      <select style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'8px 12px',fontSize:13}} value={manualTrack.sport} onChange={e=>setManualTrack(p=>({...p,sport:e.target.value}))}>
+                        {['MLB','NHL','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,textTransform:'uppercase',marginBottom:4}}>MODEL PROB %</div>
+                      <input type="number" value={manualTrack.modelProb} onChange={e=>setManualTrack(p=>({...p,modelProb:e.target.value}))} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'8px 12px',fontSize:13}} placeholder="e.g. 81.7"/>
+                    </div>
+                  </div>
+                  <div style={{marginBottom:10}}>
+                    <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,textTransform:'uppercase',marginBottom:4}}>PICK</div>
+                    <input value={manualTrack.pick} onChange={e=>setManualTrack(p=>({...p,pick:e.target.value}))} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'8px 12px',fontSize:13}} placeholder="e.g. TBR @ CHW — NRFI"/>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,textTransform:'uppercase',marginBottom:4}}>ODDS</div>
+                      <input type="number" value={manualTrack.odds} onChange={e=>setManualTrack(p=>({...p,odds:+e.target.value}))} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'8px 12px',fontSize:13}}/>
+                    </div>
+                    <div>
+                      <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,textTransform:'uppercase',marginBottom:4}}>RATING</div>
+                      <input value={manualTrack.rating} onChange={e=>setManualTrack(p=>({...p,rating:e.target.value}))} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'8px 12px',fontSize:13}} placeholder="STRONG NRFI"/>
+                    </div>
+                  </div>
+                  <button onClick={()=>{
+                    setState(s=>({...s,trackedPicks:[{id:uid(),date:new Date().toISOString().split('T')[0],...manualTrack,source:'manual',result:'pending',score:''},...s.trackedPicks]}));
+                    setManualTrack({sport:'MLB',pick:'',modelProb:'',odds:-110,rating:'',result:'pending',score:''});
+                    setShowManualTrack(false);
+                    addLog('📡 Manual pick tracked');
+                  }} style={{width:'100%',padding:'10px 0',borderRadius:8,border:'none',background:'#334155',color:'#e2e8f0',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,cursor:'pointer'}}>ADD TO TRACKER</button>
+                </div>
+              )}
+
+              {/* Stats summary */}
+              {state.trackedPicks.length>0&&(()=>{
+                const graded=state.trackedPicks.filter(p=>p.result!=='pending');
+                const wins=graded.filter(p=>p.result==='win').length;
+                const pending=state.trackedPicks.filter(p=>p.result==='pending').length;
+                const avgProb=graded.filter(p=>p.modelProb).reduce((a,p)=>a+p.modelProb,0)/(graded.filter(p=>p.modelProb).length||1);
+                const actualWR=graded.length?wins/graded.length*100:0;
+                return (
+                  <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
+                    <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#38bdf8',letterSpacing:2,marginBottom:12}}>📊 MODEL PERFORMANCE</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,textAlign:'center',marginBottom:12}}>
+                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#e2e8f0'}}>{state.trackedPicks.length}</div><div style={{fontSize:9,color:'#475569'}}>TOTAL</div></div>
+                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#f59e0b'}}>{pending}</div><div style={{fontSize:9,color:'#475569'}}>PENDING</div></div>
+                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=55?'#22c55e':'#ef4444'}}>{actualWR.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>WIN RATE</div></div>
+                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=avgProb?'#22c55e':'#ef4444'}}>{avgProb.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>AVG PROB</div></div>
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={analyzeTracker} disabled={trackerAnalyzing||graded.length<5} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',cursor:trackerAnalyzing||graded.length<5?'not-allowed':'pointer',background:graded.length>=5?'linear-gradient(135deg,#a78bfa,#7c3aed)':'#1e293b',color:graded.length>=5?'#fff':'#475569',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>
+                        {trackerAnalyzing?'ANALYZING...':'🤖 AI ANALYZE MODEL'}
+                      </button>
+                    </div>
+                    {trackerAnalysis&&(
+                      <div style={{marginTop:12,padding:12,background:'rgba(167,139,250,0.05)',borderRadius:8,border:'1px solid rgba(167,139,250,0.2)',fontSize:12,color:'#cbd5e1',lineHeight:1.7,whiteSpace:'pre-wrap'}}>{trackerAnalysis}</div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Picks list */}
+              {state.trackedPicks.length===0?(
+                <div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}>
+                  <div style={{fontSize:32,marginBottom:10}}>📡</div>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO TRACKED PICKS</div>
+                  <div style={{fontSize:12,marginTop:6}}>Paste your model output above to start tracking</div>
+                </div>
+              ):(
+                <div>
+                  <div style={{fontSize:10,color:'#475569',marginBottom:8,letterSpacing:1}}>{state.trackedPicks.filter(p=>p.result==='pending').length} PENDING · {state.trackedPicks.filter(p=>p.result!=='pending').length} GRADED</div>
+                  {state.trackedPicks.map(pick=>(
+                    <div key={pick.id} style={{background:'rgba(10,18,35,0.9)',border:`1px solid ${pick.result==='win'?'#22c55e44':pick.result==='loss'?'#ef444444':'#1e293b'}`,borderLeft:`3px solid ${pick.result==='win'?'#22c55e':pick.result==='loss'?'#ef4444':pick.result==='push'?'#94a3b8':'#38bdf8'}`,borderRadius:10,padding:'12px 14px',marginBottom:8}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:12,color:'#f1f5f9',fontWeight:700,marginBottom:4}}>{pick.pick}</div>
+                          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:4}}>
+                            <span style={{fontSize:9,background:'#1e293b',color:'#64748b',padding:'2px 6px',borderRadius:20}}>{pick.sport}</span>
+                            {pick.rating&&<span style={{fontSize:9,background:'rgba(56,189,248,0.15)',color:'#38bdf8',padding:'2px 6px',borderRadius:20,border:'1px solid rgba(56,189,248,0.25)'}}>{pick.rating}</span>}
+                            <span style={{fontSize:9,color:'#475569'}}>{pick.date}</span>
+                          </div>
+                          {pick.pitchers&&<div style={{fontSize:11,color:'#64748b',marginBottom:2}}>{pick.pitchers}</div>}
+                          {pick.keyStats&&<div style={{fontSize:10,color:'#475569'}}>{pick.keyStats}</div>}
+                          {pick.score&&<div style={{fontSize:11,color:'#38bdf8',marginTop:4}}>📊 {pick.score}</div>}
+                        </div>
+                        <div style={{textAlign:'right',flexShrink:0}}>
+                          {pick.modelProb&&<div style={{fontFamily:"'Orbitron',sans-serif",fontSize:16,color:'#e2e8f0'}}>{pick.modelProb}%</div>}
+                          {pick.odds&&<div style={{fontSize:11,color:'#64748b'}}>{pick.odds>0?'+':''}{pick.odds}</div>}
+                          <div style={{fontSize:10,color:pick.result==='win'?'#22c55e':pick.result==='loss'?'#ef4444':pick.result==='push'?'#94a3b8':'#f59e0b',fontWeight:700,marginTop:4}}>{pick.result.toUpperCase()}</div>
+                        </div>
+                      </div>
+                      {pick.result==='pending'&&(
+                        <div style={{marginTop:8}}>
+                          <input value={pick.score||''} onChange={e=>setState(s=>({...s,trackedPicks:s.trackedPicks.map(p=>p.id===pick.id?{...p,score:e.target.value}:p)}))} placeholder="Enter score e.g. 3-0 YRFI or 4-2 OT" style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'5px 8px',fontSize:11,marginBottom:6,fontFamily:"'Rajdhani',sans-serif"}}/>
+                          <div style={{display:'flex',gap:4}}>
+                            {['win','loss','push'].map(r=>(
+                              <button key={r} onClick={()=>gradeTracked(pick.id,r,pick.score||'')} style={{flex:1,padding:'6px 0',borderRadius:6,border:'none',cursor:'pointer',background:r==='win'?'#14532d':r==='loss'?'#7f1d1d':'#1e293b',color:r==='win'?'#86efac':r==='loss'?'#fca5a5':'#94a3b8',fontSize:10,fontWeight:700,textTransform:'uppercase'}}>{r}</button>
+                            ))}
+                            <button onClick={()=>deleteTracked(pick.id)} style={{padding:'6px 10px',borderRadius:6,border:'1px solid #7f1d1d44',background:'transparent',color:'#ef444466',fontSize:10,fontWeight:700,cursor:'pointer'}}>🗑</button>
+                          </div>
+                        </div>
+                      )}
+                      {pick.result!=='pending'&&(
+                        <button onClick={()=>gradeTracked(pick.id,'pending','')} style={{marginTop:6,width:'100%',padding:'4px 0',borderRadius:6,border:'1px solid #f59e0b44',background:'rgba(245,158,11,0.1)',color:'#f59e0b',fontSize:10,fontWeight:700,cursor:'pointer'}}>↩ UNDO</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

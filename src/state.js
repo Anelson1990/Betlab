@@ -8,6 +8,7 @@ export const EMPTY_STATE = {
   bets: [],
   lessons: [],
   sessionLog: [],
+  trackedPicks: [],
 };
 
 const KEY = 'betlab_v3';
@@ -25,6 +26,7 @@ export function loadState() {
       bets: Array.isArray(saved.bets) ? saved.bets : [],
       lessons: Array.isArray(saved.lessons) ? saved.lessons : [],
       sessionLog: Array.isArray(saved.sessionLog) ? saved.sessionLog : [],
+      trackedPicks: Array.isArray(saved.trackedPicks) ? saved.trackedPicks : [],
     };
   } catch (e) {
     console.warn('loadState error:', e);
