@@ -1449,12 +1449,41 @@ Analyze:
                 return (
                   <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
                     <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#38bdf8',letterSpacing:2,marginBottom:12}}>📊 MODEL PERFORMANCE</div>
+                    {/* Overall */}
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,textAlign:'center',marginBottom:12}}>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#e2e8f0'}}>{state.trackedPicks.length}</div><div style={{fontSize:9,color:'#475569'}}>TOTAL</div></div>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#f59e0b'}}>{pending}</div><div style={{fontSize:9,color:'#475569'}}>PENDING</div></div>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=55?'#22c55e':'#ef4444'}}>{actualWR.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>WIN RATE</div></div>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=avgProb?'#22c55e':'#ef4444'}}>{avgProb.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>AVG PROB</div></div>
                     </div>
+                    {/* By sport breakdown */}
+                    {['MLB','NHL','NBA','NFL'].map(sport=>{
+                      const sportPicks=graded.filter(p=>p.sport===sport);
+                      if(!sportPicks.length) return null;
+                      const sw=sportPicks.filter(p=>p.result==='win').length;
+                      const swr=sw/sportPicks.length*100;
+                      const savg=sportPicks.filter(p=>p.modelProb).reduce((a,p)=>a+parseFloat(p.modelProb),0)/(sportPicks.filter(p=>p.modelProb).length||1);
+                      const sportColor={MLB:'#f97316',NHL:'#38bdf8',NBA:'#a78bfa',NFL:'#22c55e'}[sport];
+                      const pending_s=state.trackedPicks.filter(p=>p.sport===sport&&p.result==='pending').length;
+                      return (
+                        <div key={sport} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',background:'rgba(5,8,16,0.5)',borderRadius:8,marginBottom:6,border:`1px solid ${sportColor}22`}}>
+                          <div style={{display:'flex',alignItems:'center',gap:8}}>
+                            <span style={{fontSize:10,color:sportColor,fontWeight:700,width:36}}>{sport}</span>
+                            <span style={{fontSize:11,color:'#94a3b8'}}>{sw}W-{sportPicks.length-sw}L</span>
+                            {pending_s>0&&<span style={{fontSize:9,color:'#f59e0b'}}>+{pending_s} pending</span>}
+                          </div>
+                          <div style={{display:'flex',gap:12,alignItems:'center'}}>
+                            <div style={{textAlign:'right'}}>
+                              <div style={{fontSize:11,color:swr>=55?'#22c55e':'#ef4444',fontWeight:700}}>{swr.toFixed(0)}% WR</div>
+                              <div style={{fontSize:9,color:'#475569'}}>avg prob {savg.toFixed(0)}%</div>
+                            </div>
+                            <div style={{width:40,height:6,background:'#1e293b',borderRadius:3,overflow:'hidden'}}>
+                              <div style={{height:'100%',width:`${Math.min(100,swr)}%`,background:swr>=55?'#22c55e':'#ef4444',borderRadius:3}}/>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                     <div style={{display:'flex',gap:8}}>
                       <button onClick={analyzeTracker} disabled={trackerAnalyzing||graded.length<5} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',cursor:trackerAnalyzing||graded.length<5?'not-allowed':'pointer',background:graded.length>=5?'linear-gradient(135deg,#a78bfa,#7c3aed)':'#1e293b',color:graded.length>=5?'#fff':'#475569',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>
                         {trackerAnalyzing?'ANALYZING...':'🤖 AI ANALYZE MODEL'}
