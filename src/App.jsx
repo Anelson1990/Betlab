@@ -266,26 +266,17 @@ function LessonCard({ lesson }) {
   );
 }
 
-function ROIComparison({ bets }) {
-  function calcStats(source) {
-    const graded=bets.filter(b=>b.source===source&&b.result!=='pending');
-    if (!graded.length) return null;
-    const wins=graded.filter(b=>b.result==='win').length;
-    const staked=graded.reduce((a,b)=>a+b.stake,0);
-    const profit=graded.reduce((a,b)=>{
-      if(b.result==='win'){
-        const eff=b.betCategory==='parlay'&&b.legs?.length>=2
-          ? (()=>{const dec=b.legs.filter(l=>l.odds).reduce((acc,l)=>{const d=l.odds>0?l.odds/100+1:100/Math.abs(l.odds)+1;return acc*d;},1.0);const boosted=b.boost>0?dec*(1+b.boost/100):dec;return boosted>=2?Math.round((boosted-1)*100):Math.round(-100/(boosted-1));})()
-          : parseInt(b.odds)||-110;
-        return a+(americanToDecimal(eff)-1)*b.stake;
-      }
-      if(b.result==='loss') return a-b.stake;
-      return a;
-    },0);
-    const roi=staked?profit/staked*100:0;
-    return {wins,total:graded.length,wr:wins/graded.length*100,roi,profit,staked};
-  }
-  const ai=calcStats('ai'), my=calcStats('paste');
+function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartingBankroll }) {
+  const aiGraded=bets.filter(b=>b.source==='ai'&&b.result!=='pending');
+  const myGraded=bets.filter(b=>b.source==='paste'&&b.result!=='pending');
+  const aiWins=aiGraded.filter(b=>b.result==='win').length;
+  const myWins=myGraded.filter(b=>b.result==='win').length;
+  const aiStaked=aiGraded.reduce((a,b)=>a+b.stake,0);
+  const myStaked=myGraded.reduce((a,b)=>a+b.stake,0);
+  const aiPnL=bankroll-startingBankroll;
+  const myPnL=myBankroll-myStartingBankroll;
+  const aiROI=aiStaked?aiPnL/aiStaked*100:0;
+  const myROI=myStaked?myPnL/myStaked*100:0;
   const roiC=v=>v>5?'#22c55e':v>0?'#86efac':v>-5?'#fbbf24':'#f87171';
   return (
     <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
@@ -293,26 +284,26 @@ function ROIComparison({ bets }) {
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
         <div style={{borderRight:'1px solid #1e293b',paddingRight:12}}>
           <div style={{fontSize:10,color:'#60a5fa',letterSpacing:2,marginBottom:6,fontWeight:700}}>🤖 AI PAPER BETS</div>
-          {ai?<>
-            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:ai.profit>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(ai.profit)}</div>
-            <div style={{fontSize:10,color:'#475569',marginBottom:6}}>net profit · {ai.total} graded</div>
-            <div style={{fontSize:12,color:roiC(ai.roi),fontWeight:700}}>ROI {ai.roi>=0?'+':''}{ai.roi.toFixed(1)}%</div>
-            <div style={{fontSize:11,color:'#64748b'}}>{ai.wins}W-{ai.total-ai.wins}L · {ai.wr.toFixed(0)}% WR</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:aiPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(aiPnL)}</div>
+          <div style={{fontSize:10,color:'#475569',marginBottom:6}}>true P&L vs ${startingBankroll} start</div>
+          {aiGraded.length>0?<>
+            <div style={{fontSize:12,color:roiC(aiROI),fontWeight:700}}>ROI {aiROI>=0?'+':''}{aiROI.toFixed(1)}%</div>
+            <div style={{fontSize:11,color:'#64748b'}}>{aiWins}W-{aiGraded.length-aiWins}L · {aiGraded.length?(aiWins/aiGraded.length*100).toFixed(0):0}% WR</div>
           </>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
         </div>
         <div style={{paddingLeft:12}}>
           <div style={{fontSize:10,color:'#f97316',letterSpacing:2,marginBottom:6,fontWeight:700}}>📋 MY SCRIPTS</div>
-          {my?<>
-            <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:my.profit>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(my.profit)}</div>
-            <div style={{fontSize:10,color:'#475569',marginBottom:6}}>net profit · {my.total} graded</div>
-            <div style={{fontSize:12,color:roiC(my.roi),fontWeight:700}}>ROI {my.roi>=0?'+':''}{my.roi.toFixed(1)}%</div>
-            <div style={{fontSize:11,color:'#64748b'}}>{my.wins}W-{my.total-my.wins}L · {my.wr.toFixed(0)}% WR</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:myPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(myPnL)}</div>
+          <div style={{fontSize:10,color:'#475569',marginBottom:6}}>true P&L vs ${myStartingBankroll} start</div>
+          {myGraded.length>0?<>
+            <div style={{fontSize:12,color:roiC(myROI),fontWeight:700}}>ROI {myROI>=0?'+':''}{myROI.toFixed(1)}%</div>
+            <div style={{fontSize:11,color:'#64748b'}}>{myWins}W-{myGraded.length-myWins}L · {myGraded.length?(myWins/myGraded.length*100).toFixed(0):0}% WR</div>
           </>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
         </div>
       </div>
-      {ai&&my&&(
-        <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #1e293b',fontSize:12,fontWeight:700,textAlign:'center',color:ai.roi>my.roi?'#60a5fa':my.roi>ai.roi?'#f97316':'#64748b'}}>
-          {ai.roi>my.roi?`🤖 AI leading by ${(ai.roi-my.roi).toFixed(1)}% ROI`:my.roi>ai.roi?`📋 Your scripts leading by ${(my.roi-ai.roi).toFixed(1)}% ROI`:'⚖️ Dead even'}
+      {aiGraded.length>0&&myGraded.length>0&&(
+        <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #1e293b',fontSize:12,fontWeight:700,textAlign:'center',color:aiROI>myROI?'#60a5fa':myROI>aiROI?'#f97316':'#64748b'}}>
+          {aiROI>myROI?`🤖 AI leading by ${(aiROI-myROI).toFixed(1)}% ROI`:myROI>aiROI?`📋 Your scripts leading by ${(myROI-aiROI).toFixed(1)}% ROI`:'⚖️ Dead even'}
         </div>
       )}
     </div>
@@ -1172,11 +1163,11 @@ Analyze:
             <div style={{animation:'slideIn .3s ease'}}>
               <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
                 <StatBox label="AI W/L" value={aiGraded.length?`${aiStats.wins}-${aiStats.total-aiStats.wins}`:'—'} color="#60a5fa"/>
-                <StatBox label="AI ROI" value={aiGraded.length?`${aiStats.roi>=0?'+':''}${aiStats.roi.toFixed(0)}%`:'—'} color={aiStats.roi>=0?'#22c55e':'#ef4444'}/>
+                <StatBox label="AI ROI" value={aiGraded.length?`${(state.bankroll-state.startingBankroll)>=0?'+':''}${aiGraded.length?((state.bankroll-state.startingBankroll)/aiGraded.reduce((a,b)=>a+b.stake,1)*100).toFixed(0):0}%`:'—'} color={(state.bankroll-state.startingBankroll)>=0?'#22c55e':'#ef4444'}/>
                 <StatBox label="My W/L" value={myGraded.length?`${myStats.wins}-${myStats.total-myStats.wins}`:'—'} color="#f97316"/>
-                <StatBox label="My ROI" value={myGraded.length?`${myStats.roi>=0?'+':''}${myStats.roi.toFixed(0)}%`:'—'} color={myStats.roi>=0?'#22c55e':'#ef4444'}/>
+                <StatBox label="My ROI" value={myGraded.length?`${(state.myBankroll-state.myStartingBankroll)>=0?'+':''}${myGraded.length?((state.myBankroll-state.myStartingBankroll)/myGraded.reduce((a,b)=>a+b.stake,1)*100).toFixed(0):0}%`:'—'} color={(state.myBankroll-state.myStartingBankroll)>=0?'#22c55e':'#ef4444'}/>
               </div>
-              <ROIComparison bets={state.bets}/>
+              <ROIComparison bets={state.bets} bankroll={state.bankroll} startingBankroll={state.startingBankroll} myBankroll={state.myBankroll} myStartingBankroll={state.myStartingBankroll}/>
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
                 <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#1d4ed8',letterSpacing:2,marginBottom:14}}>🤖 AI LIVE ODDS PICKER</div>
                 <div style={{display:'flex',gap:8,marginBottom:10}}>
