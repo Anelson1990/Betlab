@@ -890,7 +890,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     addLog(`Graded: ${bet.pick} → ${result.toUpperCase()}${score?' ('+score+')':''} (${formatMoney(pl)})`);
 
     // Auto-coach: run lightweight analysis in background after every 5th graded bet
-    const newGraded = updatedBets.filter(b=>b.result!=='pending');
+    const newGraded = updatedBets.filter(b=>b.result!=='pending'&&(b.source==='ai'||b.source==='paste'));
     if (newGraded.length>=5 && newGraded.length%5===0) {
       try {
         const wins=newGraded.filter(b=>b.result==='win').length;
