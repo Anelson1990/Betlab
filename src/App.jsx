@@ -1071,7 +1071,8 @@ ${trackerPaste.slice(0,10000)}`}],sys,false);
   };
 
   const analyzeTracker = async () => {
-    const graded = state.trackedPicks.filter(p=>p.result!=='pending');
+    const sportPicks = state.trackedPicks.filter(p=>p.sport===trackerSport);
+    const graded = sportPicks.filter(p=>p.result!=='pending');
     if(graded.length<5){setTrackerError('Need at least 5 graded picks for analysis.');return;}
     setTrackerAnalyzing(true); setTrackerAnalysis('');
     const wins=graded.filter(p=>p.result==='win').length;
