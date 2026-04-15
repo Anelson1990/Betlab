@@ -987,7 +987,7 @@ Warning: ${note.warning||''}`,
 
 ${summarize(aiGradedBets,'AI PAPER BETS (autonomous AI picks from live odds)')}
 
-${summarize(myGradedBets,'MY SCRIPT PICKS (picks from Austin's Python models)')}
+${summarize(myGradedBets,'MY SCRIPT PICKS (picks from Austin Python models)')}
 
 LESSONS FROM PAST ANALYSIS:
 ${lessons.join(' | ')}
