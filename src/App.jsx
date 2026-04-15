@@ -963,42 +963,53 @@ Warning: ${note.warning||''}`,
   },[aiGraded,aiStats]);
 
   const runCoach = useCallback(async ()=>{
-    const graded = state.bets.filter(b=>b.result!=='pending');
-    if (graded.length < 10) { setError(`Need at least 10 graded bets for coach analysis (have ${graded.length}).`); return; }
+    const aiGradedBets = state.bets.filter(b=>b.source==='ai'&&b.result!=='pending');
+    const myGradedBets = state.bets.filter(b=>b.source==='paste'&&b.result!=='pending');
+    const totalGraded = aiGradedBets.length + myGradedBets.length;
+    if (totalGraded < 10) { setError(`Need at least 10 graded bets for coach analysis (have ${totalGraded}).`); return; }
     setCoachLoading(true);
-    const betData = graded.map(b=>({
-      pick:b.pick, sport:b.sport, betType:b.betType, odds:b.odds,
-      stake:b.stake, confidence:b.confidence, result:b.result,
-      score:b.score||'', modelProb:b.modelProb||null, source:b.source,
-    }));
-    const lessons = state.lessons.slice(0,10).map(l=>l.takeaway||l.body).filter(Boolean);
-    const wins = graded.filter(b=>b.result==='win').length;
-    const staked = graded.reduce((a,b)=>a+b.stake,0);
-    const profit = graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+
+    const summarize = (bets, label) => {
+      if (!bets.length) return `${label}: No graded bets yet.`;
+      const wins=bets.filter(b=>b.result==='win').length;
+      const staked=bets.reduce((a,b)=>a+b.stake,0);
+      const profit=bets.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+      const roi=staked?profit/staked*100:0;
+      const bySport={};
+      bets.forEach(b=>{if(!bySport[b.sport])bySport[b.sport]={w:0,l:0};if(b.result==='win')bySport[b.sport].w++;else bySport[b.sport].l++;});
+      const sportStr=Object.entries(bySport).map(([s,v])=>`${s}:${v.w}W-${v.l}L`).join(', ');
+      return `${label}: ${wins}W-${bets.length-wins}L | ROI:${roi.toFixed(1)}% | Net:${formatMoney(profit)} | By sport: ${sportStr} | Recent: ${JSON.stringify(bets.slice(0,8).map(b=>({pick:b.pick,sport:b.sport,odds:b.odds,result:b.result,score:b.score||''})))}`;
+    };
+
+    const lessons = state.lessons.slice(0,8).map(l=>l.takeaway||l.body).filter(Boolean);
     try {
-      const raw = await callClaude([{role:'user',content:`You are an elite sports betting coach analyzing a bettor's full history.
+      const raw = await callClaude([{role:'user',content:`You are an elite sports betting coach. Analyze these TWO separate betting systems and compare them.
 
-FULL BET HISTORY (${graded.length} graded bets):
-${JSON.stringify(betData)}
+${summarize(aiGradedBets,'AI PAPER BETS (autonomous AI picks from live odds)')}
 
-RECORD: ${wins}W-${graded.length-wins}L | ROI: ${staked?(profit/staked*100).toFixed(1):0}% | Net: ${formatMoney(profit)}
+${summarize(myGradedBets,'MY SCRIPT PICKS (picks from Austin's Python models)')}
 
 LESSONS FROM PAST ANALYSIS:
 ${lessons.join(' | ')}
 
-Provide a deep coach analysis. Return ONLY this JSON:
+Provide separate analysis for each, then a comparison. Return ONLY this JSON:
 {
   "grade": "A/B/C/D/F",
-  "headline": "one sharp sentence summarizing performance",
-  "strengths": ["2-3 specific things working well with data"],
-  "weaknesses": ["2-3 specific losing patterns with data"],
-  "patterns": ["2-3 statistical patterns found"],
-  "recommendations": ["3-4 specific actionable changes"],
-  "sports_breakdown": {"NHL":"analysis","MLB":"analysis","NBA":"analysis","NFL":"analysis"},
-  "bet_types": "analysis of which bet types are working",
-  "sizing": "advice on stake sizing based on edge",
-  "mental": "one honest observation about betting discipline",
-  "next_focus": "single most important thing to improve"
+  "headline": "one sharp sentence comparing both systems",
+  "ai_analysis": {
+    "strengths": ["2 specific strengths with data"],
+    "weaknesses": ["2 specific weaknesses with data"],
+    "grade": "A/B/C/D/F"
+  },
+  "script_analysis": {
+    "strengths": ["2 specific strengths with data"],
+    "weaknesses": ["2 specific weaknesses with data"],
+    "grade": "A/B/C/D/F"
+  },
+  "comparison": "2-3 sentences comparing the two systems — which is better and why",
+  "recommendations": ["3 specific actionable changes — one for AI, one for scripts, one for both"],
+  "sizing": "stake sizing advice based on which system is performing better",
+  "next_focus": "single most important thing to improve across both systems"
 }`}],
       'You are an elite sports betting coach. Be brutally honest, specific, and data-driven. JSON only.',false);
       let report={};
@@ -1294,24 +1305,32 @@ Analyze:
                   </div>
                   <div style={{fontSize:13,color:'#e2e8f0',fontWeight:700,marginBottom:12,lineHeight:1.4}}>{coachReport.headline}</div>
 
-                  {coachReport.strengths?.length>0&&(
-                    <div style={{marginBottom:12}}>
-                      <div style={{fontSize:10,color:'#22c55e',fontWeight:700,letterSpacing:1,marginBottom:6}}>✅ STRENGTHS</div>
-                      {coachReport.strengths.map((s,i)=><div key={i} style={{fontSize:12,color:'#94a3b8',marginBottom:4,paddingLeft:8,borderLeft:'2px solid #22c55e44'}}>• {s}</div>)}
+                  {coachReport.ai_analysis&&(
+                    <div style={{marginBottom:12,padding:'10px 12px',background:'rgba(56,189,248,0.05)',borderRadius:8,border:'1px solid rgba(56,189,248,0.15)'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                        <div style={{fontSize:10,color:'#60a5fa',fontWeight:700,letterSpacing:1}}>🤖 AI PAPER BETS</div>
+                        <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:14,color:'#60a5fa'}}>{coachReport.ai_analysis.grade}</div>
+                      </div>
+                      {coachReport.ai_analysis.strengths?.map((s,i)=><div key={i} style={{fontSize:11,color:'#94a3b8',marginBottom:3,paddingLeft:8,borderLeft:'2px solid #22c55e44'}}>✅ {s}</div>)}
+                      {coachReport.ai_analysis.weaknesses?.map((w,i)=><div key={i} style={{fontSize:11,color:'#94a3b8',marginBottom:3,paddingLeft:8,borderLeft:'2px solid #ef444444'}}>❌ {w}</div>)}
                     </div>
                   )}
 
-                  {coachReport.weaknesses?.length>0&&(
-                    <div style={{marginBottom:12}}>
-                      <div style={{fontSize:10,color:'#ef4444',fontWeight:700,letterSpacing:1,marginBottom:6}}>❌ WEAKNESSES</div>
-                      {coachReport.weaknesses.map((w,i)=><div key={i} style={{fontSize:12,color:'#94a3b8',marginBottom:4,paddingLeft:8,borderLeft:'2px solid #ef444444'}}>• {w}</div>)}
+                  {coachReport.script_analysis&&(
+                    <div style={{marginBottom:12,padding:'10px 12px',background:'rgba(249,115,22,0.05)',borderRadius:8,border:'1px solid rgba(249,115,22,0.15)'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                        <div style={{fontSize:10,color:'#f97316',fontWeight:700,letterSpacing:1}}>📋 MY SCRIPT PICKS</div>
+                        <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:14,color:'#f97316'}}>{coachReport.script_analysis.grade}</div>
+                      </div>
+                      {coachReport.script_analysis.strengths?.map((s,i)=><div key={i} style={{fontSize:11,color:'#94a3b8',marginBottom:3,paddingLeft:8,borderLeft:'2px solid #22c55e44'}}>✅ {s}</div>)}
+                      {coachReport.script_analysis.weaknesses?.map((w,i)=><div key={i} style={{fontSize:11,color:'#94a3b8',marginBottom:3,paddingLeft:8,borderLeft:'2px solid #ef444444'}}>❌ {w}</div>)}
                     </div>
                   )}
 
-                  {coachReport.patterns?.length>0&&(
-                    <div style={{marginBottom:12}}>
-                      <div style={{fontSize:10,color:'#fbbf24',fontWeight:700,letterSpacing:1,marginBottom:6}}>📊 PATTERNS</div>
-                      {coachReport.patterns.map((p,i)=><div key={i} style={{fontSize:12,color:'#94a3b8',marginBottom:4,paddingLeft:8,borderLeft:'2px solid #fbbf2444'}}>• {p}</div>)}
+                  {coachReport.comparison&&(
+                    <div style={{marginBottom:12,padding:'10px 12px',background:'rgba(167,139,250,0.05)',borderRadius:8,border:'1px solid rgba(167,139,250,0.15)'}}>
+                      <div style={{fontSize:10,color:'#a78bfa',fontWeight:700,letterSpacing:1,marginBottom:6}}>⚖️ COMPARISON</div>
+                      <div style={{fontSize:12,color:'#94a3b8',lineHeight:1.6}}>{coachReport.comparison}</div>
                     </div>
                   )}
 
