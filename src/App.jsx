@@ -1018,8 +1018,8 @@ Provide separate analysis for each, then a comparison. Return ONLY this JSON:
         const s=clean.indexOf('{'),e=clean.lastIndexOf('}');
         if(s!==-1&&e!==-1) report=JSON.parse(clean.slice(s,e+1));
       } catch{}
-      setCoachReport({...report, date:new Date().toISOString(), betsAnalyzed:graded.length});
-      addLog(`🎯 Coach analysis complete — ${graded.length} bets analyzed`);
+      setCoachReport({...report, date:new Date().toISOString(), betsAnalyzed:totalGraded});
+      addLog(`🎯 Coach analysis complete — ${totalGraded} bets analyzed`);
     } catch(err){setError('Coach failed: '+err.message);}
     setCoachLoading(false);
   },[state.bets,state.lessons]);
