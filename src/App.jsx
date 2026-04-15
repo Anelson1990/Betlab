@@ -31,7 +31,7 @@ function StatBox({ label, value, color='#e2e8f0' }) {
   );
 }
 
-function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, teaching, allowEdit, bankroll=1000 }) {
+function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, onTail, teaching, allowEdit, bankroll=1000 }) {
   const [showLegGrader, setShowLegGrader] = useState(false);
   const [legResults, setLegResults] = useState(
     bet.legs ? bet.legs.map(l=>({...l,result:'pending'})) : []
@@ -223,6 +223,11 @@ Is this a good bet?`}],
         </div>
       )}
 
+      {isAI&&bet.result==='pending'&&onTail&&(
+        <button onClick={()=>onTail(bet)} style={{width:'100%',marginTop:8,padding:'7px 0',borderRadius:6,border:'1px solid #22c55e44',background:'rgba(34,197,94,0.1)',color:'#22c55e',fontSize:11,fontWeight:700,cursor:'pointer',letterSpacing:1,textTransform:'uppercase'}}>
+          🐍 TAIL THIS BET
+        </button>
+      )}
       {!isAI&&bet.result==='pending'&&(
         <div style={{marginTop:8}}>
           <button onClick={getAISuggestion} disabled={loadingAI} style={{width:'100%',padding:'7px 0',borderRadius:6,border:'1px solid #a78bfa44',background:'rgba(167,139,250,0.1)',color:loadingAI?'#334155':'#a78bfa',fontSize:11,fontWeight:700,cursor:loadingAI?'not-allowed':'pointer',letterSpacing:1,textTransform:'uppercase'}}>
@@ -920,6 +925,20 @@ Warning: ${note.warning||''}`,
     }
   },[state.bets]);
 
+  const tailBet = useCallback((bet)=>{
+    addMyPick({
+      pick:bet.pick, sport:bet.sport, betType:bet.betType,
+      betCategory:bet.betCategory||'straight', odds:bet.odds,
+      stake:bet.stake, confidence:bet.confidence, reasoning:bet.reasoning,
+      keyFactors:bet.keyFactors||[], modelProb:bet.modelProb||null,
+      rating:bet.rating||'', edge:bet.edge||'', legs:bet.legs||[],
+      weather:bet.weather||null, official:bet.official||null,
+      opponent:bet.opponent||null, restTravel:bet.restTravel||null,
+    });
+    addLog(`🐍 Tailed AI pick: ${bet.pick}`);
+    setTab('mine');
+  },[addMyPick]);
+
   const undoGrade = useCallback((id)=>{
     const bet=state.bets.find(b=>b.id===id);
     if(!bet||bet.result==='pending')return;
@@ -1460,7 +1479,7 @@ Analyze:
               {filterBar(aiFilter,setAiFilter)}
               {aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🤖</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO AI BETS YET</div><div style={{fontSize:12,marginTop:6}}>Dashboard → Find Value</div></div>
-                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} teaching={teaching} allowEdit={false} bankroll={state.bankroll}/>)
+                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} onTail={tailBet} teaching={teaching} allowEdit={false} bankroll={state.bankroll}/>)
               }
             </div>
           )}
