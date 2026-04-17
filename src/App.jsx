@@ -1100,12 +1100,14 @@ export default function App() {
     const newTracked = state.trackedPicks.map(p => {
       if (p.result !== 'pending') return p;
       const sportResults = results[p.sport]?.games;
-      if (!sportResults) return p;
+      if (!sportResults || !sportResults.length) { addLog(`⚠️ Tracker: No ${p.sport} results for: ${p.pick}`); return p; }
       const game = matchBet(p.pick, p.sport, sportResults);
-      if (!game) return p;
+      if (!game) { addLog(`⚠️ Tracker: No match for: ${p.pick} (${p.sport}, ${sportResults.length} games, sample:${sportResults.slice(0,2).map(g=>g.away+'-'+g.home).join(',')})`); return p; }
+      if (!game.final) { addLog(`⏳ Tracker: Not final: ${p.pick}`); return p; }
       const result = gradeResult(p, game, p.sport);
-      if (!result) return p;
+      if (!result) { addLog(`⚠️ Tracker: No result for: ${p.pick} (${game.away} ${game.away_score}-${game.home_score} ${game.home})`); return p; }
       autoGraded++;
+      addLog(`🤖 Tracker graded: ${p.pick} → ${result.toUpperCase()}`);
       return {...p, result, score:`${game.away_score}-${game.home_score}`, autoGraded:true};
     });
 
