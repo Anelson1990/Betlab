@@ -567,6 +567,7 @@ After your research, return ONLY this JSON:
       try{const c=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();const s=c.indexOf('{'),e=c.lastIndexOf('}');if(s!==-1&&e!==-1)v=JSON.parse(c.slice(s,e+1));}catch{}
       newVerifs[pick.pick]=v;
     }
+    } catch(err){ setError('Verify failed: '+err.message); }
     setVerifications(newVerifs);
     setVerifying(false);
   };
