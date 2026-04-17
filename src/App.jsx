@@ -888,11 +888,25 @@ export default function App() {
     const sports = [...new Set([...pending.map(b=>b.sport),...trackedPending.map(p=>p.sport)])];
     const results = {};
 
+    // Check today and last 3 days to catch ungraded games
+    const dates = [];
+    for (let i=0;i<4;i++) {
+      const d = new Date();
+      d.setDate(d.getDate()-i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+
     for (const sport of sports) {
-      try {
-        const r = await fetch(`/api/results?sport=${sport}`);
-        if (r.ok) results[sport] = await r.json();
-      } catch {}
+      results[sport] = {games:[]};
+      for (const date of dates) {
+        try {
+          const r = await fetch(`/api/results?sport=${sport}&date=${date}`);
+          if (r.ok) {
+            const data = await r.json();
+            results[sport].games.push(...(data.games||[]));
+          }
+        } catch {}
+      }
     }
 
     // Match bet to game result
