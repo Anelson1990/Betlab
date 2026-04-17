@@ -1324,6 +1324,15 @@ Warning: ${note.warning||''}`,
     }
   },[state.bets]);
 
+  const deleteAIPick = useCallback((id)=>{
+    setState(s=>{
+      const bet = s.bets.find(b=>b.id===id);
+      if(!bet||bet.result!=='pending') return s;
+      return {...s, bankroll:parseFloat((s.bankroll+bet.stake).toFixed(2)), bets:s.bets.filter(b=>b.id!==id)};
+    });
+    addLog('🗑 Deleted pending AI pick');
+  },[]);
+
   const tailBet = useCallback((bet)=>{
     addMyPick({
       pick:bet.pick, sport:bet.sport, betType:bet.betType,
@@ -1935,7 +1944,7 @@ Analyze:
               {filterBar(aiFilter,setAiFilter)}
               {aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🤖</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO AI BETS YET</div><div style={{fontSize:12,marginTop:6}}>Dashboard → Find Value</div></div>
-                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} onTail={tailBet} teaching={teaching} allowEdit={false} bankroll={state.bankroll}/>)
+                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} onTail={tailBet} onDelete={bet.result==='pending'?deleteAIPick:null} teaching={teaching} allowEdit={true} bankroll={state.bankroll}/>)
               }
             </div>
           )}
