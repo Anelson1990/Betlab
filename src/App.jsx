@@ -899,7 +899,9 @@ export default function App() {
       ...pending.map(b=>toLocalDate(b.date)).filter(Boolean),
       ...trackedPending.map(p=>toLocalDate(p.date)).filter(Boolean),
     ]);
-    addLog(`📅 Bet dates found: ${[...betDates].join(', ')}`);
+    addLog(`📅 Bet dates: ${[...betDates].join(', ')}`);
+    addLog(`📡 Pending bets: ${pending.map(b=>b.sport+':'+b.pick.slice(0,15)).join(' | ')}`);
+    addLog(`📡 Pending tracked: ${trackedPending.map(p=>p.sport+':'+p.date+'|'+p.pick.slice(0,15)).join(' | ')}`);
     // Also add today and last 3 days as fallback
     for (let i=0;i<4;i++) {
       const d = new Date();
