@@ -229,10 +229,10 @@ Is this a good bet?`}],
         </div>
       )}
 
-      {allowEdit&&(
+      {(allowEdit||onDelete)&&(
         <div style={{display:'flex',gap:6,marginTop:6}}>
-          <button onClick={()=>onEdit(bet)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:10,fontWeight:700,cursor:'pointer'}}>✏️ EDIT</button>
-          {bet.result==='pending'&&(!confirmDelete
+          {allowEdit&&onEdit&&<button onClick={()=>onEdit(bet)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:10,fontWeight:700,cursor:'pointer'}}>✏️ EDIT</button>}
+          {bet.result==='pending'&&onDelete&&(!confirmDelete
             ?<button onClick={()=>setConfirmDelete(true)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'1px solid #7f1d1d44',background:'transparent',color:'#ef444488',fontSize:10,fontWeight:700,cursor:'pointer'}}>🗑 DELETE</button>
             :<button onClick={()=>onDelete(bet.id)} style={{flex:1,padding:'5px 0',borderRadius:6,border:'none',background:'#7f1d1d',color:'#fca5a5',fontSize:10,fontWeight:700,cursor:'pointer'}}>CONFIRM DELETE</button>
           )}
