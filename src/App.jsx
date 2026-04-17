@@ -1237,7 +1237,19 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
         if(end!==-1)picks=JSON.parse(s.slice(start,end+1));
       }
       if(!Array.isArray(picks)||picks.length===0){addLog('No strong value found.');setLoadingMsg('');setLoading(false);return;}
-      picks.forEach(p=>addAIPick({...p,sport:pickSport,stake:stakeAmount}));
+      picks.forEach(p=>{
+        const odds=parseInt(p.odds)||-110;
+        const dec=odds>0?odds/100+1:100/Math.abs(odds)+1;
+        const imp=1/dec;
+        const conf=(p.confidence||60)/100;
+        const edge=conf-imp;
+        let stake;
+        if(edge>0){
+          const kelly=((dec-1)*conf-(1-conf))/(dec-1)*0.25;
+          stake=Math.max(5,Math.min(Math.round(state.bankroll*kelly/5)*5,Math.round(state.bankroll*0.05)));
+        } else { stake=10; }
+        addAIPick({...p,sport:pickSport,stake});
+      });
       addLog(`✅ AI placed ${picks.length} pick(s)`);setTab('ai');
     } catch(err){setError('Failed: '+err.message);addLog('❌ '+err.message);}
     setLoadingMsg('');setLoading(false);
