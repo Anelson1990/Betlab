@@ -1236,7 +1236,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
         }
         if(end!==-1)picks=JSON.parse(s.slice(start,end+1));
       }
-      if(!Array.isArray(picks)||picks.length===0){addLog('No strong value found.');setLoadingMsg('');setLoading(false);return;}
+      if(!Array.isArray(picks)||picks.length===0){addLog('No strong value found.');setError(`No value found in today's ${pickSport} lines. Try a different sport or add focus context.`);setLoadingMsg('');setLoading(false);return;}
       picks.forEach(p=>{
         const odds=parseInt(p.odds)||-110;
         const dec=odds>0?odds/100+1:100/Math.abs(odds)+1;
