@@ -1080,7 +1080,7 @@ export default function App() {
       const sportResults = results[b.sport]?.games;
       if (!sportResults) { addLog(`⚠️ No ${b.sport} results fetched`); return b; }
       const game = matchBet(b.pick, b.sport, sportResults);
-      if (!game) { addLog(`⚠️ No match for: ${b.pick} (checked ${sportResults.length} games)`); return b; }
+      if (!game) { addLog(`⚠️ No match for: ${b.pick} sport=${b.sport} (checked ${sportResults.filter(g=>g).length} ${b.sport} games, sample: ${sportResults.slice(0,3).map(g=>g.away+'-'+g.home).join(',')})`); return b; }
       if (!game.final) { addLog(`⏳ Game not final: ${b.pick} (${game.away}-${game.home} ${game.status})`); return b; }
       const result = gradeResult(b, game, b.sport);
       if (!result) { addLog(`⚠️ Could not determine result for: ${b.pick} (${game.away} ${game.away_score}-${game.home_score} ${game.home})`); return b; }
