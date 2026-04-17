@@ -1299,19 +1299,19 @@ Warning: ${note.warning||''}`,
   },[addMyPick]);
 
   const undoGrade = useCallback((id)=>{
-    const bet=state.bets.find(b=>b.id===id);
-    if(!bet||bet.result==='pending')return;
-    const key=bet.source==='paste'?'myBankroll':'bankroll';
-    // gradeBet added: win=full payout, push=stake back, loss=nothing
-    // undoGrade must reverse that and restore pending state (stake already out)
-    const reversal = bet.result==='win'
-      ? -(americanToDecimal(bet.odds)-1)*bet.stake  // remove profit only
-      : bet.result==='loss'
-      ? bet.stake                                     // refund stake
-      : -bet.stake;                                   // push: remove returned stake
-    setState(s=>({...s,[key]:parseFloat((s[key]+reversal).toFixed(2)),bets:s.bets.map(b=>b.id===id?{...b,result:'pending',score:''}:b)}));
-    addLog(`↩ Undo grade: ${bet.pick} → back to PENDING`);
-  },[state.bets]);
+    setState(s=>{
+      const bet=s.bets.find(b=>b.id===id);
+      if(!bet||bet.result==='pending') return s;
+      const key=bet.source==='paste'?'myBankroll':'bankroll';
+      const reversal = bet.result==='win'
+        ? -(americanToDecimal(bet.odds)-1)*bet.stake
+        : bet.result==='loss'
+        ? bet.stake
+        : -bet.stake;
+      return {...s,[key]:parseFloat((s[key]+reversal).toFixed(2)),bets:s.bets.map(b=>b.id===id?{...b,result:'pending',score:''}:b)};
+    });
+    addLog(`↩ Undo grade: back to PENDING`);
+  },[]);
 
   const teachLesson = useCallback(async betId=>{
     const bet=state.bets.find(b=>b.id===betId);if(!bet)return;
