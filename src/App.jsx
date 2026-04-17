@@ -1032,26 +1032,38 @@ export default function App() {
         return scored ? 'win' : 'loss';
       }
 
-      // Moneyline
-      if (betType.includes('MONEYLINE') || betType.includes('ML')) {
+      // Moneyline - also handle tracker format "STL @ UTA — HOME (UTA)" or "AWAY (LAK)"
+      const isML = betType.includes('MONEYLINE') || betType.includes('ML') ||
+        pickUpper.includes('— HOME') || pickUpper.includes('— AWAY') ||
+        pickUpper.includes('HOME (') || pickUpper.includes('AWAY (');
+      if (isML) {
         const awayWin = away > home;
-        const awayPicked = pickUpper.includes(game.away.toUpperCase());
-        const homePicked = pickUpper.includes(game.home.toUpperCase());
         if (away === home) return 'push';
+        // Check for explicit HOME/AWAY in tracker format
+        if (pickUpper.includes('— HOME') || pickUpper.match(/HOME \([A-Z]+\)/)) return awayWin ? 'loss' : 'win';
+        if (pickUpper.includes('— AWAY') || pickUpper.match(/AWAY \([A-Z]+\)/)) return awayWin ? 'win' : 'loss';
+        // Standard ML matching
+        const awayAbbrs = getTeamAbbr(game.away_full||game.away);
+        const homeAbbrs = getTeamAbbr(game.home_full||game.home);
+        const awayPicked = pickUpper.includes(game.away.toUpperCase()) || awayAbbrs.some(a=>pickUpper.includes(a));
+        const homePicked = pickUpper.includes(game.home.toUpperCase()) || homeAbbrs.some(a=>pickUpper.includes(a));
         if (awayPicked) return awayWin ? 'win' : 'loss';
         if (homePicked) return awayWin ? 'loss' : 'win';
       }
 
-      // Totals
-      if (betType.includes('OVER') || betType.includes('UNDER') || betType.includes('TOTAL')) {
-        const totalMatch = bet.pick.match(/([ou])(\d+\.?\d*)/i) || bet.betType?.match(/([ou])(\d+\.?\d*)/i);
+      // Totals - handle "OVER 6.5", "UNDER 6.5", "o6.5", "u6.5"
+      if (betType.includes('OVER') || betType.includes('UNDER') || betType.includes('TOTAL') ||
+          pickUpper.includes('OVER') || pickUpper.includes('UNDER')) {
+        const totalMatch = bet.pick.match(/OVER\s+(\d+\.?\d*)/i) || bet.pick.match(/UNDER\s+(\d+\.?\d*)/i) ||
+          bet.pick.match(/([ou])(\d+\.?\d*)/i) || bet.betType?.match(/([ou])(\d+\.?\d*)/i);
+        const dir = bet.pick.match(/OVER/i) ? 'O' : bet.pick.match(/UNDER/i) ? 'U' : null;
         if (totalMatch) {
-          const dir = totalMatch[1].toUpperCase();
-          const line = parseFloat(totalMatch[2]);
+          const resolvedDir = dir || totalMatch[1].toUpperCase();
+          const line = parseFloat(totalMatch[2] || totalMatch[1]);
           const total = away + home;
           if (total === line) return 'push';
-          if (dir === 'O') return total > line ? 'win' : 'loss';
-          if (dir === 'U') return total < line ? 'win' : 'loss';
+          if (resolvedDir === 'O') return total > line ? 'win' : 'loss';
+          if (resolvedDir === 'U') return total < line ? 'win' : 'loss';
         }
       }
 
