@@ -1007,7 +1007,6 @@ export default function App() {
     });
 
     if (autoGraded > 0) {
-      // Recalculate bankrolls from newly graded bets
       let aiDelta = 0, myDelta = 0;
       newBets.forEach(b => {
         if (!b.autoGraded) return;
@@ -1015,13 +1014,25 @@ export default function App() {
         if (b.source==='ai') aiDelta += payout;
         else myDelta += payout;
       });
-      setState(s=>({
-        ...s,
-        bankroll: parseFloat((s.bankroll+aiDelta).toFixed(2)),
-        myBankroll: parseFloat((s.myBankroll+myDelta).toFixed(2)),
-        bets: newBets,
-        trackedPicks: newTracked,
-      }));
+      // Use functional update to avoid stale closure
+      setState(s=>{
+        // Reapply grades to fresh state
+        const freshBets = s.bets.map(b=>{
+          const graded = newBets.find(nb=>nb.id===b.id&&nb.autoGraded);
+          return graded ? {...b, result:graded.result, score:graded.score, autoGraded:true} : b;
+        });
+        const freshTracked = s.trackedPicks.map(p=>{
+          const graded = newTracked.find(np=>np.id===p.id&&np.autoGraded);
+          return graded ? {...p, result:graded.result, score:graded.score, autoGraded:true} : p;
+        });
+        return {
+          ...s,
+          bankroll: parseFloat((s.bankroll+aiDelta).toFixed(2)),
+          myBankroll: parseFloat((s.myBankroll+myDelta).toFixed(2)),
+          bets: freshBets,
+          trackedPicks: freshTracked,
+        };
+      });
       addLog(`✅ Auto-graded ${autoGraded} bet${autoGraded!==1?'s':''}`);
     }
   },[state.bets,state.trackedPicks,state.bankroll,state.myBankroll]);
