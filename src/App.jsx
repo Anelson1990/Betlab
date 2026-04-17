@@ -882,7 +882,8 @@ export default function App() {
   const autoGrade = useCallback(async () => {
     const pending = state.bets.filter(b=>b.result==='pending');
     const trackedPending = state.trackedPicks.filter(p=>p.result==='pending');
-    if (!pending.length && !trackedPending.length) return;
+    addLog(`🔍 Auto-grade check: ${pending.length} pending bets, ${trackedPending.length} tracked`);
+    if (!pending.length && !trackedPending.length) { addLog('No pending bets to grade.'); return; }
 
     const sports = [...new Set([...pending.map(b=>b.sport),...trackedPending.map(p=>p.sport)])];
     const results = {};
