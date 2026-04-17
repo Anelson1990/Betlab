@@ -1331,7 +1331,7 @@ Analyze:
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
   // Auto-grade when opening dashboard
-  useEffect(()=>{ if(tab==='dashboard') autoGrade(); },[tab,autoGrade]);
+  useEffect(()=>{ if(tab==='dashboard'){ autoGrade(); } },[tab]);// eslint-disable-line
 
   const TABS=['dashboard','ai','paste','mine','tracker','lessons','log'];
   const TLABELS={dashboard:'📊 Dash',ai:'🤖 AI Bets',paste:'📋 Paste',mine:'📈 My Scripts',tracker:'📡 Tracker',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
@@ -1512,6 +1512,10 @@ Analyze:
               </div>
               <button onClick={runReview} disabled={loading||aiGraded.length<3} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #1e40af44',background:'rgba(29,78,216,.1)',color:aiGraded.length>=3?'#60a5fa':'#475569',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:8}}>
                 📊 AI PERFORMANCE REVIEW {aiGraded.length<3?`(${3-aiGraded.length} more needed)`:''}
+              </button>
+
+              <button onClick={autoGrade} style={{width:'100%',padding:'10px 0',borderRadius:10,border:'1px solid #38bdf844',background:'rgba(56,189,248,0.1)',color:'#38bdf8',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:8}}>
+                🔄 CHECK & AUTO-GRADE RESULTS
               </button>
 
               <button onClick={runCoach} disabled={coachLoading||state.bets.filter(b=>b.result!=='pending').length<10} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #a78bfa44',background:'rgba(167,139,250,.1)',color:state.bets.filter(b=>b.result!=='pending').length>=10?'#a78bfa':'#475569',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:14}}>
