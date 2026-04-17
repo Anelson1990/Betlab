@@ -1033,7 +1033,8 @@ export default function App() {
       }
 
       // Moneyline - also handle tracker format "STL @ UTA — HOME (UTA)" or "AWAY (LAK)"
-      const isML = betType.includes('MONEYLINE') || betType.includes('ML') ||
+      const isSpread = betType.includes('SPREAD') || betType.includes('PUCK') || betType.includes('RUN') || bet.pick.match(/[+-]\d{1,2}\.5/);
+      const isML = !isSpread && (betType.includes('MONEYLINE') || betType.includes('ML') ||
         pickUpper.includes('— HOME') || pickUpper.includes('— AWAY') ||
         pickUpper.includes('HOME (') || pickUpper.includes('AWAY (');
       if (isML) {
