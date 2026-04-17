@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchOdds, callClaude } from './api.js';
 import { SPORT_CONFIG, SPORTS, formatOddsForClaude } from './sportsMap.js';
+import { runSim, getSimConfidence, calcTuningParams } from './simEngine.js';
 import {
   loadState, persist, uid,
   americanToDecimal, impliedProb, formatMoney, formatOdds,
@@ -123,6 +124,21 @@ Is this a good bet?`}],
             {bet.modelProb?` · Model: ${bet.modelProb}%`:''}
           </div>
           {bet.score&&<div style={{marginTop:4,fontSize:11,color:'#38bdf8',fontWeight:700}}>📊 {bet.score}</div>}
+          {bet.simConfidence&&(
+            <div style={{marginTop:4,padding:'4px 8px',background:'rgba(251,191,36,0.05)',borderRadius:4,border:'1px solid rgba(251,191,36,0.2)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:9,color:'#fbbf24',fontWeight:700,letterSpacing:1}}>🎲 MC SIM</span>
+              <span style={{fontSize:11,color:'#fbbf24',fontWeight:700}}>{bet.simConfidence}%</span>
+            </div>
+          )}
+          {bet.simResult&&(
+            <div style={{marginTop:2,display:'flex',gap:4,flexWrap:'wrap'}}>
+              {bet.simResult.homeWinProb!=null&&<span style={{fontSize:9,color:'#475569'}}>Home {bet.simResult.homeWinProb}%</span>}
+              {bet.simResult.awayWinProb!=null&&<span style={{fontSize:9,color:'#475569'}}>Away {bet.simResult.awayWinProb}%</span>}
+              {bet.simResult.overProb!=null&&<span style={{fontSize:9,color:'#475569'}}>O {bet.simResult.overProb}%</span>}
+              {bet.simResult.underProb!=null&&<span style={{fontSize:9,color:'#475569'}}>U {bet.simResult.underProb}%</span>}
+              {bet.simResult.nrfiProb!=null&&<span style={{fontSize:9,color:'#475569'}}>NRFI {bet.simResult.nrfiProb}%</span>}
+            </div>
+          )}
           {bet.weather&&bet.weather.source&&(
             <div style={{marginTop:4,fontSize:10,color:'#64748b'}}>
               🌤 {bet.weather.temp_f}°F · {bet.weather.wind_mph}mph wind
@@ -1248,9 +1264,18 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
           const kelly=((dec-1)*conf-(1-conf))/(dec-1)*0.25;
           stake=Math.max(5,Math.min(Math.round(state.bankroll*kelly/5)*5,Math.round(state.bankroll*0.05)));
         } else { stake=10; }
-        addAIPick({...p,sport:pickSport,stake});
+        // Run Monte Carlo simulation for this pick
+        const simResult = runSim(pickSport, p.homeOdds||p.odds, p.awayOdds||p.odds, p.totalLine||null, 5000);
+        const simConf = simResult ? getSimConfidence(simResult, p.betType||'', p.pick||'', p.odds) : null;
+        addAIPick({...p,sport:pickSport,stake,simConfidence:simConf,simResult:simResult?{
+          homeWinProb:Math.round(simResult.homeWinProb*100),
+          awayWinProb:Math.round(simResult.awayWinProb*100),
+          overProb:Math.round(simResult.overProb*100),
+          underProb:Math.round(simResult.underProb*100),
+          nrfiProb:simResult.nrfiProb?Math.round(simResult.nrfiProb*100):null,
+        }:null});
       });
-      addLog(`✅ AI placed ${picks.length} pick(s)`);setTab('ai');
+      addLog(`✅ AI placed ${picks.length} pick(s) with Monte Carlo sim`);setTab('ai');
     } catch(err){setError('Failed: '+err.message);addLog('❌ '+err.message);}
     setLoadingMsg('');setLoading(false);
   },[pickSport,pickContext,state.bankroll,addAIPick]);
