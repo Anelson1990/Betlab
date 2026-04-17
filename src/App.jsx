@@ -1069,34 +1069,24 @@ export default function App() {
 
       // Spread/Puck line/Run line
       if (betType.includes('SPREAD') || betType.includes('PUCK') || betType.includes('RUN') || bet.pick.match(/[+-]\d+\.5/)) {
-        const spreadMatch = bet.pick.match(/([+-]\d+\.?\d*)/);
+        const spreadMatch = bet.pick.match(/([+-]\d{1,2}\.5)/);
         if (spreadMatch) {
           const spread = parseFloat(spreadMatch[1]);
-          const pickUpper2 = bet.pick.toUpperCase();
+          const pickBeforeSpread = bet.pick.toUpperCase().split(spreadMatch[1])[0];
           const awayAbbr = game.away.toUpperCase();
           const homeAbbr = game.home.toUpperCase();
-          // Use alias lookup to find which team is in the pick
           const awayAliases = getTeamAbbr(game.away_full||game.away);
           const homeAliases = getTeamAbbr(game.home_full||game.home);
-          const pickedAway = pickUpper2.includes(awayAbbr) ||
-            awayAliases.some(a=>pickUpper2.includes(a)) ||
-            (game.away_full && game.away_full.toUpperCase().split(' ').some(w=>w.length>3&&pickUpper2.includes(w)));
-          const pickedHome = pickUpper2.includes(homeAbbr) ||
-            homeAliases.some(a=>pickUpper2.includes(a)) ||
-            (game.home_full && game.home_full.toUpperCase().split(' ').some(w=>w.length>3&&pickUpper2.includes(w)));
-          // Default: if spread is positive, likely picked underdog
-          // If we can identify the team from pick text, use that. Otherwise use spread sign.
-          // Positive spread = underdog. Check if SJS/Sharks/etc appears before the spread number.
-          const pickBeforeSpread = pickUpper2.split(/[+-]\d/)[0];
-          const awayInPick = awayAbbr && pickBeforeSpread.includes(awayAbbr) || 
-            awayAliases.some(a=>pickBeforeSpread.includes(a));
-          const homeInPick = homeAbbr && pickBeforeSpread.includes(homeAbbr) ||
-            homeAliases.some(a=>pickBeforeSpread.includes(a));
-          const useAway = awayInPick || (!homeInPick && spread > 0 && away < home) || (!homeInPick && !awayInPick && pickedAway);
-          const margin = useAway ? (away - home) : (home - away);
-          const covered = margin + spread;
+          const awayInPick = pickBeforeSpread.includes(awayAbbr) || awayAliases.some(a=>pickBeforeSpread.includes(a));
+          const homeInPick = pickBeforeSpread.includes(homeAbbr) || homeAliases.some(a=>pickBeforeSpread.includes(a));
+          if (!awayInPick && !homeInPick) return null;
+          const pickedScore = awayInPick ? away : home;
+          const otherScore = awayInPick ? home : away;
+          const covered = (pickedScore - otherScore) + spread;
           if (covered === 0) return 'push';
           return covered > 0 ? 'win' : 'loss';
+        }
+      }
         }
       }
 
