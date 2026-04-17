@@ -1071,7 +1071,14 @@ export default function App() {
             homeAliases.some(a=>pickUpper2.includes(a)) ||
             (game.home_full && game.home_full.toUpperCase().split(' ').some(w=>w.length>3&&pickUpper2.includes(w)));
           // Default: if spread is positive, likely picked underdog
-          const useAway = pickedAway || (!pickedHome && spread > 0 && away < home);
+          // If we can identify the team from pick text, use that. Otherwise use spread sign.
+          // Positive spread = underdog. Check if SJS/Sharks/etc appears before the spread number.
+          const pickBeforeSpread = pickUpper2.split(/[+-]\d/)[0];
+          const awayInPick = awayAbbr && pickBeforeSpread.includes(awayAbbr) || 
+            awayAliases.some(a=>pickBeforeSpread.includes(a));
+          const homeInPick = homeAbbr && pickBeforeSpread.includes(homeAbbr) ||
+            homeAliases.some(a=>pickBeforeSpread.includes(a));
+          const useAway = awayInPick || (!homeInPick && spread > 0 && away < home) || (!homeInPick && !awayInPick && pickedAway);
           const margin = useAway ? (away - home) : (home - away);
           const covered = margin + spread;
           if (covered === 0) return 'push';
