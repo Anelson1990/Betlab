@@ -481,6 +481,8 @@ function PasteTab({ onConfirmPicks, callClaude: claudeFn }) {
   const [selected, setSelected] = useState([]);
   const [error, setError] = useState('');
   const [stake, setStake] = useState(25);
+  const [verifying, setVerifying] = useState(false);
+  const [verifications, setVerifications] = useState({});
   const sc = SPORT_COLORS[activeSport];
 
   const parse = async () => {
@@ -526,6 +528,49 @@ Rules:
     setParsing(false);
   };
 
+  const verifyPicks = async () => {
+    if (!preview) return;
+    setVerifying(true);
+    const sport = preview.sport;
+    const sportGuides = {
+      MLB: 'Check: starting pitcher confirmed + recent ERA/WHIP, umpire zone tendencies (over/under rate), weather (wind direction/speed affects NRFI), lineup injuries, line movement since open. For NRFI picks focus on pitcher strikeout rates and first inning history.',
+      NHL: 'Check: confirmed goalie starters, back-to-back situations, recent form last 5 games, key injuries, power play and penalty kill rates, home/away splits, line movement.',
+      NBA: 'Check: injury report (stars sitting?), back-to-back, pace of play matchup, defensive ratings, recent scoring trends, rest advantage, line movement.',
+      NFL: 'Check: injury report (QB, WR, OL), weather forecast (wind/rain/snow affects totals), referee crew tendencies, line movement, public vs sharp split, divisional game dynamics.',
+    };
+    const newVerifs = {};
+    for (const pick of preview.picks) {
+      try {
+        const raw = await callClaude([{role:'user',content:`You are an independent sharp sports betting analyst. Do NOT look at the model probability yet.
+
+PICK TO VERIFY: ${pick.pick}
+SPORT: ${sport}
+BET TYPE: ${pick.betType}
+MODEL SAYS: ${pick.recommendation} at ${pick.modelProb}% probability, odds ${pick.odds}
+
+YOUR JOB: Use web search to independently research this matchup RIGHT NOW. ${sportGuides[sport]}
+
+After your research, return ONLY this JSON:
+{
+  "verdict": "AGREE" or "DISAGREE" or "CAUTION",
+  "confidence": 1-10,
+  "summary": "2-3 sentences of what you found",
+  "key_findings": ["3-4 specific facts you found from web search"],
+  "edge_assessment": "Is there real edge here? Why or why not?",
+  "risk_flags": ["any red flags found"],
+  "independent_prob": "your own estimated probability % as a number"
+}`}],
+        `You are an elite independent sports betting analyst. Always use web search to find current data before giving verdict. Be brutally honest. JSON only.`,
+        true // use web search
+      );
+      let v={verdict:'UNKNOWN',summary:'Could not verify',key_findings:[],risk_flags:[]};
+      try{const c=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();const s=c.indexOf('{'),e=c.lastIndexOf('}');if(s!==-1&&e!==-1)v=JSON.parse(c.slice(s,e+1));}catch{}
+      newVerifs[pick.pick]=v;
+    }
+    setVerifications(newVerifs);
+    setVerifying(false);
+  };
+
   const confirm = () => {
     if (!preview) return;
     const picksToLog = preview.picks.filter((_,i)=>selected.includes(i));
@@ -533,6 +578,7 @@ Rules:
     onConfirmPicks(picksToLog, preview.sport, stake);
     setPreview(null);
     setSelected([]);
+    setVerifications({});
     setPastes(p=>({...p,[activeSport]:''}));
   };
 
@@ -614,6 +660,42 @@ Rules:
               <div style={{marginTop:8,fontSize:10,color:'#334155'}}>Stake ${stake} · logs to MY SCRIPTS bankroll</div>
             </div>
           ))}
+          <button onClick={verifyPicks} disabled={verifying} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #a78bfa44',background:verifying?'#1e293b':'rgba(167,139,250,0.1)',color:verifying?'#475569':'#a78bfa',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1,cursor:verifying?'not-allowed':'pointer',marginBottom:8}}>
+            {verifying?'🔍 SEARCHING LIVE DATA...':'🔍 AI VERIFY WITH LIVE DATA'}
+          </button>
+
+          {Object.keys(verifications).length>0&&(
+            <div style={{marginBottom:10}}>
+              {preview.picks.map((pick,i)=>{
+                const v=verifications[pick.pick];
+                if(!v) return null;
+                const vc=v.verdict==='AGREE'?'#22c55e':v.verdict==='DISAGREE'?'#ef4444':'#fbbf24';
+                return (
+                  <div key={i} style={{padding:'10px 12px',background:`rgba(${v.verdict==='AGREE'?'34,197,94':v.verdict==='DISAGREE'?'239,68,68':'251,191,36'},0.05)`,borderRadius:8,border:`1px solid ${vc}33`,marginBottom:8}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                      <div style={{fontSize:11,color:'#64748b',fontWeight:700}}>{pick.pick}</div>
+                      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                        {v.independent_prob&&<span style={{fontSize:10,color:'#64748b'}}>AI: {v.independent_prob}%</span>}
+                        <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:vc,fontWeight:700,padding:'2px 8px',borderRadius:4,border:`1px solid ${vc}44`,background:`${vc}11`}}>{v.verdict}</span>
+                      </div>
+                    </div>
+                    <div style={{fontSize:11,color:'#94a3b8',marginBottom:6,lineHeight:1.5}}>{v.summary}</div>
+                    {v.key_findings?.length>0&&(
+                      <div style={{marginBottom:4}}>
+                        {v.key_findings.map((f,j)=><div key={j} style={{fontSize:10,color:'#64748b',marginBottom:2}}>• {f}</div>)}
+                      </div>
+                    )}
+                    {v.risk_flags?.length>0&&v.risk_flags[0]&&(
+                      <div style={{marginTop:4}}>
+                        {v.risk_flags.map((f,j)=><div key={j} style={{fontSize:10,color:'#fbbf24',marginBottom:2}}>⚠️ {f}</div>)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div style={{display:'flex',gap:8,marginTop:4}}>
             <button onClick={confirm} style={{flex:2,padding:'12px 0',borderRadius:8,border:'none',cursor:'pointer',background:'linear-gradient(135deg,#22c55e,#16a34a)',color:'#000',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
               ✅ LOG {selected.length} OF {preview.picks.length} PICKS
