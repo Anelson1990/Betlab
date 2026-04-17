@@ -1224,7 +1224,7 @@ YOUR BETTING HISTORY (${graded.length} graded bets):
 Record: ${wins}W-${graded.length-wins}L | ROI: ${roi.toFixed(1)}% | Net: ${formatMoney(profit)}
 By sport: ${sportStr}
 Recent: ${recent}
-Use this history to adapt your picks — avoid bet types that are losing, favor what's working.${recentLessons?'\nLessons from past bets: '+recentLessons:''}`;
+Use this history to adapt your picks — avoid bet types that are losing, favor what's working.${recentLessons?'\nLessons from past bets: '+recentLessons:''}${tuningNote}`;
   };
 
 
