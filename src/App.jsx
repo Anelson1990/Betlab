@@ -1242,12 +1242,64 @@ Warning: ${note.warning||''}`,
     };
 
     const lessons = state.lessons.slice(0,8).map(l=>l.takeaway||l.body).filter(Boolean);
+
+    // Build model tracker summary
+    const trackerSummary = (() => {
+      const graded = state.trackedPicks.filter(p=>p.result!=='pending');
+      if (!graded.length) return 'No model tracker data yet.';
+      const byRating={};
+      graded.forEach(p=>{
+        const r=p.rating||'Unknown';
+        if(!byRating[r])byRating[r]={w:0,l:0,probs:[]};
+        if(p.result==='win')byRating[r].w++;
+        else if(p.result==='loss')byRating[r].l++;
+        if(p.modelProb)byRating[r].probs.push(parseFloat(p.modelProb));
+      });
+      const ratingStr=Object.entries(byRating).map(([r,v])=>{
+        const avgProb=v.probs.length?(v.probs.reduce((a,b)=>a+b,0)/v.probs.length).toFixed(1):'-';
+        const wr=((v.w/(v.w+v.l))*100).toFixed(0);
+        return `${r}: ${v.w}W-${v.l}L WR:${wr}% AvgProb:${avgProb}%`;
+      }).join(', ');
+      const bySport={};
+      graded.forEach(p=>{
+        if(!bySport[p.sport])bySport[p.sport]={w:0,l:0};
+        if(p.result==='win')bySport[p.sport].w++;
+        else bySport[p.sport].l++;
+      });
+      const sportStr=Object.entries(bySport).map(([s,v])=>`${s}:${v.w}W-${v.l}L`).join(', ');
+      return `${graded.length} tracked picks | By rating: ${ratingStr} | By sport: ${sportStr}`;
+    })();
+
+    // Build calibration data
+    const calibration = (() => {
+      const graded = state.bets.filter(b=>b.result!=='pending'&&b.confidence);
+      if (graded.length < 5) return 'Not enough data for calibration.';
+      const buckets={};
+      graded.forEach(b=>{
+        const bucket=Math.floor(b.confidence/10)*10;
+        if(!buckets[bucket])buckets[bucket]={pred:[],actual:[]};
+        buckets[bucket].pred.push(b.confidence);
+        buckets[bucket].actual.push(b.result==='win'?1:0);
+      });
+      return Object.entries(buckets).map(([b,d])=>{
+        const pred=(d.pred.reduce((a,v)=>a+v,0)/d.pred.length).toFixed(0);
+        const actual=(d.actual.reduce((a,v)=>a+v,0)/d.actual.length*100).toFixed(0);
+        return `${b}-${+b+9}% conf: predicted ${pred}% actual ${actual}% (${d.pred.length} bets)`;
+      }).join(' | ');
+    })();
+
     try {
       const raw = await callClaude([{role:'user',content:`You are an elite sports betting coach. Analyze these TWO separate betting systems and compare them.
 
 ${summarize(aiGradedBets,'AI PAPER BETS (autonomous AI picks from live odds)')}
 
 ${summarize(myGradedBets,'MY SCRIPT PICKS (picks from Austin Python models)')}
+
+MODEL TRACKER DATA (raw model performance):
+${trackerSummary}
+
+CONFIDENCE CALIBRATION (predicted vs actual win rate):
+${calibration}
 
 LESSONS FROM PAST ANALYSIS:
 ${lessons.join(' | ')}
