@@ -983,15 +983,15 @@ export default function App() {
     const newBets = state.bets.map(b => {
       if (b.result !== 'pending') return b;
       const sportResults = results[b.sport]?.games;
-      if (!sportResults) return b;
+      if (!sportResults) { addLog(`⚠️ No ${b.sport} results fetched`); return b; }
       const game = matchBet(b.pick, b.sport, sportResults);
-      if (!game) return b;
+      if (!game) { addLog(`⚠️ No match for: ${b.pick} (checked ${sportResults.length} games)`); return b; }
+      if (!game.final) { addLog(`⏳ Game not final: ${b.pick} (${game.away}-${game.home} ${game.status})`); return b; }
       const result = gradeResult(b, game, b.sport);
-      if (!result) return b;
-      const payout = result==='win'?americanToDecimal(b.odds)*b.stake:result==='push'?b.stake:0;
+      if (!result) { addLog(`⚠️ Could not determine result for: ${b.pick} (${game.away} ${game.away_score}-${game.home_score} ${game.home})`); return b; }
       autoGraded++;
-      addLog(`🤖 Auto-graded: ${b.pick} → ${result.toUpperCase()} (${game.away_score}-${game.home_score})`);
-      return {...b, result, score:`${game.away_score}-${game.home_score}`, autoGraded:true};
+      addLog(`🤖 Auto-graded: ${b.pick} → ${result.toUpperCase()} (${game.away} ${game.away_score}-${game.home_score} ${game.home})`);
+      return {...b, result, score:`${game.away} ${game.away_score}-${game.home_score} ${game.home}`, autoGraded:true};
     });
 
     const newTracked = state.trackedPicks.map(p => {
