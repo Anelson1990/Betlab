@@ -889,10 +889,17 @@ export default function App() {
     const results = {};
 
     // Get all unique dates from pending bets plus today and yesterday
+    // Convert ISO date to local date string
+    const toLocalDate = (iso) => {
+      if (!iso) return null;
+      const d = new Date(iso);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    };
     const betDates = new Set([
-      ...pending.map(b=>b.date?.split('T')[0]).filter(Boolean),
-      ...trackedPending.map(p=>p.date?.split('T')[0]).filter(Boolean),
+      ...pending.map(b=>toLocalDate(b.date)).filter(Boolean),
+      ...trackedPending.map(p=>toLocalDate(p.date)).filter(Boolean),
     ]);
+    addLog(`📅 Bet dates found: ${[...betDates].join(', ')}`);
     // Also add today and last 3 days as fallback
     for (let i=0;i<4;i++) {
       const d = new Date();
