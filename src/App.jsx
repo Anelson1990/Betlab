@@ -909,28 +909,91 @@ export default function App() {
       }
     }
 
-    // Match bet to game result with fuzzy matching
+    // Comprehensive team lookup - maps any name/nickname to API abbreviation
+    const TEAM_ALIASES = {
+      // NHL
+      'ANAHEIM':['ANA'],'DUCKS':['ANA'],'BOSTON':['BOS'],'BRUINS':['BOS'],
+      'BUFFALO':['BUF'],'SABRES':['BUF'],'CALGARY':['CGY'],'FLAMES':['CGY'],
+      'CAROLINA':['CAR'],'HURRICANES':['CAR'],'CHICAGO':['CHI'],'BLACKHAWKS':['CHI'],
+      'COLORADO':['COL'],'AVALANCHE':['COL'],'COLUMBUS':['CBJ'],'BLUEJACKETS':['CBJ'],
+      'DALLAS':['DAL'],'STARS':['DAL'],'DETROIT':['DET'],'REDWINGS':['DET'],
+      'EDMONTON':['EDM'],'OILERS':['EDM'],'FLORIDA':['FLA'],'PANTHERS':['FLA'],
+      'LOSANGELES':['LAK'],'KINGS':['LAK'],'MINNESOTA':['MIN'],'WILD':['MIN'],
+      'MONTREAL':['MTL'],'CANADIENS':['MTL'],'HABS':['MTL'],
+      'NASHVILLE':['NSH'],'PREDATORS':['NSH'],'PREDS':['NSH'],
+      'NEWJERSEY':['NJD'],'DEVILS':['NJD'],'NEWYORKISLANDERS':['NYI'],'ISLANDERS':['NYI'],
+      'NEWYORKRANGERS':['NYR'],'RANGERS':['NYR'],'OTTAWA':['OTT'],'SENATORS':['OTT'],
+      'PHILADELPHIA':['PHI'],'FLYERS':['PHI'],'PITTSBURGH':['PIT'],'PENGUINS':['PIT'],
+      'SANJOSE':['SJS'],'SHARKS':['SJS'],'SEATTLE':['SEA'],'KRAKEN':['SEA'],
+      'STLOUIS':['STL'],'BLUES':['STL'],'TAMPABAY':['TBL'],'LIGHTNING':['TBL'],
+      'TORONTO':['TOR'],'MAPLELEA':['TOR'],'LEAFS':['TOR'],
+      'UTAH':['UTA'],'HOCKEYCLUB':['UTA'],
+      'VANCOUVER':['VAN'],'CANUCKS':['VAN'],'VEGAS':['VGK'],'GOLDENKNIGHTS':['VGK'],
+      'WASHINGTON':['WSH'],'CAPITALS':['WSH'],'CAPS':['WSH'],
+      'WINNIPEG':['WPG'],'JETS':['WPG'],
+      // MLB
+      'ARIZONA':['ARI'],'DIAMONDBACKS':['ARI'],'DBACKS':['ARI'],
+      'ATLANTA':['ATL'],'BRAVES':['ATL'],'BALTIMORE':['BAL'],'ORIOLES':['BAL'],
+      'REDSOX':['BOS'],'CUBS':['CHC'],'WHITESOX':['CHW'],
+      'CINCINNATI':['CIN'],'REDS':['CIN'],'CLEVELAND':['CLE'],'GUARDIANS':['CLE'],
+      'COLORADO':['COL'],'ROCKIES':['COL'],'DETROIT':['DET'],'TIGERS':['DET'],
+      'HOUSTON':['HOU'],'ASTROS':['HOU'],'KANSASCITY':['KCR'],'ROYALS':['KCR'],
+      'ANGELS':['LAA'],'DODGERS':['LAD'],'MIAMI':['MIA'],'MARLINS':['MIA'],
+      'MILWAUKEE':['MIL'],'BREWERS':['MIL'],'MINNESOTA':['MIN'],'TWINS':['MIN'],
+      'METS':['NYM'],'YANKEES':['NYY'],'ATHLETICS':['OAK'],'PHILLIES':['PHI'],
+      'PIRATES':['PIT'],'PADRES':['SDP'],'GIANTS':['SFG'],'MARINERS':['SEA'],
+      'CARDINALS':['STL'],'RAYS':['TBR'],'RANGERS':['TEX'],'BLUEJAYS':['TOR'],
+      'NATIONALS':['WSH'],
+      // NBA
+      'HAWKS':['ATL'],'CELTICS':['BOS'],'NETS':['BKN'],'HORNETS':['CHA'],
+      'BULLS':['CHI'],'CAVALIERS':['CLE'],'CAVS':['CLE'],'MAVS':['DAL'],
+      'MAVERICKS':['DAL'],'NUGGETS':['DEN'],'PISTONS':['DET'],'WARRIORS':['GSW'],
+      'ROCKETS':['HOU'],'PACERS':['IND'],'CLIPPERS':['LAC'],'LAKERS':['LAL'],
+      'GRIZZLIES':['MEM'],'HEAT':['MIA'],'BUCKS':['MIL'],'TIMBERWOLVES':['MIN'],
+      'PELICANS':['NOP'],'KNICKS':['NYK'],'THUNDER':['OKC'],'MAGIC':['ORL'],
+      'SIXERS':['PHI'],'76ERS':['PHI'],'SUNS':['PHX'],'TRAILBLAZERS':['POR'],
+      'BLAZERS':['POR'],'KINGS':['SAC'],'SPURS':['SAS'],'RAPTORS':['TOR'],
+      'JAZZ':['UTA'],'WIZARDS':['WAS'],
+      // NFL
+      'BEARS':['CHI'],'BENGALS':['CIN'],'BROWNS':['CLE'],'COWBOYS':['DAL'],
+      'BRONCOS':['DEN'],'LIONS':['DET'],'PACKERS':['GB'],'TEXANS':['HOU'],
+      'COLTS':['IND'],'JAGUARS':['JAX'],'CHIEFS':['KC'],'RAIDERS':['LV'],
+      'CHARGERS':['LAC'],'RAMS':['LAR'],'DOLPHINS':['MIA'],'VIKINGS':['MIN'],
+      'PATRIOTS':['NE'],'SAINTS':['NO'],'GIANTS':['NYG'],'JETS':['NYJ'],
+      'EAGLES':['PHI'],'STEELERS':['PIT'],'49ERS':['SF'],'SEAHAWKS':['SEA'],
+      'BUCCANEERS':['TB'],'BUCS':['TB'],'TITANS':['TEN'],'COMMANDERS':['WAS'],
+      'REDSKINS':['WAS'],'RAVENS':['BAL'],'BILLS':['BUF'],'FALCONS':['ATL'],
+      'PANTHERS':['CAR'],'CARDINALS':['ARI'],
+    };
+
+    const getTeamAbbr = (text) => {
+      const upper = text.toUpperCase().replace(/[^A-Z0-9]/g,'');
+      // Direct match
+      if (TEAM_ALIASES[upper]) return TEAM_ALIASES[upper];
+      // Partial match - find any alias that appears in the text
+      const textUpper = text.toUpperCase();
+      for (const [alias, abbrs] of Object.entries(TEAM_ALIASES)) {
+        if (textUpper.includes(alias.replace(/([A-Z])/g,' $1').trim())) return abbrs;
+        if (textUpper.includes(alias)) return abbrs;
+      }
+      return [];
+    };
+
     const matchBet = (pick, sport, games) => {
       if (!games?.length) return null;
-      const pickUpper = pick.toUpperCase();
-      // Try exact abbreviation match first
-      let match = games.find(g => {
-        if (!g.away || !g.home) return false;
-        const away = g.away.toUpperCase();
-        const home = g.home.toUpperCase();
-        return pickUpper.includes(away) || pickUpper.includes(home);
-      });
-      if (match) return match;
-      // Try full name fuzzy match
-      match = games.find(g => {
-        const awayFull = (g.away_full||'').toUpperCase();
-        const homeFull = (g.home_full||'').toUpperCase();
-        const awayWords = awayFull.split(' ');
-        const homeWords = homeFull.split(' ');
-        return awayWords.some(w=>w.length>3&&pickUpper.includes(w)) ||
-               homeWords.some(w=>w.length>3&&pickUpper.includes(w));
-      });
-      return match || null;
+      const pickAbbrs = getTeamAbbr(pick);
+      // Match by abbreviation found in pick text
+      return games.find(g => {
+        const away = (g.away||'').toUpperCase();
+        const home = (g.home||'').toUpperCase();
+        // Direct abbr match
+        if (pickAbbrs.includes(away) || pickAbbrs.includes(home)) return true;
+        // Also try direct string match on pick
+        const pickUpper = pick.toUpperCase();
+        if (away && pickUpper.includes(away)) return true;
+        if (home && pickUpper.includes(home)) return true;
+        return false;
+      }) || null;
     };
 
     const gradeResult = (bet, game, sport) => {
