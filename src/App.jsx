@@ -1221,7 +1221,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     } catch(err){oddsText='Live odds unavailable.';addLog(`⚠️ ${err.message}`);}
     const stakeAmount=Math.max(10,Math.round(state.bankroll*0.03/5)*5);
     const history=buildHistorySummary();
-    const sys=`You are a sharp sports bettor. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${history}\nReturn ONLY a JSON array. Each: {"pick","sport","betType","odds"(integer),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nReturn [] if no value. No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
+    const sys=`You are a sharp sports bettor finding value in ${pickSport} games. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${history}\nIMPORTANT: Always return at least 1-3 picks even if edge is small. Never return empty array unless there are literally no games.\nReturn ONLY a JSON array. Each: {"pick","sport","betType","odds"(integer),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nNo markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
     setLoadingMsg('🧠 Finding value...');
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,true);
