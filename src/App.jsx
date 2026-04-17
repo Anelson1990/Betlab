@@ -909,15 +909,28 @@ export default function App() {
       }
     }
 
-    // Match bet to game result
+    // Match bet to game result with fuzzy matching
     const matchBet = (pick, sport, games) => {
       if (!games?.length) return null;
       const pickUpper = pick.toUpperCase();
-      return games.find(g => {
+      // Try exact abbreviation match first
+      let match = games.find(g => {
+        if (!g.away || !g.home) return false;
         const away = g.away.toUpperCase();
         const home = g.home.toUpperCase();
-        return (pickUpper.includes(away) || pickUpper.includes(home));
+        return pickUpper.includes(away) || pickUpper.includes(home);
       });
+      if (match) return match;
+      // Try full name fuzzy match
+      match = games.find(g => {
+        const awayFull = (g.away_full||'').toUpperCase();
+        const homeFull = (g.home_full||'').toUpperCase();
+        const awayWords = awayFull.split(' ');
+        const homeWords = homeFull.split(' ');
+        return awayWords.some(w=>w.length>3&&pickUpper.includes(w)) ||
+               homeWords.some(w=>w.length>3&&pickUpper.includes(w));
+      });
+      return match || null;
     };
 
     const gradeResult = (bet, game, sport) => {
