@@ -878,6 +878,122 @@ export default function App() {
     } catch { return null; }
   };
 
+  const autoGrade = useCallback(async () => {
+    const pending = state.bets.filter(b=>b.result==='pending'&&b.sport!=='NFL');
+    const trackedPending = state.trackedPicks.filter(p=>p.result==='pending'&&p.sport!=='NFL');
+    if (!pending.length && !trackedPending.length) return;
+
+    const sports = [...new Set([...pending.map(b=>b.sport),...trackedPending.map(p=>p.sport)])];
+    const results = {};
+
+    for (const sport of sports) {
+      try {
+        const r = await fetch(`/api/results?sport=${sport}`);
+        if (r.ok) results[sport] = await r.json();
+      } catch {}
+    }
+
+    // Match bet to game result
+    const matchBet = (pick, sport, games) => {
+      if (!games?.length) return null;
+      const pickUpper = pick.toUpperCase();
+      return games.find(g => {
+        const away = g.away.toUpperCase();
+        const home = g.home.toUpperCase();
+        return (pickUpper.includes(away) || pickUpper.includes(home));
+      });
+    };
+
+    const gradeResult = (bet, game, sport) => {
+      if (!game?.final) return null;
+      const pickUpper = bet.pick.toUpperCase();
+      const betType = (bet.betType||'').toUpperCase();
+      const away = game.away_score;
+      const home = game.home_score;
+      if (away === null || home === null) return null;
+
+      // NRFI/YRFI
+      if (betType.includes('NRFI') || pickUpper.includes('NRFI')) {
+        if (game.away_r1 === null || game.home_r1 === null) return null;
+        const scored = (game.away_r1 + game.home_r1) > 0;
+        return scored ? 'loss' : 'win';
+      }
+      if (betType.includes('YRFI') || pickUpper.includes('YRFI')) {
+        if (game.away_r1 === null || game.home_r1 === null) return null;
+        const scored = (game.away_r1 + game.home_r1) > 0;
+        return scored ? 'win' : 'loss';
+      }
+
+      // Moneyline
+      if (betType.includes('MONEYLINE') || betType.includes('ML')) {
+        const awayWin = away > home;
+        const awayPicked = pickUpper.includes(game.away.toUpperCase());
+        const homePicked = pickUpper.includes(game.home.toUpperCase());
+        if (away === home) return 'push';
+        if (awayPicked) return awayWin ? 'win' : 'loss';
+        if (homePicked) return awayWin ? 'loss' : 'win';
+      }
+
+      // Totals
+      if (betType.includes('OVER') || betType.includes('UNDER') || betType.includes('TOTAL')) {
+        const totalMatch = bet.pick.match(/([ou])(\d+\.?\d*)/i) || bet.betType?.match(/([ou])(\d+\.?\d*)/i);
+        if (totalMatch) {
+          const dir = totalMatch[1].toUpperCase();
+          const line = parseFloat(totalMatch[2]);
+          const total = away + home;
+          if (total === line) return 'push';
+          if (dir === 'O') return total > line ? 'win' : 'loss';
+          if (dir === 'U') return total < line ? 'win' : 'loss';
+        }
+      }
+
+      return null;
+    };
+
+    let autoGraded = 0;
+    const newBets = state.bets.map(b => {
+      if (b.result !== 'pending') return b;
+      const sportResults = results[b.sport]?.games;
+      if (!sportResults) return b;
+      const game = matchBet(b.pick, b.sport, sportResults);
+      if (!game) return b;
+      const result = gradeResult(b, game, b.sport);
+      if (!result) return b;
+      const payout = result==='win'?americanToDecimal(b.odds)*b.stake:result==='push'?b.stake:0;
+      autoGraded++;
+      addLog(`🤖 Auto-graded: ${b.pick} → ${result.toUpperCase()} (${game.away_score}-${game.home_score})`);
+      return {...b, result, score:`${game.away_score}-${game.home_score}`, autoGraded:true};
+    });
+
+    const newTracked = state.trackedPicks.map(p => {
+      if (p.result !== 'pending') return p;
+      const sportResults = results[p.sport]?.games;
+      if (!sportResults) return p;
+      const game = matchBet(p.pick, p.sport, sportResults);
+      if (!game) return p;
+      const result = gradeResult(p, game, p.sport);
+      if (!result) return p;
+      autoGraded++;
+      return {...p, result, score:`${game.away_score}-${game.home_score}`, autoGraded:true};
+    });
+
+    if (autoGraded > 0) {
+      // Recalculate bankrolls
+      let aiBankroll = state.bankroll;
+      let myBankroll = state.myBankroll;
+      newBets.forEach((b,i) => {
+        if (!b.autoGraded) return;
+        const old = state.bets[i];
+        if (old?.result !== 'pending') return;
+        const payout = b.result==='win'?americanToDecimal(b.odds)*b.stake:b.result==='push'?b.stake:0;
+        if (b.source==='ai') aiBankroll = parseFloat((aiBankroll+payout).toFixed(2));
+        else myBankroll = parseFloat((myBankroll+payout).toFixed(2));
+      });
+      setState(s=>({...s,bankroll:aiBankroll,myBankroll,bets:newBets,trackedPicks:newTracked}));
+      addLog(`✅ Auto-graded ${autoGraded} bet${autoGraded!==1?'s':''}`);
+    }
+  },[state.bets,state.trackedPicks,state.bankroll,state.myBankroll]);
+
   const confirmPicks = useCallback(async (picks,sport,stake)=>{
     // Try to get weather for MLB and NFL picks
     const weatherCache = {};
@@ -1208,6 +1324,9 @@ Analyze:
   };
 
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
+
+  // Auto-grade when opening dashboard
+  useEffect(()=>{ if(tab==='dashboard') autoGrade(); },[tab]);
 
   const TABS=['dashboard','ai','paste','mine','tracker','lessons','log'];
   const TLABELS={dashboard:'📊 Dash',ai:'🤖 AI Bets',paste:'📋 Paste',mine:'📈 My Scripts',tracker:'📡 Tracker',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
