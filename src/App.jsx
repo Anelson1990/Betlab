@@ -976,6 +976,24 @@ export default function App() {
         }
       }
 
+      // Spread/Puck line/Run line
+      if (betType.includes('SPREAD') || betType.includes('PUCK') || betType.includes('RUN') || bet.pick.match(/[+-]\d+\.5/)) {
+        const spreadMatch = bet.pick.match(/([+-]\d+\.?\d*)/);
+        if (spreadMatch) {
+          const spread = parseFloat(spreadMatch[1]);
+          const pickUpper2 = bet.pick.toUpperCase();
+          // Determine which team the bettor picked
+          const awayAbbr = game.away.toUpperCase();
+          const homeAbbr = game.home.toUpperCase();
+          const pickedAway = pickUpper2.includes(awayAbbr) || 
+            (game.away_full && pickUpper2.includes(game.away_full.toUpperCase().split(' ').pop()));
+          const margin = pickedAway ? (away - home) : (home - away);
+          const covered = margin + spread;
+          if (covered === 0) return 'push';
+          return covered > 0 ? 'win' : 'loss';
+        }
+      }
+
       return null;
     };
 
