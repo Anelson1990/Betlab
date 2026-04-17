@@ -1059,12 +1059,20 @@ export default function App() {
         if (spreadMatch) {
           const spread = parseFloat(spreadMatch[1]);
           const pickUpper2 = bet.pick.toUpperCase();
-          // Determine which team the bettor picked
           const awayAbbr = game.away.toUpperCase();
           const homeAbbr = game.home.toUpperCase();
-          const pickedAway = pickUpper2.includes(awayAbbr) || 
-            (game.away_full && pickUpper2.includes(game.away_full.toUpperCase().split(' ').pop()));
-          const margin = pickedAway ? (away - home) : (home - away);
+          // Use alias lookup to find which team is in the pick
+          const awayAliases = getTeamAbbr(game.away_full||game.away);
+          const homeAliases = getTeamAbbr(game.home_full||game.home);
+          const pickedAway = pickUpper2.includes(awayAbbr) ||
+            awayAliases.some(a=>pickUpper2.includes(a)) ||
+            (game.away_full && game.away_full.toUpperCase().split(' ').some(w=>w.length>3&&pickUpper2.includes(w)));
+          const pickedHome = pickUpper2.includes(homeAbbr) ||
+            homeAliases.some(a=>pickUpper2.includes(a)) ||
+            (game.home_full && game.home_full.toUpperCase().split(' ').some(w=>w.length>3&&pickUpper2.includes(w)));
+          // Default: if spread is positive, likely picked underdog
+          const useAway = pickedAway || (!pickedHome && spread > 0 && away < home);
+          const margin = useAway ? (away - home) : (home - away);
           const covered = margin + spread;
           if (covered === 0) return 'push';
           return covered > 0 ? 'win' : 'loss';
