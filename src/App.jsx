@@ -1202,6 +1202,9 @@ export default function App() {
   const buildHistorySummary = () => {
     const graded = state.bets.filter(b=>b.result!=='pending');
     if (!graded.length) return '';
+    // Auto-tune sim parameters based on graded results
+    const tuning = calcTuningParams(graded);
+    const tuningNote = tuning.drift ? ` Sim calibration: ${tuning.drift>0?'underestimating':'overestimating'} by ${Math.abs(tuning.drift).toFixed(1)}% — adjust confidence accordingly.` : '';
     const wins=graded.filter(b=>b.result==='win').length;
     const staked=graded.reduce((a,b)=>a+b.stake,0);
     const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
