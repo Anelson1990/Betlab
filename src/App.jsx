@@ -1355,9 +1355,7 @@ Analyze:
         <div style={{maxWidth:680,margin:'0 auto',padding:'20px 16px 80px'}}>
 
           <div style={{textAlign:'center',marginBottom:20}}>
-            <div style={{fontSize:10,color:'#1d4ed8',letterSpacing:4,textTransform:'uppercase',marginBottom:4}}>AI Paper Betting Lab</div>
             <h1 style={{fontFamily:"'Orbitron',sans-serif",fontSize:30,fontWeight:900,color:'#f1f5f9',letterSpacing:2}}>BET<span style={{color:'#1d4ed8'}}>LAB</span></h1>
-            <div style={{fontSize:11,color:'#475569',marginTop:3}}>AI picks its own · Paste yours · Head to head v2</div>
           </div>
 
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom: editingBankroll||editingMyBankroll?4:14}}>
