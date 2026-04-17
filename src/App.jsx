@@ -1076,8 +1076,8 @@ export default function App() {
           const pickBeforeSpread = bet.pick.toUpperCase().split(spreadMatch[1])[0];
           const awayAbbr = game.away.toUpperCase();
           const homeAbbr = game.home.toUpperCase();
-          const awayAliases = getTeamAbbr(game.away_full||game.away);
-          const homeAliases = getTeamAbbr(game.home_full||game.home);
+          const awayAliases = [...getTeamAbbr(game.away_full||''), ...getTeamAbbr(game.away||''), game.away||''];
+          const homeAliases = [...getTeamAbbr(game.home_full||''), ...getTeamAbbr(game.home||''), game.home||''];
           const awayInPick = pickBeforeSpread.includes(awayAbbr) || awayAliases.some(a=>pickBeforeSpread.includes(a));
           const homeInPick = pickBeforeSpread.includes(homeAbbr) || homeAliases.some(a=>pickBeforeSpread.includes(a));
           addLog('SPREAD DEBUG: before='+pickBeforeSpread+' away='+awayAbbr+' awayAliases='+JSON.stringify(awayAliases)+' awayInPick='+awayInPick+' home='+homeAbbr+' homeAliases='+JSON.stringify(homeAliases)+' homeInPick='+homeInPick);
