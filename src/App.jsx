@@ -888,13 +888,19 @@ export default function App() {
     const sports = [...new Set([...pending.map(b=>b.sport),...trackedPending.map(p=>p.sport)])];
     const results = {};
 
-    // Check today and last 3 days to catch ungraded games
-    const dates = [];
+    // Get all unique dates from pending bets plus today and yesterday
+    const betDates = new Set([
+      ...pending.map(b=>b.date?.split('T')[0]).filter(Boolean),
+      ...trackedPending.map(p=>p.date?.split('T')[0]).filter(Boolean),
+    ]);
+    // Also add today and last 3 days as fallback
     for (let i=0;i<4;i++) {
       const d = new Date();
       d.setDate(d.getDate()-i);
-      dates.push(d.toISOString().split('T')[0]);
+      betDates.add(d.toISOString().split('T')[0]);
     }
+    const dates = [...betDates].sort().reverse();
+    addLog(`🔍 Checking dates: ${dates.join(', ')}`);
 
     for (const sport of sports) {
       results[sport] = {games:[]};
@@ -907,6 +913,7 @@ export default function App() {
           }
         } catch {}
       }
+      addLog(`📡 ${sport}: ${results[sport].games.length} games loaded`);
     }
 
     // Comprehensive team lookup - maps any name/nickname to API abbreviation
