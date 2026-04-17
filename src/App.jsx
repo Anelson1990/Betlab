@@ -979,18 +979,21 @@ export default function App() {
     });
 
     if (autoGraded > 0) {
-      // Recalculate bankrolls
-      let aiBankroll = state.bankroll;
-      let myBankroll = state.myBankroll;
-      newBets.forEach((b,i) => {
+      // Recalculate bankrolls from newly graded bets
+      let aiDelta = 0, myDelta = 0;
+      newBets.forEach(b => {
         if (!b.autoGraded) return;
-        const old = state.bets[i];
-        if (old?.result !== 'pending') return;
         const payout = b.result==='win'?americanToDecimal(b.odds)*b.stake:b.result==='push'?b.stake:0;
-        if (b.source==='ai') aiBankroll = parseFloat((aiBankroll+payout).toFixed(2));
-        else myBankroll = parseFloat((myBankroll+payout).toFixed(2));
+        if (b.source==='ai') aiDelta += payout;
+        else myDelta += payout;
       });
-      setState(s=>({...s,bankroll:aiBankroll,myBankroll,bets:newBets,trackedPicks:newTracked}));
+      setState(s=>({
+        ...s,
+        bankroll: parseFloat((s.bankroll+aiDelta).toFixed(2)),
+        myBankroll: parseFloat((s.myBankroll+myDelta).toFixed(2)),
+        bets: newBets,
+        trackedPicks: newTracked,
+      }));
       addLog(`✅ Auto-graded ${autoGraded} bet${autoGraded!==1?'s':''}`);
     }
   },[state.bets,state.trackedPicks,state.bankroll,state.myBankroll]);
@@ -1327,7 +1330,7 @@ Analyze:
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
   // Auto-grade when opening dashboard
-  useEffect(()=>{ if(tab==='dashboard') autoGrade(); },[tab]);
+  useEffect(()=>{ if(tab==='dashboard') autoGrade(); },[tab,autoGrade]);
 
   const TABS=['dashboard','ai','paste','mine','tracker','lessons','log'];
   const TLABELS={dashboard:'📊 Dash',ai:'🤖 AI Bets',paste:'📋 Paste',mine:'📈 My Scripts',tracker:'📡 Tracker',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
