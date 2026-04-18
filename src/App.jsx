@@ -1653,19 +1653,15 @@ Analyze:
   const loadGroqGames = async () => {
     setGroqLoading(true); setGroqGames([]);
     try {
-      const r = await fetch(`/api/odds?sport=${SPORT_CONFIG[groqSport].oddsKey}&markets=h2h`);
+      const r = await fetch(`/api/games?sport=${groqSport}`);
       const data = await r.json();
-      if (Array.isArray(data)) {
-        setGroqGames(data.map(g=>({
-          sport: groqSport,
-          homeTeam: g.home_team,
-          awayTeam: g.away_team,
-          homeOdds: g.bookmakers?.[0]?.markets?.[0]?.outcomes?.find(o=>o.name===g.home_team)?.price||'-110',
-          awayOdds: g.bookmakers?.[0]?.markets?.[0]?.outcomes?.find(o=>o.name===g.away_team)?.price||'+100',
-          startTime: g.commence_time,
-        })));
+      if (data.success && data.games?.length) {
+        setGroqGames(data.games);
+        addLog(`📡 Loaded ${data.games.length} ${groqSport} games from ESPN`);
+      } else {
+        addLog(`⚠️ No ${groqSport} games found today`);
       }
-    } catch(e) { setError('Failed to load games: '+e.message); }
+    } catch(e) { setError('Failed to load games: '+e.message); addLog('❌ '+e.message); }
     setGroqLoading(false);
   };
 
