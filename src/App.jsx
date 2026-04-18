@@ -1666,6 +1666,36 @@ Analyze:
     reader.readAsText(file);
   };
 
+  const importDraftKings = (text) => {
+    const lines = text.trim().split('\n').filter(l=>l.trim());
+    const bets = [];
+    for (const line of lines) {
+      // Parse: Date Type Selections Odds Stake Payout Net Status
+      const parts = line.split('\t');
+      if (parts.length < 7) continue;
+      const selection = parts[2]?.trim();
+      const oddsStr = parts[3]?.trim();
+      const stakeStr = parts[4]?.trim();
+      const status = parts[7]?.trim()||parts[parts.length-1]?.trim();
+      if (!selection || !oddsStr) continue;
+      const odds = parseInt(oddsStr.replace(/[^-+0-9]/g,''));
+      const stake = parseFloat(stakeStr?.replace(/[$,]/g,'')||'5');
+      const result = status?.toLowerCase().includes('won')||status?.toLowerCase().includes('cashed') ? 'win' :
+                     status?.toLowerCase().includes('lost') ? 'loss' : 'push';
+      const sport = selection.match(/\b(NHL|NBA|MLB|NFL)\b/i)?.[1]?.toUpperCase() || 'NHL';
+      bets.push({
+        id: uid(), pick: selection, sport, betType: parts[1]?.includes('Parlay')?'Parlay':'Moneyline',
+        betCategory: parts[1]?.includes('Parlay')?'parlay':'straight',
+        odds: isNaN(odds)?-110:odds, stake: isNaN(stake)?5:stake,
+        result, date: new Date().toISOString(), source:'paste',
+        reasoning:'Imported from DraftKings', keyFactors:[], confidence:60,
+      });
+    }
+    if (!bets.length) { alert('No bets parsed — check format'); return; }
+    setState(s=>({...s, bets:[...bets,...s.bets]}));
+    addLog(`✅ Imported ${bets.length} bets from DraftKings`);
+  };
+
 
   // Auto-grade when opening dashboard - only once per session
   const autoGradeRan = useRef(false);
@@ -2230,6 +2260,13 @@ Analyze:
                   📂 IMPORT FILE
                   <input type="file" accept=".json" onChange={importData} style={{display:'none'}}/>
                 </label>
+              </div>
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,color:'#475569',marginBottom:6,letterSpacing:1}}>DRAFTKINGS IMPORT</div>
+                <textarea id="dk-import" placeholder="Paste DraftKings bet history here (tab-separated from their website)..." style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#64748b',padding:'10px 12px',fontSize:11,resize:'vertical',minHeight:80,fontFamily:"'Rajdhani',sans-serif"}}/>
+                <button onClick={()=>{const t=document.getElementById('dk-import').value;if(t.trim())importDraftKings(t);}} style={{width:'100%',marginTop:6,padding:'10px 0',borderRadius:8,border:'none',background:'linear-gradient(135deg,#f97316,#ea580c)',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1}}>
+                  📊 IMPORT DRAFTKINGS HISTORY
+                </button>
               </div>
               <div style={{background:'rgba(5,8,16,0.95)',border:'1px solid #1e293b',borderRadius:12,padding:14,fontFamily:'monospace',fontSize:11,color:'#64748b',maxHeight:420,overflowY:'auto'}}>
                 {state.sessionLog.length===0
