@@ -755,6 +755,11 @@ export default function App() {
   const [loadingMsg, setLoadingMsg] = useState('');
   const [error, setError] = useState('');
   const [pickSport, setPickSport] = useState('NHL');
+  const [groqSport, setGroqSport] = useState('NHL');
+  const [groqGames, setGroqGames] = useState([]);
+  const [groqLoading, setGroqLoading] = useState(false);
+  const [groqAnalyzing, setGroqAnalyzing] = useState(null);
+  const [groqResults, setGroqResults] = useState({});
   const [pickContext, setPickContext] = useState('');
   const [aiFilter, setAiFilter] = useState('all');
   const [myFilter, setMyFilter] = useState('all');
@@ -1593,6 +1598,69 @@ Analyze:
     setTrackerAnalyzing(false);
   };
 
+  const loadGroqGames = async () => {
+    setGroqLoading(true); setGroqGames([]);
+    try {
+      const r = await fetch(`/api/odds?sport=${SPORT_CONFIG[groqSport].oddsKey}&markets=h2h`);
+      const data = await r.json();
+      if (Array.isArray(data)) {
+        setGroqGames(data.map(g=>({
+          sport: groqSport,
+          homeTeam: g.home_team,
+          awayTeam: g.away_team,
+          homeOdds: g.bookmakers?.[0]?.markets?.[0]?.outcomes?.find(o=>o.name===g.home_team)?.price||'-110',
+          awayOdds: g.bookmakers?.[0]?.markets?.[0]?.outcomes?.find(o=>o.name===g.away_team)?.price||'+100',
+          startTime: g.commence_time,
+        })));
+      }
+    } catch(e) { setError('Failed to load games: '+e.message); }
+    setGroqLoading(false);
+  };
+
+  const runGroqAnalysis = async (game) => {
+    const key = game.homeTeam+game.awayTeam;
+    setGroqAnalyzing(key);
+    try {
+      // Step 1: Run Monte Carlo simulation
+      const simRes = await fetch('/api/simulate', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({sport:game.sport, homeTeam:game.homeTeam, awayTeam:game.awayTeam, homeOdds:game.homeOdds, awayOdds:game.awayOdds}),
+      });
+      const simData = await simRes.json();
+
+      // Step 2: Run Groq AI analysis
+      const analyzeRes = await fetch('/api/analyze', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({gameData:{...game, homeImpliedProb:simData.homeImpliedProb, awayImpliedProb:simData.awayImpliedProb}, simulationData:simData}),
+      });
+      const analyzeData = await analyzeRes.json();
+
+      setGroqResults(r=>({...r,[key]:{sim:simData,analysis:analyzeData.analysis,game}}));
+
+      // If BET, add to AI picks
+      if (analyzeData.analysis?.verdict==='BET' && analyzeData.analysis?.side) {
+        const odds = analyzeData.analysis.side===game.homeTeam ? parseInt(game.homeOdds) : parseInt(game.awayOdds);
+        const dec = odds>0?odds/100+1:100/Math.abs(odds)+1;
+        const kelly = Math.max(0,((dec-1)*(analyzeData.analysis.confidence/100)-(1-analyzeData.analysis.confidence/100))/(dec-1)*0.25);
+        const stake = Math.max(5,Math.min(Math.round(state.bankroll*kelly/5)*5,Math.round(state.bankroll*0.05)));
+        addAIPick({
+          pick:`${analyzeData.analysis.side} — ${game.awayTeam} @ ${game.homeTeam}`,
+          sport:game.sport, betType:'Moneyline', odds, stake,
+          confidence:analyzeData.analysis.confidence,
+          reasoning:analyzeData.analysis.edge_summary||'',
+          keyFactors:[analyzeData.analysis.sharp_factors||'',analyzeData.analysis.risk_factors||''].filter(Boolean),
+          modelProb:simData.simulation?.homeWinProb,
+          edge:analyzeData.analysis.homeEdge||'',
+          source:'ai',
+        });
+        addLog(`🤖 Groq AI: ${analyzeData.analysis.side} (${analyzeData.analysis.confidence}% conf)`);
+      }
+    } catch(e) { setError('Groq analysis failed: '+e.message); }
+    setGroqAnalyzing(null);
+  };
+
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
   // Google Drive sync
@@ -1934,6 +2002,54 @@ Analyze:
               <button onClick={autoGrade} style={{width:'100%',padding:'10px 0',borderRadius:10,border:'1px solid #38bdf844',background:'rgba(56,189,248,0.1)',color:'#38bdf8',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:8}}>
                 🔄 CHECK & AUTO-GRADE RESULTS
               </button>
+
+              {/* Groq AI + Monte Carlo Section */}
+              <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid rgba(139,92,246,0.3)',borderRadius:14,padding:18,marginBottom:14}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#8b5cf6',letterSpacing:2,marginBottom:12}}>🧠 GROQ AI + MONTE CARLO</div>
+                <div style={{fontSize:11,color:'#475569',marginBottom:10}}>Llama 3.3 70B + 10,000 sim runs — independent second opinion</div>
+                <select value={groqSport} onChange={e=>setGroqSport(e.target.value)} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'10px 12px',fontSize:13,marginBottom:8,cursor:'pointer'}}>
+                  {['NHL','MLB','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
+                </select>
+                <button onClick={loadGroqGames} disabled={groqLoading} style={{width:'100%',padding:'12px 0',borderRadius:8,border:'none',cursor:groqLoading?'not-allowed':'pointer',background:groqLoading?'#1e293b':'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:groqLoading?'#475569':'#fff',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1,marginBottom:10}}>
+                  {groqLoading?'LOADING GAMES...':'📡 LOAD TODAY GAMES'}
+                </button>
+                {groqGames.length>0&&(
+                  <div>
+                    <div style={{fontSize:10,color:'#475569',marginBottom:8}}>{groqGames.length} games loaded — tap to analyze</div>
+                    {groqGames.slice(0,8).map(game=>{
+                      const key = game.homeTeam+game.awayTeam;
+                      const result = groqResults[key];
+                      const isAnalyzing = groqAnalyzing===key;
+                      return (
+                        <div key={key} style={{marginBottom:8,padding:'10px 12px',background:'rgba(5,8,16,0.8)',borderRadius:8,border:`1px solid ${result?.analysis?.verdict==='BET'?'rgba(139,92,246,0.4)':'#1e293b'}`}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                            <div style={{fontSize:12,color:'#e2e8f0',fontWeight:700}}>{game.awayTeam} @ {game.homeTeam}</div>
+                            <div style={{fontSize:10,color:'#64748b'}}>{game.awayOdds>0?'+':''}{game.awayOdds} / {game.homeOdds>0?'+':''}{game.homeOdds}</div>
+                          </div>
+                          {!result&&<button onClick={()=>runGroqAnalysis(game)} disabled={!!groqAnalyzing} style={{width:'100%',padding:'6px 0',borderRadius:6,border:'1px solid #8b5cf644',background:'rgba(139,92,246,0.1)',color:'#8b5cf6',fontSize:10,fontWeight:700,cursor:groqAnalyzing?'not-allowed':'pointer'}}>
+                            {isAnalyzing?'🧠 ANALYZING (10K SIMS)...':'🧠 ANALYZE'}
+                          </button>}
+                          {result&&(
+                            <div>
+                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                                <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:13,color:result.analysis?.verdict==='BET'?'#22c55e':'#64748b',fontWeight:700}}>{result.analysis?.verdict} {result.analysis?.side?`— ${result.analysis.side}`:''}</span>
+                                <span style={{fontSize:11,color:'#8b5cf6'}}>{result.analysis?.confidence}% conf</span>
+                              </div>
+                              <div style={{fontSize:11,color:'#94a3b8',marginBottom:4}}>{result.analysis?.edge_summary}</div>
+                              <div style={{display:'flex',gap:8,fontSize:10,color:'#475569',marginBottom:4}}>
+                                <span>Sim: {result.sim?.simulation?.homeWinProb}% / {result.sim?.simulation?.awayWinProb}%</span>
+                                <span>EV: {result.sim?.analysis?.homeEV>0?'+':''}{result.sim?.analysis?.homeEV}%</span>
+                              </div>
+                              {result.analysis?.sharp_factors&&<div style={{fontSize:10,color:'#22c55e',marginBottom:2}}>✅ {result.analysis.sharp_factors}</div>}
+                              {result.analysis?.risk_factors&&<div style={{fontSize:10,color:'#ef4444'}}>⚠️ {result.analysis.risk_factors}</div>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               <button onClick={runCoach} disabled={coachLoading||state.bets.filter(b=>b.result!=='pending').length<10} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #a78bfa44',background:'rgba(167,139,250,.1)',color:state.bets.filter(b=>b.result!=='pending').length>=10?'#a78bfa':'#475569',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:14}}>
                 {coachLoading?'🎯 ANALYZING...':'🎯 AI COACH'} {state.bets.filter(b=>b.result!=='pending').length<10?`(${10-state.bets.filter(b=>b.result!=='pending').length} more bets needed)`:''}
