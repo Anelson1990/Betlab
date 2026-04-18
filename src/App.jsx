@@ -1667,9 +1667,6 @@ Analyze:
   };
 
 
-    reader.readAsText(file);
-  };
-
   // Auto-grade when opening dashboard - only once per session
   const autoGradeRan = useRef(false);
   useEffect(()=>{
