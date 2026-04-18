@@ -2250,6 +2250,13 @@ Analyze:
 
           {tab==='log'&&(
             <div style={{animation:'slideIn .3s ease'}}>
+              <div style={{background:'rgba(249,115,22,0.05)',border:'1px solid rgba(249,115,22,0.3)',borderRadius:12,padding:14,marginBottom:14}}>
+                <div style={{fontSize:11,color:'#f97316',fontWeight:700,marginBottom:8,letterSpacing:1}}>📊 DRAFTKINGS IMPORT</div>
+                <textarea id="dk-import" placeholder={'Paste DraftKings bet history here...'} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'10px 12px',fontSize:12,resize:'vertical',minHeight:120,fontFamily:'monospace',boxSizing:'border-box'}}/>
+                <button onClick={()=>{const t=document.getElementById('dk-import')?.value;if(t&&t.trim())importDraftKings(t);else alert('Paste your DraftKings history first');}} style={{width:'100%',marginTop:8,padding:'12px 0',borderRadius:8,border:'none',background:'linear-gradient(135deg,#f97316,#ea580c)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',letterSpacing:1}}>
+                  📊 IMPORT ALL BETS
+                </button>
+              </div>
               <div style={{display:'flex',gap:8,marginBottom:14}}>
                 <button onClick={()=>saveToDrive(state)} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #22c55e44',background:'rgba(34,197,94,0.1)',color:'#22c55e',fontSize:11,fontWeight:700,cursor:'pointer'}}>☁️ SAVE TO DRIVE</button>
                 <button onClick={loadFromDrive} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #38bdf844',background:'rgba(56,189,248,0.1)',color:'#38bdf8',fontSize:11,fontWeight:700,cursor:'pointer'}}>☁️ LOAD FROM DRIVE</button>
