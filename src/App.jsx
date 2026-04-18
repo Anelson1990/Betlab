@@ -2065,18 +2065,6 @@ Analyze:
                   )}
                 </div>
               )}
-              <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
-                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#1d4ed8',letterSpacing:2,marginBottom:14}}>🤖 AI LIVE ODDS PICKER</div>
-                <div style={{display:'flex',gap:8,marginBottom:10}}>
-                  <select value={pickSport} onChange={e=>setPickSport(e.target.value)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'10px 12px',fontSize:13,cursor:'pointer'}}>
-                    {SPORTS.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <button onClick={generatePicks} disabled={loading} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'none',background:loading?'#1e293b':'linear-gradient(135deg,#1d4ed8,#2563eb)',color:loading?'#475569':'#fff',fontSize:13,fontWeight:700,cursor:loading?'not-allowed':'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1}}>
-                    {loading?'WORKING...':'FIND VALUE'}
-                  </button>
-                </div>
-                <textarea value={pickContext} onChange={e=>setPickContext(e.target.value)} placeholder="Optional: 'road underdogs', 'NRFI only', 'player props'..." style={{width:'100%',background:'#0f172a',border:'1px solid #1e293b',borderRadius:8,color:'#94a3b8',padding:'10px 12px',fontSize:12,resize:'none',height:52,lineHeight:1.5}}/>
-              </div>
               <button onClick={runReview} disabled={loading||aiGraded.length<3} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #1e40af44',background:'rgba(29,78,216,.1)',color:aiGraded.length>=3?'#60a5fa':'#475569',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:8}}>
                 📊 AI PERFORMANCE REVIEW {aiGraded.length<3?`(${3-aiGraded.length} more needed)`:''}
               </button>
@@ -2241,6 +2229,18 @@ Analyze:
 
           {tab==='ai'&&(
             <div style={{animation:'slideIn .3s ease'}}>
+              <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#1d4ed8',letterSpacing:2,marginBottom:14}}>🤖 AI LIVE ODDS PICKER</div>
+                <div style={{display:'flex',gap:8,marginBottom:10}}>
+                  <select value={pickSport} onChange={e=>setPickSport(e.target.value)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'10px 12px',fontSize:13,cursor:'pointer'}}>
+                    {SPORTS.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <button onClick={generatePicks} disabled={loading} style={{flex:1,padding:'10px 16px',borderRadius:8,border:'none',background:loading?'#1e293b':'linear-gradient(135deg,#1d4ed8,#2563eb)',color:loading?'#475569':'#fff',fontSize:13,fontWeight:700,cursor:loading?'not-allowed':'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1}}>
+                    {loading?'WORKING...':'FIND VALUE'}
+                  </button>
+                </div>
+                <textarea value={pickContext} onChange={e=>setPickContext(e.target.value)} placeholder="Optional: 'road underdogs', 'NRFI only', 'player props'..." style={{width:'100%',background:'#0f172a',border:'1px solid #1e293b',borderRadius:8,color:'#94a3b8',padding:'10px 12px',fontSize:12,resize:'none',height:52,lineHeight:1.5}}/>
+              </div>
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:10,padding:'12px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <div>
                   <div style={{fontSize:10,color:'#60a5fa',fontWeight:700,letterSpacing:1}}>🤖 AI PAPER BETS</div>
