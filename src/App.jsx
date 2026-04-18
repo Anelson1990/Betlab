@@ -1587,8 +1587,14 @@ Analyze:
 
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
-  // Auto-grade when opening dashboard
-  useEffect(()=>{ if(tab==='dashboard'){ autoGrade(); } },[tab]);// eslint-disable-line
+  // Auto-grade when opening dashboard - only once per session
+  const autoGradeRan = useRef(false);
+  useEffect(()=>{
+    if(tab==='dashboard'&&!autoGradeRan.current){
+      autoGradeRan.current=true;
+      autoGrade();
+    }
+  },[tab]);// eslint-disable-line
 
   const TABS=['dashboard','ai','paste','mine','tracker','lessons','log'];
   const TLABELS={dashboard:'📊 Dash',ai:'🤖 AI Bets',paste:'📋 Paste',mine:'📈 My Scripts',tracker:'📡 Tracker',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
