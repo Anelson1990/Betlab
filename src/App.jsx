@@ -1109,7 +1109,6 @@ export default function App() {
           const homeAliases = [...getTeamAbbr(game.home_full||''), ...getTeamAbbr(game.home||''), game.home||''];
           const awayInPick = pickBeforeSpread.includes(awayAbbr) || awayAliases.some(a=>pickBeforeSpread.includes(a));
           const homeInPick = pickBeforeSpread.includes(homeAbbr) || homeAliases.some(a=>pickBeforeSpread.includes(a));
-          addLog('SPREAD DEBUG: before='+pickBeforeSpread+' away='+awayAbbr+' awayAliases='+JSON.stringify(awayAliases)+' awayInPick='+awayInPick+' home='+homeAbbr+' homeAliases='+JSON.stringify(homeAliases)+' homeInPick='+homeInPick);
           if (!awayInPick && !homeInPick) return null;
           const pickedScore = awayInPick ? away : home;
           const otherScore = awayInPick ? home : away;
