@@ -1,20 +1,11 @@
 const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
 
-const SYSTEM_PROMPT = `You are a sharp professional sports betting analyst. Analyze Monte Carlo simulation data and give a data-driven betting recommendation.
+const SYSTEM_PROMPT = `You are a sharp sports betting analyst. Analyze the data and return ONLY a JSON object with no markdown, no explanation, no code blocks.
 
-Return ONLY valid JSON with this exact format:
-{
-  "verdict": "BET" or "PASS",
-  "side": "team name or null",
-  "confidence": number 1-100,
-  "edge_summary": "1-2 sentence summary of the edge",
-  "simulation_read": "what the Monte Carlo numbers tell us",
-  "sharp_factors": "situational factors supporting the bet",
-  "risk_factors": "what could go wrong",
-  "line_value": "assessment of current line price",
-  "recommended_units": number 0-3,
-  "full_analysis": "3-4 paragraph detailed analysis"
-}`;
+Required format:
+{"verdict":"BET","side":"team name","confidence":72,"edge_summary":"brief edge description","simulation_read":"what sims show","sharp_factors":"factors supporting bet","risk_factors":"risks","line_value":"line assessment","recommended_units":1.5,"full_analysis":"detailed analysis paragraph"}
+
+If no edge: {"verdict":"PASS","side":null,"confidence":0,"edge_summary":"no edge found","simulation_read":"","sharp_factors":"","risk_factors":"","line_value":"","recommended_units":0,"full_analysis":"no value"}`;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin','*');
@@ -28,30 +19,14 @@ export default async function handler(req, res) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return res.status(500).json({error:'GROQ_API_KEY not set'});
 
-  const prompt = `Analyze this betting opportunity:
+  const prompt = `Analyze: ${gameData.awayTeam} @ ${gameData.homeTeam} (${gameData.sport})
+Odds: Home ${gameData.homeOdds} (${gameData.homeImpliedProb}% implied) | Away ${gameData.awayOdds} (${gameData.awayImpliedProb}% implied)
+Simulation (${simulationData.simulation?.simulations||10000} runs): Home ${simulationData.simulation?.homeWinProb}% | Away ${simulationData.simulation?.awayWinProb}%
+Edge: Home ${simulationData.analysis?.homeEdge}% | Away ${simulationData.analysis?.awayEdge}%
+EV: Home ${simulationData.analysis?.homeEV}% | Away ${simulationData.analysis?.awayEV}%
+Model says: ${simulationData.recommendation} ${simulationData.recommendedSide||''}
 
-GAME: ${gameData.awayTeam} @ ${gameData.homeTeam}
-SPORT: ${gameData.sport}
-
-MARKET ODDS:
-- ${gameData.homeTeam}: ${gameData.homeOdds} (implied ${gameData.homeImpliedProb}%)
-- ${gameData.awayTeam}: ${gameData.awayOdds} (implied ${gameData.awayImpliedProb}%)
-
-MONTE CARLO (${simulationData.simulation?.simulations?.toLocaleString()} runs):
-- ${gameData.homeTeam} win prob: ${simulationData.simulation?.homeWinProb}%
-- ${gameData.awayTeam} win prob: ${simulationData.simulation?.awayWinProb}%
-- Avg score: ${gameData.homeTeam} ${simulationData.simulation?.avgHomeScore} - ${gameData.awayTeam} ${simulationData.simulation?.avgAwayScore}
-${simulationData.simulation?.topScorelines?.length?`- Top scorelines: ${simulationData.simulation.topScorelines.map(s=>`${s.score}(${s.probability}%)`).join(', ')}`:''}
-
-EDGE:
-- ${gameData.homeTeam}: ${simulationData.analysis?.homeEdge>0?'+':''}${simulationData.analysis?.homeEdge}% edge, EV ${simulationData.analysis?.homeEV>0?'+':''}${simulationData.analysis?.homeEV}%
-- ${gameData.awayTeam}: ${simulationData.analysis?.awayEdge>0?'+':''}${simulationData.analysis?.awayEdge}% edge, EV ${simulationData.analysis?.awayEV>0?'+':''}${simulationData.analysis?.awayEV}%
-
-KELLY: ${gameData.homeTeam} half=${simulationData.analysis?.homeKelly?.halfKelly}% | ${gameData.awayTeam} half=${simulationData.analysis?.awayKelly?.halfKelly}%
-
-MODEL SAYS: ${simulationData.recommendation} ${simulationData.recommendedSide?`(${simulationData.recommendedSide})`:''}
-
-Provide sharp analysis. Return ONLY valid JSON.`;
+Return ONLY the JSON object, nothing else.`;
 
   try {
     const r = await fetch(GROQ_API, {
@@ -59,22 +34,47 @@ Provide sharp analysis. Return ONLY valid JSON.`;
       headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'llama-3.3-70b-versatile',
-        max_tokens:2000,
-        temperature:0.3,
-        messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}],
+        max_tokens:1000,
+        temperature:0.1,
+        messages:[
+          {role:'system',content:SYSTEM_PROMPT},
+          {role:'user',content:prompt}
+        ],
       }),
     });
-    if (!r.ok) return res.status(500).json({error:`Groq error: ${await r.text()}`});
+
+    if (!r.ok) {
+      const err = await r.text();
+      return res.status(500).json({error:`Groq error: ${err}`});
+    }
+
     const data = await r.json();
     const raw = data.choices?.[0]?.message?.content||'';
+
+    // Try multiple parse strategies
     let analysis;
     try {
-      analysis = JSON.parse(raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim());
+      // Direct parse
+      analysis = JSON.parse(raw.trim());
     } catch {
-      analysis = {full_analysis:raw,verdict:'PARSE_ERROR'};
+      try {
+        // Strip markdown
+        const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+        analysis = JSON.parse(cleaned);
+      } catch {
+        try {
+          // Extract JSON object
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (match) analysis = JSON.parse(match[0]);
+        } catch {
+          // Return raw for debugging
+          return res.status(200).json({success:false, raw, error:'Parse failed'});
+        }
+      }
     }
-    res.status(200).json({success:true,analysis,tokensUsed:data.usage?.total_tokens});
+
+    return res.status(200).json({success:true, analysis});
   } catch(err) {
-    res.status(500).json({success:false,error:err.message});
+    return res.status(500).json({success:false, error:err.message});
   }
 }
