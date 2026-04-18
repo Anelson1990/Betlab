@@ -1118,8 +1118,6 @@ export default function App() {
           return covered > 0 ? 'win' : 'loss';
         }
       }
-        }
-      }
 
       return null;
     };
