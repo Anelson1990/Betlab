@@ -788,19 +788,6 @@ export default function App() {
   const aiBets   = state.bets.filter(b=>b.source==='ai');
   const myBets   = state.bets.filter(b=>b.source==='paste');
   const aiGraded = aiBets.filter(b=>b.result!=='pending');
-
-  // Computed bankrolls - always mathematically correct from bet history
-  const computedAiBankroll = (() => {
-    const pendingStaked = aiBets.filter(b=>b.result==='pending').reduce((a,b)=>a+b.stake,0);
-    const pnl = aiGraded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
-    return parseFloat((state.startingBankroll - pendingStaked + pnl).toFixed(2));
-  })();
-  const computedMyBankroll = (() => {
-    const pendingStaked = myBets.filter(b=>b.result==='pending').reduce((a,b)=>a+b.stake,0);
-    const pnl = myGraded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
-    return parseFloat((state.myStartingBankroll - pendingStaked + pnl).toFixed(2));
-  })();
-
   const myGraded = myBets.filter(b=>b.result!=='pending');
 
   const calcROI = graded => {
@@ -1065,7 +1052,7 @@ export default function App() {
       const isSpread = betType.includes('SPREAD') || betType.includes('PUCK') || betType.includes('RUN') || bet.pick.match(/[+-]\d{1,2}\.5/);
       const isML = !isSpread && (betType.includes('MONEYLINE') || betType.includes('ML') ||
         pickUpper.includes('— HOME') || pickUpper.includes('— AWAY') ||
-        pickUpper.includes('HOME (') || pickUpper.includes('AWAY ('));
+        pickUpper.includes('HOME (') || pickUpper.includes('AWAY (');
       if (isML) {
         const awayWin = away > home;
         if (away === home) return 'push';
@@ -1109,12 +1096,15 @@ export default function App() {
           const homeAliases = [...getTeamAbbr(game.home_full||''), ...getTeamAbbr(game.home||''), game.home||''];
           const awayInPick = pickBeforeSpread.includes(awayAbbr) || awayAliases.some(a=>pickBeforeSpread.includes(a));
           const homeInPick = pickBeforeSpread.includes(homeAbbr) || homeAliases.some(a=>pickBeforeSpread.includes(a));
+          addLog('SPREAD DEBUG: before='+pickBeforeSpread+' away='+awayAbbr+' awayAliases='+JSON.stringify(awayAliases)+' awayInPick='+awayInPick+' home='+homeAbbr+' homeAliases='+JSON.stringify(homeAliases)+' homeInPick='+homeInPick);
           if (!awayInPick && !homeInPick) return null;
           const pickedScore = awayInPick ? away : home;
           const otherScore = awayInPick ? home : away;
           const covered = (pickedScore - otherScore) + spread;
           if (covered === 0) return 'push';
           return covered > 0 ? 'win' : 'loss';
+        }
+      }
         }
       }
 
@@ -1639,14 +1629,14 @@ Analyze:
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom: editingBankroll||editingMyBankroll?4:14}}>
             <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
               <div style={{fontSize:9,color:'#60a5fa',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>🤖 AI Bankroll</div>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:computedAiBankroll>=state.startingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${computedAiBankroll.toFixed(0)}</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:state.bankroll>=state.startingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.bankroll.toFixed(0)}</div>
               <div style={{fontSize:10,color:'#475569',marginTop:2}}>start ${state.startingBankroll.toFixed(0)}</div>
               <div style={{fontSize:10,color:'#475569'}}>{aiBets.filter(b=>b.result==='pending').length} pending</div>
               <button onClick={()=>{setBankrollInput('');setStartBankrollInput('');setEditingBankroll(true);setEditingMyBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #1d4ed844',background:'rgba(29,78,216,.1)',color:'#60a5fa',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
             </div>
             <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
               <div style={{fontSize:9,color:'#f97316',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>📋 My Scripts</div>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:computedMyBankroll>=state.myStartingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${computedMyBankroll.toFixed(0)}</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:state.myBankroll>=state.myStartingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.myBankroll.toFixed(0)}</div>
               <div style={{fontSize:10,color:'#475569',marginTop:2}}>start ${state.myStartingBankroll.toFixed(0)}</div>
               <div style={{fontSize:10,color:'#475569'}}>{myBets.filter(b=>b.result==='pending').length} pending</div>
               <button onClick={()=>{setMyBankrollInput('');setMyStartBankrollInput('');setEditingMyBankroll(true);setEditingBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #f9731644',background:'rgba(249,115,22,.1)',color:'#f97316',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
@@ -2178,4 +2168,3 @@ Analyze:
   );
 }
 // Mon Apr 13 17:35:05 CDT 2026
-// cache bust Fri Apr 17 21:44:43 CDT 2026
