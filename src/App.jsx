@@ -887,19 +887,6 @@ export default function App() {
     setTab('mine');
   },[]);
 
-  const tailGroqPick = useCallback((bet)=>{
-    const newBet = {
-      id:uid(), pick:bet.pick, sport:bet.sport, betType:bet.betType,
-      betCategory:'straight', odds:bet.odds, stake:bet.stake,
-      result:'pending', date:new Date().toISOString(),
-      reasoning:'TAIL: '+bet.reasoning, keyFactors:bet.keyFactors||[],
-      confidence:bet.confidence, edge:bet.edge, modelProb:bet.modelProb,
-      lesson:null, source:'paste',
-    };
-    setState(s=>({...s, myBankroll:parseFloat((s.myBankroll-newBet.stake).toFixed(2)), bets:[newBet,...s.bets]}));
-    addLog(`🐍 Tailed Groq pick: ${bet.pick}`);
-    setTab('mine');
-  },[]);
 
   const addGroqPick = useCallback(pickData=>{
     const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null};
