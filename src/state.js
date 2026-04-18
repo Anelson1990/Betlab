@@ -5,6 +5,8 @@ export const EMPTY_STATE = {
   startingBankroll: 1000,
   myBankroll: 1000,
   myStartingBankroll: 1000,
+  groqBankroll: 300,
+  groqStartingBankroll: 300,
   bets: [],
   lessons: [],
   sessionLog: [],
@@ -27,6 +29,8 @@ export function loadState() {
       lessons: Array.isArray(saved.lessons) ? saved.lessons : [],
       sessionLog: Array.isArray(saved.sessionLog) ? saved.sessionLog : [],
       trackedPicks: Array.isArray(saved.trackedPicks) ? saved.trackedPicks : [],
+      groqBankroll: saved.groqBankroll || 300,
+      groqStartingBankroll: saved.groqStartingBankroll || 300,
     };
   } catch (e) {
     console.warn('loadState error:', e);
