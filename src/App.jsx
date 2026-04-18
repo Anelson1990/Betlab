@@ -779,10 +779,20 @@ export default function App() {
   const [showManualTrack, setShowManualTrack] = useState(false);
   const logEndRef = useRef(null);
 
+  const driveThrottle = useRef(null);
   useEffect(()=>{
     const {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks} = state;
-    persist({bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks});
+    const toSave = {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks};
+    persist(toSave);
+    // Auto-save to Drive every 30 seconds max
+    if (driveThrottle.current) clearTimeout(driveThrottle.current);
+    driveThrottle.current = setTimeout(()=>saveToDrive(toSave), 30000);
   },[state]);
+
+  // Load from Drive on first open
+  useEffect(()=>{
+    loadFromDrive();
+  },[]);
   useEffect(()=>{ logEndRef.current?.scrollIntoView({behavior:'smooth'}); },[state.sessionLog]);
 
   const aiBets   = state.bets.filter(b=>b.source==='ai');
@@ -1585,6 +1595,103 @@ Analyze:
 
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
+  // Google Drive sync
+  const DRIVE_FILE_NAME = 'betlab-data.json';
+
+  const saveToDrive = async (stateToSave) => {
+    try {
+      const res = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 100,
+          mcp_servers: [{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}],
+          system: 'Save the provided JSON data to Google Drive as betlab-data.json. Overwrite if exists. Respond with just "saved".',
+          messages: [{role:'user',content:`Save this to Google Drive as ${DRIVE_FILE_NAME}: ${JSON.stringify(stateToSave)}`}],
+        }),
+      });
+      console.log('Drive save:', res.ok ? 'success' : 'failed');
+    } catch(e) { console.error('Drive save error:', e); }
+  };
+
+  const loadFromDrive = async () => {
+    try {
+      const res = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 100000,
+          mcp_servers: [{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}],
+          system: 'Find and return the contents of betlab-data.json from Google Drive. Return ONLY the raw JSON content, nothing else.',
+          messages: [{role:'user',content:'Get the contents of betlab-data.json from Google Drive and return the raw JSON only.'}],
+        }),
+      });
+      const data = await res.json();
+      const text = data.content?.filter(b=>b.type==='text').map(b=>b.text).join('');
+      if (text) {
+        const parsed = JSON.parse(text.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim());
+        setState(s=>({...EMPTY_STATE,...parsed}));
+        addLog('☁️ Data loaded from Google Drive');
+        return true;
+      }
+    } catch(e) { console.error('Drive load error:', e); }
+    return false;
+  };
+
+  const exportData = () => {
+    const data = JSON.stringify(state, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `betlab-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog('💾 Data exported to file');
+  };
+
+  const importData = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        setState(s=>({...s,...data}));
+        addLog('✅ Data imported from file');
+      } catch(err) { alert('Import failed: '+err.message); }
+    };
+    reader.readAsText(file);
+  };
+
+  const exportData = () => {
+    const data = JSON.stringify(state, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `betlab-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog('💾 Data exported');
+  };
+
+  const importData = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        setState(s=>({...s,...data}));
+        addLog('✅ Data imported successfully');
+      } catch(err) { alert('Import failed: '+err.message); }
+    };
+    reader.readAsText(file);
+  };
+
   // Auto-grade when opening dashboard - only once per session
   const autoGradeRan = useRef(false);
   useEffect(()=>{
@@ -2138,6 +2245,17 @@ Analyze:
 
           {tab==='log'&&(
             <div style={{animation:'slideIn .3s ease'}}>
+              <div style={{display:'flex',gap:8,marginBottom:14}}>
+                <button onClick={()=>saveToDrive(state)} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #22c55e44',background:'rgba(34,197,94,0.1)',color:'#22c55e',fontSize:11,fontWeight:700,cursor:'pointer'}}>☁️ SAVE TO DRIVE</button>
+                <button onClick={loadFromDrive} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #38bdf844',background:'rgba(56,189,248,0.1)',color:'#38bdf8',fontSize:11,fontWeight:700,cursor:'pointer'}}>☁️ LOAD FROM DRIVE</button>
+              </div>
+              <div style={{display:'flex',gap:8,marginBottom:14}}>
+                <button onClick={exportData} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #a78bfa44',background:'rgba(167,139,250,0.1)',color:'#a78bfa',fontSize:11,fontWeight:700,cursor:'pointer'}}>💾 EXPORT FILE</button>
+                <label style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #fbbf2444',background:'rgba(251,191,36,0.1)',color:'#fbbf24',fontSize:11,fontWeight:700,cursor:'pointer',textAlign:'center'}}>
+                  📂 IMPORT FILE
+                  <input type="file" accept=".json" onChange={importData} style={{display:'none'}}/>
+                </label>
+              </div>
               <div style={{background:'rgba(5,8,16,0.95)',border:'1px solid #1e293b',borderRadius:12,padding:14,fontFamily:'monospace',fontSize:11,color:'#64748b',maxHeight:420,overflowY:'auto'}}>
                 {state.sessionLog.length===0
                   ?<div style={{color:'#334155',textAlign:'center',padding:20}}>No activity yet.</div>
