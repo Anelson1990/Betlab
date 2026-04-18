@@ -1651,6 +1651,7 @@ Analyze:
       });
       const analyzeData = await analyzeRes.json();
 
+      addLog(`🧠 Groq response: verdict=${analyzeData.analysis?.verdict} side=${analyzeData.analysis?.side} conf=${analyzeData.analysis?.confidence}`);
       setGroqResults(r=>({...r,[key]:{sim:simData,analysis:analyzeData.analysis,game}}));
 
       // If BET, add to AI picks
@@ -1671,7 +1672,7 @@ Analyze:
         });
         addLog(`🤖 Groq AI: ${analyzeData.analysis.side} (${analyzeData.analysis.confidence}% conf)`);
       }
-    } catch(e) { setError('Groq analysis failed: '+e.message); }
+    } catch(e) { setError('Groq analysis failed: '+e.message); addLog('❌ Groq error: '+e.message); }
     setGroqAnalyzing(null);
   };
 
