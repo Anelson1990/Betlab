@@ -86,7 +86,7 @@ Is this a good bet?`}],
   })();
   const profit = bet.result==='win'?(americanToDecimal(effectiveOdds)-1)*bet.stake:bet.result==='loss'?-bet.stake:0;
   const col = RC[bet.result]||'#334155';
-  const isAI = bet.source==='ai';
+  const isAI = bet.source==='ai' || bet.source==='groq';
   const accentColor = isAI?'#60a5fa':'#f97316';
 
   const handleLegGrade = () => {
