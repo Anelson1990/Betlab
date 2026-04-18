@@ -11,6 +11,24 @@ export const EMPTY_STATE = {
   lessons: [],
   sessionLog: [],
   trackedPicks: [],
+  // Self-learning parameters
+  simTuning: {
+    NHL: { lambdaMultiplier: 1.0, sampleSize: 0, lastUpdated: null },
+    MLB: { lambdaMultiplier: 1.0, sampleSize: 0, lastUpdated: null },
+    NBA: { lambdaMultiplier: 1.0, sampleSize: 0, lastUpdated: null },
+    NFL: { lambdaMultiplier: 1.0, sampleSize: 0, lastUpdated: null },
+  },
+  betTypePerf: {
+    Moneyline: { wins: 0, total: 0 },
+    Spread: { wins: 0, total: 0 },
+    Total: { wins: 0, total: 0 },
+    Parlay: { wins: 0, total: 0 },
+  },
+  confTiers: {
+    low: { wins: 0, total: 0 },    // 55-64%
+    mid: { wins: 0, total: 0 },    // 65-74%
+    high: { wins: 0, total: 0 },   // 75%+
+  },
 };
 
 const KEY = 'betlab_v3';
@@ -31,6 +49,23 @@ export function loadState() {
       trackedPicks: Array.isArray(saved.trackedPicks) ? saved.trackedPicks : [],
       groqBankroll: saved.groqBankroll || 300,
       groqStartingBankroll: saved.groqStartingBankroll || 300,
+      simTuning: saved.simTuning || {
+        NHL: { lambdaMultiplier: 1.0, sampleSize: 0, lastUpdated: null },
+        MLB: { lambdaMultiplier: 1.0, sampleSize: 0, lastUpdated: null },
+        NBA: { lambdaMultiplier: 1.0, sampleSize: 0, lastUpdated: null },
+        NFL: { lambdaMultiplier: 1.0, sampleSize: 0, lastUpdated: null },
+      },
+      betTypePerf: saved.betTypePerf || {
+        Moneyline: { wins: 0, total: 0 },
+        Spread: { wins: 0, total: 0 },
+        Total: { wins: 0, total: 0 },
+        Parlay: { wins: 0, total: 0 },
+      },
+      confTiers: saved.confTiers || {
+        low: { wins: 0, total: 0 },
+        mid: { wins: 0, total: 0 },
+        high: { wins: 0, total: 0 },
+      },
     };
   } catch (e) {
     console.warn('loadState error:', e);

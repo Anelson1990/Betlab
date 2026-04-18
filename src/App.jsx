@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchOdds, callClaude } from './api.js';
 import { SPORT_CONFIG, SPORTS, formatOddsForClaude } from './sportsMap.js';
 import { runSim, getSimConfidence, calcTuningParams } from './simEngine.js';
+import { analyzeSimTuning, analyzeBetTypePerf, analyzeConfTiers, getBettingInsights, shouldRetune, buildTuningPrompt } from './tuningEngine.js';
 import {
   loadState, persist, uid,
   americanToDecimal, impliedProb, formatMoney, formatOdds,
@@ -756,6 +757,9 @@ export default function App() {
   const [error, setError] = useState('');
   const [pickSport, setPickSport] = useState('NHL');
   const [groqSport, setGroqSport] = useState('NHL');
+  const [tuningLog, setTuningLog] = useState([]);
+  const [lastTuneCount, setLastTuneCount] = useState(0);
+  const [showTuning, setShowTuning] = useState(false);
   const [groqGames, setGroqGames] = useState([]);
   const [groqLoading, setGroqLoading] = useState(false);
   const [groqAnalyzing, setGroqAnalyzing] = useState(null);
@@ -1233,6 +1237,8 @@ Sim confidence: ${bet.simConfidence}%`;
         };
       });
       addLog(`✅ Auto-graded ${autoGraded} bet${autoGraded!==1?'s':''}`);
+    // Trigger self-learning after grading
+    setTimeout(()=>runAutoTune(newState.bets, newState.simTuning, newState.betTypePerf, newState.confTiers), 500);
     }
   },[state.bets,state.trackedPicks,state.bankroll,state.myBankroll]);
 
@@ -1305,7 +1311,8 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     } catch(err){oddsText='Live odds unavailable.';addLog(`⚠️ ${err.message}`);}
     const stakeAmount=Math.max(10,Math.round(state.bankroll*0.03/5)*5);
     const history=buildHistorySummary();
-    const sys=`You are a sharp sports bettor finding value in ${pickSport} games. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${history}\nIMPORTANT: Always return at least 1-3 picks even if edge is small. Never return empty array unless there are literally no games.\nReturn ONLY a JSON array. Each object must have ALL these fields: {"pick","sport","betType","odds"(integer American odds for the bet),"homeOdds"(integer ML odds for home team),"awayOdds"(integer ML odds for away team),"totalLine"(number over/under total e.g. 6.5),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nNo markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
+    const tuningContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
+    const sys=`You are a sharp sports bettor finding value in ${pickSport} games. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${history}\n${tuningContext?tuningContext+'\n':''}\nIMPORTANT: Always return at least 1-3 picks even if edge is small. Never return empty array unless there are literally no games.\nReturn ONLY a JSON array. Each object must have ALL these fields: {"pick","sport","betType","odds"(integer American odds for the bet),"homeOdds"(integer ML odds for home team),"awayOdds"(integer ML odds for away team),"totalLine"(number over/under total e.g. 6.5),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nNo markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
     setLoadingMsg('🧠 Finding value...');
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,true);
@@ -1724,6 +1731,26 @@ Analyze:
 
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
+  const runAutoTune = useCallback((bets, currentTuning, currentBetTypePerf, currentConfTiers) => {
+    const graded = bets.filter(b=>b.result!=='pending'&&b.tracked);
+    if (!shouldRetune(graded, lastTuneCount)) return;
+
+    const { tuning, log } = analyzeSimTuning(graded, currentTuning);
+    const betTypePerf = analyzeBetTypePerf(graded);
+    const confTiers = analyzeConfTiers(graded);
+    const insights = getBettingInsights(graded, betTypePerf, confTiers);
+
+    setState(s=>({...s, simTuning:tuning, betTypePerf, confTiers}));
+    setLastTuneCount(graded.length);
+    setTuningLog(prev=>[{
+      date: new Date().toISOString(),
+      log,
+      insights,
+      totalGraded: graded.length,
+    }, ...prev.slice(0,9)]);
+    addLog(`🧠 Model self-tuned on ${graded.length} graded picks`);
+  },[lastTuneCount]);
+
   // Google Drive sync
   const DRIVE_FILE_NAME = 'betlab-data.json';
 
@@ -1905,6 +1932,59 @@ Analyze:
 
           {/* Groq Bankroll Card */}
 
+
+          {/* Self-Learning Tuning Panel */}
+          {tuningLog.length>0&&(
+            <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid rgba(251,191,36,0.3)',borderRadius:14,padding:'14px 16px',marginBottom:10}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:10,color:'#fbbf24',letterSpacing:2}}>🧠 SELF-LEARNING STATUS</div>
+                <button onClick={()=>setShowTuning(!showTuning)} style={{fontSize:10,color:'#475569',background:'none',border:'none',cursor:'pointer'}}>{showTuning?'▲ HIDE':'▼ SHOW'}</button>
+              </div>
+              {showTuning&&tuningLog[0]&&(
+                <div>
+                  <div style={{fontSize:10,color:'#475569',marginBottom:8}}>Last tuned on {tuningLog[0].totalGraded} picks · {new Date(tuningLog[0].date).toLocaleDateString()}</div>
+                  {/* Sim multipliers */}
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:4,marginBottom:8}}>
+                    {tuningLog[0].log.filter(l=>l.status==='updated').map(l=>(
+                      <div key={l.sport} style={{background:'rgba(5,8,16,0.8)',borderRadius:6,padding:'6px 8px',border:'1px solid #1e293b'}}>
+                        <div style={{fontSize:9,color:'#fbbf24',fontWeight:700}}>{l.sport}</div>
+                        <div style={{fontSize:12,color:l.newMultiplier>l.oldMultiplier?'#22c55e':l.newMultiplier<l.oldMultiplier?'#ef4444':'#475569',fontWeight:700}}>{l.newMultiplier}x</div>
+                        <div style={{fontSize:9,color:'#334155'}}>sim {l.avgSimConf}% → actual {l.actualWR}%</div>
+                        <div style={{fontSize:9,color:l.drift>0?'#22c55e':'#ef4444'}}>{l.drift>0?'+':''}{l.drift}% drift</div>
+                      </div>
+                    ))}
+                    {tuningLog[0].log.filter(l=>l.status==='insufficient').map(l=>(
+                      <div key={l.sport} style={{background:'rgba(5,8,16,0.8)',borderRadius:6,padding:'6px 8px',border:'1px solid #1e293b',opacity:0.5}}>
+                        <div style={{fontSize:9,color:'#475569',fontWeight:700}}>{l.sport}</div>
+                        <div style={{fontSize:9,color:'#334155'}}>{l.count}/{l.needed} picks</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Insights */}
+                  {tuningLog[0].insights?.map((ins,i)=>(
+                    <div key={i} style={{fontSize:10,color:ins.type==='positive'?'#22c55e':'#f59e0b',marginBottom:3}}>{ins.msg}</div>
+                  ))}
+                  {/* Bet type performance */}
+                  <div style={{marginTop:8,fontSize:9,color:'#475569',letterSpacing:1,marginBottom:4}}>BET TYPE PERFORMANCE</div>
+                  <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                    {Object.entries(state.betTypePerf||{}).filter(([,p])=>p.total>=5).map(([type,p])=>{
+                      const wr=p.wins/p.total*100;
+                      return <span key={type} style={{fontSize:9,padding:'2px 6px',borderRadius:4,background:'rgba(5,8,16,0.8)',color:wr>55?'#22c55e':wr<48?'#ef4444':'#94a3b8'}}>{type}: {wr.toFixed(0)}% ({p.total})</span>;
+                    })}
+                  </div>
+                  {/* Confidence tiers */}
+                  <div style={{marginTop:6,fontSize:9,color:'#475569',letterSpacing:1,marginBottom:4}}>CONFIDENCE TIERS</div>
+                  <div style={{display:'flex',gap:4}}>
+                    {Object.entries(state.confTiers||{}).filter(([,t])=>t.total>=5).map(([tier,t])=>{
+                      const wr=t.wins/t.total*100;
+                      const label=tier==='high'?'75%+':tier==='mid'?'65-74%':'55-64%';
+                      return <span key={tier} style={{fontSize:9,padding:'2px 6px',borderRadius:4,background:'rgba(5,8,16,0.8)',color:wr>55?'#22c55e':wr<48?'#ef4444':'#94a3b8'}}>{label}: {wr.toFixed(0)}% ({t.total})</span>;
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 3-Way AI Comparison */}
           {(()=>{
