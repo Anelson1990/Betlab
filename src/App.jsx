@@ -873,6 +873,29 @@ export default function App() {
     setEditingMyBankroll(false);
   }
 
+  const analyzeGroqPick = useCallback(async (bet)=>{
+    setTeaching(bet.id);
+    try {
+      const sys = `You are a sharp sports betting analyst reviewing a completed bet. Analyze what the model got right or wrong and provide a lesson.
+Return a concise 2-3 paragraph analysis covering:
+1. Was the edge real or illusory?
+2. What factors were weighted correctly/incorrectly?
+3. What should the model do differently next time?
+Be direct and data-driven.`;
+      const msg = `Bet: ${bet.pick} (${bet.sport})
+Odds: ${bet.odds} | Stake: $${bet.stake} | Result: ${bet.result?.toUpperCase()}
+Confidence: ${bet.confidence}% | Edge: ${bet.edge}
+Reasoning: ${bet.reasoning}
+Key Factors: ${bet.keyFactors?.join(', ')}
+Sim confidence: ${bet.simConfidence}%`;
+      const raw = await callClaude([{role:'user',content:msg}], sys, false);
+      const lesson = {id:uid(), date:new Date().toISOString().split('T')[0], sport:bet.sport, pick:bet.pick, result:bet.result, lesson:raw, source:'groq'};
+      setState(s=>({...s, lessons:[lesson,...s.lessons], bets:s.bets.map(b=>b.id===bet.id?{...b,lesson:raw}:b)}));
+      addLog(`🧠 Groq pick analyzed`);
+    } catch(e) { addLog('❌ Analyze failed: '+e.message); }
+    setTeaching(null);
+  },[]);
+
   const tailGroqPick = useCallback((bet)=>{
     const newBet = {
       id:uid(), pick:bet.pick, sport:bet.sport, betType:bet.betType,
@@ -889,19 +912,19 @@ export default function App() {
 
 
   const addGroqPick = useCallback(pickData=>{
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,tracked:true};
     setState(s=>({...s,groqBankroll:parseFloat((s.groqBankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🧠 Groq pick: ${bet.pick}`);
   },[]);
 
   const addAIPick = useCallback(pickData=>{
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'ai'};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'ai',tracked:true};
     setState(s=>({...s,bankroll:parseFloat((s.bankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🤖 AI: ${bet.pick}`);
   },[]);
 
   const addMyPick = useCallback(pickData=>{
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'MLB',betType:pickData.betType||'Moneyline',betCategory:pickData.betCategory||'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,modelProb:pickData.modelProb||null,rating:pickData.rating||'',edge:pickData.edge||'',legs:pickData.legs||[],lesson:null,source:'paste'};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'MLB',betType:pickData.betType||'Moneyline',betCategory:pickData.betCategory||'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,modelProb:pickData.modelProb||null,rating:pickData.rating||'',edge:pickData.edge||'',legs:pickData.legs||[],lesson:null,source:'paste',tracked:true};
     setState(s=>({...s,myBankroll:parseFloat((s.myBankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`📋 My pick: ${bet.pick}`);
   },[]);
@@ -1242,7 +1265,7 @@ export default function App() {
   },[addMyPick,fetchWeather]);
 
   const buildHistorySummary = () => {
-    const graded = state.bets.filter(b=>b.result!=='pending');
+    const graded = state.bets.filter(b=>b.result!=='pending'&&b.tracked);
     if (!graded.length) return '';
     // Auto-tune sim parameters based on graded results
     const tuning = calcTuningParams(graded);
@@ -2474,7 +2497,7 @@ Analyze:
                 </div>
                 {groqBets.length===0
                   ?<div style={{textAlign:'center',padding:'30px 0',color:'#334155',fontSize:12}}>No Groq picks yet — load games and analyze</div>
-                  :groqBets.map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} onTail={tailGroqPick} teaching={teaching} allowEdit={false} bankroll={state.groqBankroll}/>)
+                  :groqBets.map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={bet.result!=='pending'?analyzeGroqPick:null} onUndoGrade={undoGrade} onTail={tailGroqPick} teaching={teaching} allowEdit={false} bankroll={state.groqBankroll}/>)
                 }
               </div>
             </div>
