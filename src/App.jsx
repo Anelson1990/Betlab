@@ -1052,7 +1052,7 @@ export default function App() {
       const isSpread = betType.includes('SPREAD') || betType.includes('PUCK') || betType.includes('RUN') || bet.pick.match(/[+-]\d{1,2}\.5/);
       const isML = !isSpread && (betType.includes('MONEYLINE') || betType.includes('ML') ||
         pickUpper.includes('— HOME') || pickUpper.includes('— AWAY') ||
-        pickUpper.includes('HOME (') || pickUpper.includes('AWAY (');
+        pickUpper.includes('HOME (') || pickUpper.includes('AWAY ('));
       if (isML) {
         const awayWin = away > home;
         if (away === home) return 'push';
