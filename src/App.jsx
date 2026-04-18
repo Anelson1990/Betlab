@@ -1389,6 +1389,18 @@ Warning: ${note.warning||''}`,
     }
   },[state.bets]);
 
+  const deleteBet = useCallback((id)=>{
+    setState(s=>{
+      const bet = s.bets.find(b=>b.id===id);
+      if(!bet) return s;
+      // Refund stake if pending
+      const key = bet.source==='paste'?'myBankroll':bet.source==='groq'?'groqBankroll':'bankroll';
+      const refund = bet.result==='pending' ? bet.stake : 0;
+      return {...s, [key]:parseFloat((s[key]+refund).toFixed(2)), bets:s.bets.filter(b=>b.id!==id)};
+    });
+    addLog('🗑 Deleted bet');
+  },[]);
+
   const deleteAIPick = useCallback((id)=>{
     setState(s=>{
       const bet = s.bets.find(b=>b.id===id);
@@ -2250,7 +2262,7 @@ Analyze:
               {filterBar(aiFilter,setAiFilter)}
               {aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🤖</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO AI BETS YET</div><div style={{fontSize:12,marginTop:6}}>Dashboard → Find Value</div></div>
-                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} onTail={tailBet} onDelete={bet.result==='pending'?deleteAIPick:null} teaching={teaching} allowEdit={true} bankroll={state.bankroll}/>)
+                :aiBets.filter(b=>aiFilter==='all'||b.result===aiFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onUndoGrade={undoGrade} onTail={tailBet} onDelete={(id)=>deleteBet(id)} teaching={teaching} allowEdit={true} bankroll={state.bankroll}/>)
               }
             </div>
           )}
@@ -2277,7 +2289,7 @@ Analyze:
               </div>
               {myBets.filter(b=>myFilter==='all'||b.result===myFilter).length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>📋</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO SCRIPT PICKS YET</div><div style={{fontSize:12,marginTop:6}}>Go to 📋 Paste to import from your model</div></div>
-                :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onDelete={deleteMyPick} onEdit={b=>setMyPickModal(b)} onUndoGrade={undoGrade} teaching={teaching} allowEdit={true} bankroll={state.myBankroll}/>)
+                :myBets.filter(b=>myFilter==='all'||b.result===myFilter).map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={teachLesson} onDelete={(id)=>deleteBet(id)} onEdit={b=>setMyPickModal(b)} onUndoGrade={undoGrade} teaching={teaching} allowEdit={true} bankroll={state.myBankroll}/>)
               }
             </div>
           )}
@@ -2493,7 +2505,7 @@ Analyze:
                 </div>
                 {groqBets.length===0
                   ?<div style={{textAlign:'center',padding:'30px 0',color:'#334155',fontSize:12}}>No Groq picks yet — load games and analyze</div>
-                  :groqBets.map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={bet.result!=='pending'?analyzeGroqPick:null} onUndoGrade={undoGrade} onTail={tailGroqPick} teaching={teaching} allowEdit={false} bankroll={state.groqBankroll}/>)
+                  :groqBets.map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={bet.result!=='pending'?analyzeGroqPick:null} onUndoGrade={undoGrade} onTail={tailGroqPick} onDelete={(id)=>deleteBet(id)} teaching={teaching} allowEdit={false} bankroll={state.groqBankroll}/>)
                 }
               </div>
             </div>
