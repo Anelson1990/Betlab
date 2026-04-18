@@ -1667,55 +1667,74 @@ Analyze:
   };
 
   const importDraftKings = (text) => {
-    const lines = text.trim().split('\n').filter(l=>l.trim());
+    // Join all lines and split by date pattern to get individual bets
+    const lines = text.trim().split('\n').map(l=>l.trim()).filter(l=>l);
     const bets = [];
+    
+    // Reconstruct single-line bets from multi-line format
+    // Group lines into bet records - each bet starts with a date or month
+    const betLines = [];
+    let current = [];
+    
     for (const line of lines) {
-      // Skip header lines
-      if (line.startsWith('Date') || line.startsWith('Month')) continue;
+      // New bet starts with date pattern like "Mar 24," or "Feb 28,"
+      const isDate = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d/.test(line);
+      if (isDate && current.length > 0) {
+        betLines.push(current.join(' '));
+        current = [line];
+      } else {
+        current.push(line);
+      }
+    }
+    if (current.length > 0) betLines.push(current.join(' '));
+
+    for (const line of betLines) {
+      if (!line.trim()) continue;
       
-      // Extract status first (last word)
-      const status = line.match(/(Won|Lost|Cashed Out|Push|Void|Open)\s*$/i)?.[1]||'';
+      // Extract status
+      const status = line.match(/(Won|Lost|Cashed Out|Push|Void)/i)?.[1]||'';
       if (!status) continue;
-      
       const result = /won|cashed/i.test(status)?'win':/lost/i.test(status)?'loss':'push';
       
-      // Extract stake - look for $X.XX pattern
-      const stakeMatch = line.match(/\$([\d,]+\.\d{2})/g);
-      const stake = stakeMatch ? parseFloat(stakeMatch[0].replace(/[$,]/g,'')) : 5;
+      // Extract all dollar amounts
+      const dollars = [...line.matchAll(/\$([\d,]+\.\d{2})/g)].map(m=>parseFloat(m[1].replace(',','')));
+      const stake = dollars[0]||5;
       
-      // Extract odds - look for +XXX or -XXX pattern
-      const oddsMatch = line.match(/([+-]\d{2,4})(?=\s+\$)/);
+      // Extract odds
+      const oddsMatch = line.match(/([+-]\d{2,4})(?=\s)/);
       const odds = oddsMatch ? parseInt(oddsMatch[1]) : -110;
       
       // Extract bet type
-      const typeMatch = line.match(/Single|Parlay|SGP|SGPx|Live/i);
-      const betType = typeMatch ? typeMatch[0] : 'Single';
+      const typeMatch = line.match(/(SGPx|SGP|Parlay|Single|Live)/i);
+      const betType = typeMatch?.[1]||'Single';
       const isParlay = /parlay|sgp/i.test(betType);
       
-      // Extract pick - everything between type and odds
-      const typeIdx = line.search(/Single|Parlay|SGP|SGPx|Live/i);
-      const oddsIdx = line.search(/[+-]\d{2,4}\s+\$/);
-      let pick = typeIdx !== -1 && oddsIdx !== -1 ? line.slice(typeIdx + betType.length, oddsIdx).trim() : '';
-      if (!pick) continue;
+      // Extract pick - remove date, type, odds, dollar amounts, status
+      let pick = line
+        .replace(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d+,\s+\d+:\d+\s+(AM|PM)/i,'')
+        .replace(/(SGPx|SGP|Parlay|Single|Live)\s*(\(\d+-Leg\))?/gi,'')
+        .replace(/[+-]\d{2,4}/g,'')
+        .replace(/\$[\d,]+\.\d{2}/g,'')
+        .replace(/(Won|Lost|Cashed Out|Push|Void)/gi,'')
+        .replace(/\s+/g,' ').trim();
       
-      // Remove leg count like "(3-Leg)"
-      pick = pick.replace(/\(\d+-Leg\)/gi,'').trim();
+      if (!pick || pick.length < 3) continue;
       
-      // Detect sport
-      const sport = /\b(NBA|MLB|NFL)\b/i.test(pick) ? pick.match(/\b(NBA|MLB|NFL)\b/i)[1].toUpperCase() : 'NHL';
+      const sport = /\b(NBA|MLB|NFL)\b/i.test(pick)?pick.match(/\b(NBA|MLB|NFL)\b/i)[1].toUpperCase():'NHL';
       
       bets.push({
-        id: uid(), pick, sport,
+        id:uid(), pick, sport,
         betType: isParlay?'Parlay':'Moneyline',
         betCategory: isParlay?'parlay':'straight',
         odds: isNaN(odds)?-110:odds,
         stake: isNaN(stake)?5:stake,
-        result, date: new Date().toISOString(), source:'paste',
+        result, date:new Date().toISOString(), source:'paste',
         reasoning:'Imported from DraftKings', keyFactors:[], confidence:60,
-        modelProb: null, rating:'', edge:'', legs:[],
+        modelProb:null, rating:'', edge:'', legs:[],
       });
     }
-    if (!bets.length) { alert('No bets found. Make sure to paste the full DraftKings history text.'); return; }
+    
+    if (!bets.length) { alert('No bets parsed. Try pasting more of the history including dates.'); return; }
     setState(s=>({...s, bets:[...bets,...s.bets]}));
     addLog(`✅ Imported ${bets.length} bets from DraftKings`);
     setTab('mine');
