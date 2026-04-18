@@ -1666,29 +1666,7 @@ Analyze:
     reader.readAsText(file);
   };
 
-  const exportData = () => {
-    const data = JSON.stringify(state, null, 2);
-    const blob = new Blob([data], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `betlab-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    addLog('💾 Data exported');
-  };
 
-  const importData = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        setState(s=>({...s,...data}));
-        addLog('✅ Data imported successfully');
-      } catch(err) { alert('Import failed: '+err.message); }
-    };
     reader.readAsText(file);
   };
 
