@@ -317,7 +317,7 @@ function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartin
           </>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
         </div>
         <div style={{paddingLeft:12}}>
-          <div style={{fontSize:10,color:'#f97316',letterSpacing:2,marginBottom:6,fontWeight:700}}>📋 MY SCRIPTS</div>
+          <div style={{fontSize:10,color:'#f97316',letterSpacing:2,marginBottom:6,fontWeight:700}}>📋 MY PICKS</div>
           <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:myPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(myPnL)}</div>
           <div style={{fontSize:10,color:'#475569',marginBottom:6}}>true P&L vs ${myStartingBankroll} start</div>
           {myGraded.length>0?<>
@@ -674,7 +674,7 @@ After your research, return ONLY this JSON:
                 <div style={{fontSize:9,color:'#22c55e',fontWeight:700,marginBottom:2}}>😴 REST & TRAVEL</div>
                 <div style={{fontSize:11,color:'#94a3b8'}}>{pick.restTravel.restDays!=null?`${pick.restTravel.restDays} rest days`:''}{pick.restTravel.backToBack?' · Back-to-back':''}{pick.restTravel.travelNote?` · ${pick.restTravel.travelNote}`:''}</div>
               </div>}
-              <div style={{marginTop:8,fontSize:10,color:'#334155'}}>Stake ${stake} · logs to MY SCRIPTS bankroll</div>
+              <div style={{marginTop:8,fontSize:10,color:'#334155'}}>Stake ${stake} · logs to MY PICKS bankroll</div>
             </div>
           ))}
           <button onClick={verifyPicks} disabled={verifying} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #a78bfa44',background:verifying?'#1e293b':'rgba(167,139,250,0.1)',color:verifying?'#475569':'#a78bfa',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1,cursor:verifying?'not-allowed':'pointer',marginBottom:8}}>
@@ -731,7 +731,7 @@ After your research, return ONLY this JSON:
             ['3','Pick sport tab above','NHL · MLB · NBA · NFL'],
             ['4','Paste and hit Parse','AI extracts TOP 3 with full breakdowns'],
             ['5','Review each pick','Odds · Model% · Reasoning · 5 key factors'],
-            ['6','Confirm → My Scripts','Grade as results come in'],
+            ['6','Confirm → My Picks','Grade as results come in'],
           ].map(([n,title,desc])=>(
             <div key={n} style={{display:'flex',gap:12,marginBottom:10,alignItems:'flex-start'}}>
               <div style={{width:22,height:22,borderRadius:'50%',background:'rgba(249,115,22,0.15)',border:'1px solid rgba(249,115,22,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'#f97316',fontWeight:700,flexShrink:0}}>{n}</div>
@@ -1856,7 +1856,7 @@ Analyze:
   // Auto-grade disabled - use manual CHECK button to save API calls
 
   const TABS=['dashboard','ai','groq','paste','mine','tracker','lessons','log'];
-  const TLABELS={dashboard:'📊 Dash',ai:'🤖 Claude',groq:'🧠 Groq',paste:'📋 Paste',mine:'📈 My Scripts',tracker:'📡 Tracker',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
+  const TLABELS={dashboard:'📊 Dash',ai:'🤖 Claude',groq:'🧠 Groq',paste:'📋 Paste',mine:'📈 My Picks',tracker:'📡 Tracker',lessons:`🎓 (${state.lessons.length})`,log:'🪵 Log'};
 
   const filterBar=(filter,setFilter)=>(
     <div style={{display:'flex',gap:5,marginBottom:12,flexWrap:'wrap'}}>
@@ -1886,21 +1886,39 @@ Analyze:
           </div>
 
           {/* Groq Bankroll Card */}
-          <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid rgba(139,92,246,0.3)',borderRadius:14,padding:'14px 16px',marginBottom:10}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div>
-                <div style={{fontSize:9,color:'#8b5cf6',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>🧠 Groq AI Bankroll</div>
-                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:computedGroqBankroll>=state.groqStartingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${computedGroqBankroll.toFixed(0)}</div>
-                <div style={{fontSize:10,color:'#475569',marginTop:2}}>start ${state.groqStartingBankroll.toFixed(0)} · {groqBets.filter(b=>b.result==='pending').length} pending</div>
-              </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontSize:12,color:groqGraded.length?((groqGraded.filter(b=>b.result==='win').length/groqGraded.length*100)>=55?'#22c55e':'#ef4444'):'#475569',fontWeight:700}}>
-                  {groqGraded.length?`${groqGraded.filter(b=>b.result==='win').length}W-${groqGraded.length-groqGraded.filter(b=>b.result==='win').length}L`:'No picks yet'}
+
+
+          {/* 3-Way AI Comparison */}
+          {(()=>{
+            const systems = [
+              {label:'🤖 Claude', bets:aiBets, color:'#38bdf8'},
+              {label:'🧠 Groq', bets:groqBets, color:'#8b5cf6'},
+              {label:'📈 My Picks', bets:myBets, color:'#f97316'},
+            ];
+            return (
+              <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px',marginBottom:10}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:10,color:'#475569',letterSpacing:2,marginBottom:10}}>⚡ AI COMPARISON</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+                  {systems.map(({label,bets,color})=>{
+                    const graded=bets.filter(b=>b.result!=='pending');
+                    const wins=graded.filter(b=>b.result==='win').length;
+                    const staked=graded.reduce((a,b)=>a+b.stake,0);
+                    const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+                    const roi=staked?profit/staked*100:0;
+                    const wr=graded.length?wins/graded.length*100:0;
+                    return (
+                      <div key={label} style={{background:'rgba(5,8,16,0.8)',borderRadius:8,padding:'8px 10px',border:`1px solid ${color}22`}}>
+                        <div style={{fontSize:10,color,fontWeight:700,marginBottom:4}}>{label}</div>
+                        <div style={{fontSize:13,color:wr>=55?'#22c55e':wr>0?'#ef4444':'#475569',fontWeight:700}}>{graded.length?`${wins}W-${graded.length-wins}L`:'—'}</div>
+                        <div style={{fontSize:10,color:roi>=0?'#22c55e':'#ef4444'}}>{graded.length?`${roi>=0?'+':''}${roi.toFixed(1)}% ROI`:'No data'}</div>
+                        <div style={{fontSize:9,color:'#334155',marginTop:2}}>{bets.filter(b=>b.result==='pending').length} pending</div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{fontSize:10,color:'#475569'}}>{groqGraded.length} graded</div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom: editingBankroll||editingMyBankroll?4:14}}>
             <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
@@ -1911,7 +1929,7 @@ Analyze:
               <button onClick={()=>{setBankrollInput('');setStartBankrollInput('');setEditingBankroll(true);setEditingMyBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #1d4ed844',background:'rgba(29,78,216,.1)',color:'#60a5fa',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
             </div>
             <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
-              <div style={{fontSize:9,color:'#f97316',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>📋 My Scripts</div>
+              <div style={{fontSize:9,color:'#f97316',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>📋 My Picks</div>
               <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:state.myBankroll>=state.myStartingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.myBankroll.toFixed(0)}</div>
               <div style={{fontSize:10,color:'#475569',marginTop:2}}>start ${state.myStartingBankroll.toFixed(0)}</div>
               <div style={{fontSize:10,color:'#475569'}}>{myBets.filter(b=>b.result==='pending').length} pending</div>
@@ -1942,7 +1960,7 @@ Analyze:
           )}
           {editingMyBankroll&&(
             <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #f9731644',borderRadius:14,padding:14,marginBottom:14}}>
-              <div style={{fontSize:10,color:'#f97316',fontWeight:700,marginBottom:10}}>📋 EDIT MY SCRIPTS BANKROLL</div>
+              <div style={{fontSize:10,color:'#f97316',fontWeight:700,marginBottom:10}}>📋 EDIT MY PICKS BANKROLL</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                 <div>
                   <div style={{fontSize:9,color:'#475569',marginBottom:3}}>CURRENT $</div>
@@ -1995,7 +2013,7 @@ Analyze:
                       <div style={{fontSize:10,color:'#475569',marginTop:2}}>Best win streak: {aiStreak.longest_win} · Worst loss: {aiStreak.longest_loss}</div>
                     </div>
                     <div style={{padding:'10px 12px',background:'rgba(5,8,16,0.5)',borderRadius:8,border:`1px solid ${myStreak.type==='win'?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)'}`}}>
-                      <div style={{fontSize:9,color:'#f97316',fontWeight:700,marginBottom:4}}>📋 MY SCRIPTS</div>
+                      <div style={{fontSize:9,color:'#f97316',fontWeight:700,marginBottom:4}}>📋 MY PICKS</div>
                       <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:myStreak.type==='win'?'#22c55e':'#ef4444',fontWeight:700}}>{myStreak.current} {myStreak.type==='win'?'W':'L'}</div>
                       <div style={{fontSize:10,color:'#475569',marginTop:2}}>Best win streak: {myStreak.longest_win} · Worst loss: {myStreak.longest_loss}</div>
                     </div>
