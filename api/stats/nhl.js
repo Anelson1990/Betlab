@@ -113,42 +113,24 @@ async function fetchDailyFaceoffGoalies(homeAbbr, awayAbbr) {
     if (!r.ok) return {};
     const html = await r.text();
 
-    // Parse game blocks - each article has team names in h1/span and goalie names in spans
     const goalies = {};
 
-    // Extract all game blocks - pattern: "TEAM at TEAM" followed by goalie names
-    const gamePattern = /<span[^>]*class="[^"]*text-3xl[^"]*"[^>]*>([^<]+?)\s*<!--\s*-->\s*at\s*<!--\s*-->\s*([^<]+?)<\/span>/g;
-    const goaliePattern = /<span[^>]*class="[^"]*text-lg xl:text-2xl[^"]*"[^>]*>([^<]+?)<\/span>/g;
+    // Extract goalie names - pattern confirmed working
+    const goalieMatches = [...html.matchAll(/text-lg xl:text-2xl[^>]*>([A-Z][a-z]+\s+[A-Z][a-zA-Z-]+)</g)];
 
-    const gameMatches = [...html.matchAll(gamePattern)];
-    const goalieMatches = [...html.matchAll(goaliePattern)];
+    // Extract game matchups
+    const gameMatches = [...html.matchAll(/text-3xl text-white[^>]*>([^<]+?)<!--[^>]*-->\s*at\s*<!--[^>]*-->([^<]+?)</g)];
 
-    // Match games to goalies - each game has 2 goalies (away first, home second)
     gameMatches.forEach((game, idx) => {
       const awayTeamName = game[1].trim();
       const homeTeamName = game[2].trim();
       const awayGoalie = goalieMatches[idx*2]?.[1]?.trim();
       const homeGoalie = goalieMatches[idx*2+1]?.[1]?.trim();
-
-      // Map team names to abbreviations
       const awayAb = getAbbr(awayTeamName);
       const homeAb = getAbbr(homeTeamName);
-
       if (awayAb && awayGoalie) goalies[awayAb] = awayGoalie;
       if (homeAb && homeGoalie) goalies[homeAb] = homeGoalie;
     });
-
-    // Also try simpler pattern as fallback
-    if (Object.keys(goalies).length === 0) {
-      const simpleGoalies = [...html.matchAll(/text-lg xl:text-2xl[^>]*>([A-Z][a-z]+ [A-Z][a-z-]+)</g)];
-      const simpleGames = [...html.matchAll(/text-3xl text-white[^>]*>([^<]+?) at ([^<]+?)</g)];
-      simpleGames.forEach((game, idx) => {
-        const awayAb = getAbbr(game[1].trim());
-        const homeAb = getAbbr(game[2].trim());
-        if (awayAb && simpleGoalies[idx*2]) goalies[awayAb] = simpleGoalies[idx*2][1];
-        if (homeAb && simpleGoalies[idx*2+1]) goalies[homeAb] = simpleGoalies[idx*2+1][1];
-      });
-    }
 
     return goalies;
   } catch(e) {
