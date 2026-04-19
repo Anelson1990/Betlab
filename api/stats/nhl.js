@@ -264,6 +264,7 @@ export default async function handler(req, res) {
       home:{
         team:home, abbr:homeAbbr,
         stats:homeStats,
+        _rawStandings: standings?.standings?.find(t=>t.teamAbbrev?.default===homeAbbr),
         recentForm:homeForm?.last10,
         recentGames:homeForm?.games,
         probableGoalie:homeGoalie||homeGoalieName,
