@@ -2712,7 +2712,7 @@ Analyze:
                   <div>
                     <div style={{fontSize:10,color:'#475569',marginBottom:8}}>{groqGames.length} games — tap ANALYZE to run 10K sims + Llama 3.3</div>
                     {groqGames.map(game=>{
-                      const key=game.homeTeam+game.awayTeam+'ML';
+                      const key=Object.keys(groqResults).find(k=>k.includes(game.homeTeam)||k.includes(game.awayTeam))||game.homeTeam+game.awayTeam+'ML';
                       const result=groqResults[key];
                       const isAnalyzing=groqAnalyzing===key;
                       return (
