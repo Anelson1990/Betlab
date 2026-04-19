@@ -2274,7 +2274,7 @@ Analyze:
           {(()=>{
             const systems = [
               {label:'🤖 Claude', bets:aiBets, color:'#38bdf8', bankroll:state.bankroll, startBankroll:state.startingBankroll},
-              {label:'🧠 Groq', bets:groqBets, color:'#8b5cf6', bankroll:state.groqBankroll, startBankroll:state.groqStartingBankroll},
+              {label:'🧠 Groq', bets:groqBets, color:'#8b5cf6', bankroll:computedGroqBankroll, startBankroll:state.groqStartingBankroll},
               {label:'📈 My Picks', bets:myBets, color:'#f97316', bankroll:state.myBankroll, startBankroll:state.myStartingBankroll},
             ];
             return (
