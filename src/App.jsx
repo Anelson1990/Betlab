@@ -2977,4 +2977,6 @@ Analyze:
     </>
   );
 }
+
+export default App;
 // Mon Apr 13 17:35:05 CDT 2026
