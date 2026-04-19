@@ -2586,15 +2586,18 @@ Analyze:
                             <div style={{fontSize:10,color:'#64748b'}}>{game.awayOdds>0?'+':''}{game.awayOdds} / {game.homeOdds>0?'+':''}{game.homeOdds}</div>
                           </div>
                           {!result&&(
-                            <div style={{display:'flex',gap:6}}>
+                            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                               <button onClick={()=>runGroqAnalysis(game,'ML')} disabled={!!groqAnalyzing} style={{flex:1,padding:'8px 0',borderRadius:6,border:'1px solid #8b5cf644',background:'rgba(139,92,246,0.1)',color:'#8b5cf6',fontSize:11,fontWeight:700,cursor:groqAnalyzing?'not-allowed':'pointer'}}>
-                                {isAnalyzing?'🧠 RUNNING...':'🧠 ANALYZE ML'}
+                                {isAnalyzing?'🧠 RUNNING...':'🧠 ML'}
                               </button>
-                              {game.sport==='MLB'&&(
+                              {game.sport==='MLB'&&(<>
                                 <button onClick={()=>runGroqAnalysis(game,'NRFI')} disabled={!!groqAnalyzing} style={{flex:1,padding:'8px 0',borderRadius:6,border:'1px solid #22c55e44',background:'rgba(34,197,94,0.1)',color:'#22c55e',fontSize:11,fontWeight:700,cursor:groqAnalyzing?'not-allowed':'pointer'}}>
-                                  {isAnalyzing?'🧠 RUNNING...':'⚾ NRFI/YRFI'}
+                                  {isAnalyzing?'...':'⚾ NRFI'}
                                 </button>
-                              )}
+                                <button onClick={async()=>{await runGroqAnalysis(game,'ML');await runGroqAnalysis(game,'NRFI');}} disabled={!!groqAnalyzing} style={{flex:1,padding:'8px 0',borderRadius:6,border:'1px solid #fbbf2444',background:'rgba(251,191,36,0.1)',color:'#fbbf24',fontSize:11,fontWeight:700,cursor:groqAnalyzing?'not-allowed':'pointer'}}>
+                                  {isAnalyzing?'...':'⚡ BOTH'}
+                                </button>
+                              </>)}
                             </div>
                           )}
                           {result&&(
