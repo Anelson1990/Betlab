@@ -1332,12 +1332,17 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     const sys=`You are a sharp sports bettor finding value in ${pickSport} games.
 
 CRITICAL RULES:
-- Only bet games that are CONFIRMED for TODAY based on the stats data provided
-- For MLB: always use the CONFIRMED starting pitcher from stats data, never guess
-- For NHL: always use the CONFIRMED starting goalie from stats data
-- Never fabricate player stats - only use what is in the stats context
-- If stats show a game pitcher as "TBD" or missing, lower confidence significantly
-- Verify odds match the teams in the stats context before recommending
+- Only bet games CONFIRMED for TODAY in the stats data
+- For each game, pick ONE SIDE ONLY — never bet both teams in the same game
+- Process each game in order:
+  1. Calculate TRUE win probability using stats (pitcher ERA, team form, injuries, home/away splits)
+  2. Compare to MARKET implied probability from the odds
+  3. Only recommend if your true probability EXCEEDS market by 4%+ 
+  4. Pick the side with the HIGHEST edge — never recommend both sides
+- For MLB: use CONFIRMED pitcher from stats, never guess
+- For NHL: use CONFIRMED goalie from stats
+- Never fabricate stats — only use what is provided
+- Maximum 3 picks total — quality over quantity
 
 LIVE ODDS:
 ${oddsText}
