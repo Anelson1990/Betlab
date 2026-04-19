@@ -1329,7 +1329,25 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
 
       }
     } catch(e) { console.warn('Games stats fetch failed:', e.message); }
-    const sys=`You are a sharp sports bettor finding value in ${pickSport} games. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${gamesWithStats?'\n\nTEAM STATS & CONTEXT:\n'+gamesWithStats:''}${history}\n${tuningContext?tuningContext+'\n':''}\nIMPORTANT: Always return at least 1-3 picks even if edge is small. Never return empty array unless there are literally no games.\nReturn ONLY a JSON array. Each object must have ALL these fields: {"pick","sport","betType","odds"(integer American odds for the bet),"homeOdds"(integer ML odds for home team),"awayOdds"(integer ML odds for away team),"totalLine"(number over/under total e.g. 6.5),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nNo markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
+    const sys=`You are a sharp sports bettor finding value in ${pickSport} games.
+
+CRITICAL RULES:
+- Only bet games that are CONFIRMED for TODAY based on the stats data provided
+- For MLB: always use the CONFIRMED starting pitcher from stats data, never guess
+- For NHL: always use the CONFIRMED starting goalie from stats data
+- Never fabricate player stats - only use what is in the stats context
+- If stats show a game pitcher as "TBD" or missing, lower confidence significantly
+- Verify odds match the teams in the stats context before recommending
+
+LIVE ODDS:
+${oddsText}
+${gamesWithStats?'VERIFIED TEAM STATS & CONFIRMED STARTERS:\n'+gamesWithStats:''}
+${history}
+${tuningContext?tuningContext+'\n':''}
+
+Return ONLY a JSON array of your best 1-3 picks. Each object must have:
+{"pick","sport","betType","odds"(integer),"homeOdds"(integer),"awayOdds"(integer),"totalLine"(number),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}
+No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
     setLoadingMsg('🧠 Finding value...');
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,true);
