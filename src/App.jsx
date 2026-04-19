@@ -757,6 +757,9 @@ export default function App() {
   const [error, setError] = useState('');
   const [pickSport, setPickSport] = useState('NHL');
   const [groqSport, setGroqSport] = useState('NHL');
+  const [preLog, setPreLog] = useState([]);
+  const [preLogInput, setPreLogInput] = useState({pick:'',sport:'NHL',betType:'Moneyline',odds:'',stake:'10',notes:''});
+  const [preLogLoading, setPreLogLoading] = useState(null);
   const [tuningLog, setTuningLog] = useState([]);
   const [lastTuneCount, setLastTuneCount] = useState(0);
   const [showTuning, setShowTuning] = useState(false);
@@ -1409,6 +1412,87 @@ Warning: ${note.warning||''}`,
       } catch(e){ console.warn('Auto-coach failed:',e); }
     }
   },[state.bets]);
+
+  const addToPreLog = () => {
+    if (!preLogInput.pick.trim()) return;
+    const entry = {
+      id: uid(),
+      ...preLogInput,
+      odds: parseInt(preLogInput.odds)||(-110),
+      stake: parseFloat(preLogInput.stake)||10,
+      date: new Date().toISOString(),
+      coachOpinion: null,
+      coachLoading: false,
+    };
+    setPreLog(p=>[entry,...p]);
+    setPreLogInput({pick:'',sport:'NHL',betType:'Moneyline',odds:'',stake:'10',notes:''});
+    addLog(`📋 Added to pre-log: ${entry.pick}`);
+  };
+
+  const askCoachAboutPick = async (id) => {
+    const entry = preLog.find(p=>p.id===id);
+    if (!entry) return;
+    setPreLogLoading(id);
+    try {
+      const graded = state.bets.filter(b=>b.result!=='pending'&&b.tracked);
+      const wins = graded.filter(b=>b.result==='win').length;
+      const roi = graded.length ? graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0)/graded.reduce((a,b)=>a+b.stake,0)*100 : 0;
+      
+      // Sport-specific record
+      const sportBets = graded.filter(b=>b.sport===entry.sport);
+      const sportWins = sportBets.filter(b=>b.result==='win').length;
+      
+      // Bet type record
+      const typeBets = graded.filter(b=>b.betType===entry.betType);
+      const typeWins = typeBets.filter(b=>b.result==='win').length;
+
+      const sys = `You are a sharp sports betting coach analyzing a potential bet before it is placed. 
+Be direct and honest. Give a clear BET or PASS recommendation with specific reasoning.
+Consider: the bettor's historical performance with this sport/bet type, the odds value, and any red flags.`;
+
+      const msg = `POTENTIAL BET TO ANALYZE:
+Pick: ${entry.pick}
+Sport: ${entry.sport}
+Bet Type: ${entry.betType}
+Odds: ${entry.odds}
+Stake: $${entry.stake}
+Notes: ${entry.notes||'none'}
+
+BETTOR HISTORY:
+Overall: ${wins}W-${graded.length-wins}L (${roi.toFixed(1)}% ROI) on ${graded.length} bets
+${entry.sport} record: ${sportWins}W-${sportBets.length-sportWins}L on ${sportBets.length} bets
+${entry.betType} record: ${typeWins}W-${typeBets.length-typeWins}L on ${typeBets.length} bets
+Recent lessons: ${state.lessons.slice(0,3).map(l=>l.lesson?.slice(0,100)).filter(Boolean).join(' | ')}
+
+Should this bet be placed? Give BET or PASS with 2-3 sentences of specific reasoning.`;
+
+      const opinion = await callClaude([{role:'user',content:msg}], sys, false);
+      setPreLog(p=>p.map(e=>e.id===id?{...e,coachOpinion:opinion}:e));
+    } catch(e) { addLog('❌ Coach error: '+e.message); }
+    setPreLogLoading(null);
+  };
+
+  const lockPreLogPick = (id) => {
+    const entry = preLog.find(p=>p.id===id);
+    if (!entry) return;
+    addMyPick({
+      pick: entry.pick,
+      sport: entry.sport,
+      betType: entry.betType,
+      odds: entry.odds,
+      stake: entry.stake,
+      reasoning: entry.coachOpinion||entry.notes||'',
+      keyFactors: [],
+      confidence: 60,
+    });
+    setPreLog(p=>p.filter(e=>e.id!==id));
+    addLog(`✅ Locked: ${entry.pick} → My Picks`);
+  };
+
+  const deletePreLog = (id) => {
+    setPreLog(p=>p.filter(e=>e.id!==id));
+    addLog('🗑 Removed from pre-log');
+  };
 
   const deleteBet = useCallback((id)=>{
     setState(s=>{
@@ -2389,6 +2473,55 @@ Analyze:
 
           {tab==='mine'&&(
             <div style={{animation:'slideIn .3s ease'}}>
+              {/* Pre-Log Section */}
+              <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid rgba(251,191,36,0.3)',borderRadius:14,padding:16,marginBottom:14}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:10,color:'#fbbf24',letterSpacing:2,marginBottom:10}}>📋 PRE-LOG — ASK COACH BEFORE PLACING</div>
+                <div style={{display:'flex',gap:6,marginBottom:6}}>
+                  <input value={preLogInput.pick} onChange={e=>setPreLogInput(p=>({...p,pick:e.target.value}))} placeholder="Pick (e.g. Boston Red Sox ML)" style={{flex:2,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px 10px',fontSize:12}}/>
+                  <select value={preLogInput.sport} onChange={e=>setPreLogInput(p=>({...p,sport:e.target.value}))} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px',fontSize:12}}>
+                    {['NHL','MLB','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div style={{display:'flex',gap:6,marginBottom:6}}>
+                  <select value={preLogInput.betType} onChange={e=>setPreLogInput(p=>({...p,betType:e.target.value}))} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px',fontSize:12}}>
+                    {['Moneyline','Spread','Total','NRFI','YRFI','Parlay'].map(t=><option key={t}>{t}</option>)}
+                  </select>
+                  <input value={preLogInput.odds} onChange={e=>setPreLogInput(p=>({...p,odds:e.target.value}))} placeholder="Odds e.g. -110" style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px 10px',fontSize:12}}/>
+                  <input value={preLogInput.stake} onChange={e=>setPreLogInput(p=>({...p,stake:e.target.value}))} placeholder="Stake" style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px 10px',fontSize:12}}/>
+                </div>
+                <input value={preLogInput.notes} onChange={e=>setPreLogInput(p=>({...p,notes:e.target.value}))} placeholder="Your reasoning or notes..." style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#94a3b8',padding:'8px 10px',fontSize:12,marginBottom:6,boxSizing:'border-box'}}/>
+                <button onClick={addToPreLog} style={{width:'100%',padding:'10px 0',borderRadius:8,border:'none',background:'linear-gradient(135deg,#fbbf24,#f59e0b)',color:'#000',fontSize:12,fontWeight:700,cursor:'pointer',letterSpacing:1}}>
+                  + ADD TO PRE-LOG
+                </button>
+
+                {/* Pre-log entries */}
+                {preLog.map(entry=>(
+                  <div key={entry.id} style={{marginTop:10,padding:'12px 14px',background:'rgba(5,8,16,0.8)',borderRadius:10,border:'1px solid rgba(251,191,36,0.2)'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                      <div style={{fontSize:13,color:'#f1f5f9',fontWeight:700}}>{entry.pick}</div>
+                      <div style={{fontSize:10,color:'#64748b'}}>{entry.sport} · {entry.betType} · {entry.odds>0?'+':''}{entry.odds}</div>
+                    </div>
+                    {entry.notes&&<div style={{fontSize:11,color:'#475569',marginBottom:6}}>{entry.notes}</div>}
+                    {entry.coachOpinion&&(
+                      <div style={{background:'rgba(34,197,94,0.05)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:6,padding:'8px 10px',marginBottom:8,fontSize:11,color:'#94a3b8',lineHeight:1.5}}>
+                        <div style={{fontSize:9,color:'#22c55e',fontWeight:700,marginBottom:4,letterSpacing:1}}>🤖 COACH SAYS</div>
+                        {entry.coachOpinion}
+                      </div>
+                    )}
+                    <div style={{display:'flex',gap:6}}>
+                      <button onClick={()=>askCoachAboutPick(entry.id)} disabled={preLogLoading===entry.id} style={{flex:1,padding:'7px 0',borderRadius:6,border:'1px solid #38bdf844',background:'rgba(56,189,248,0.1)',color:'#38bdf8',fontSize:10,fontWeight:700,cursor:'pointer'}}>
+                        {preLogLoading===entry.id?'🤔 THINKING...':'🤖 ASK COACH'}
+                      </button>
+                      <button onClick={()=>lockPreLogPick(entry.id)} style={{flex:1,padding:'7px 0',borderRadius:6,border:'none',background:'linear-gradient(135deg,#22c55e,#16a34a)',color:'#fff',fontSize:10,fontWeight:700,cursor:'pointer'}}>
+                        🔒 LOCK IN
+                      </button>
+                      <button onClick={()=>deletePreLog(entry.id)} style={{padding:'7px 12px',borderRadius:6,border:'1px solid #7f1d1d44',background:'transparent',color:'#ef444488',fontSize:10,fontWeight:700,cursor:'pointer'}}>
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:10,padding:'12px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <div>
                   <div style={{fontSize:10,color:'#f97316',fontWeight:700,letterSpacing:1}}>📋 MY SCRIPT PICKS</div>
