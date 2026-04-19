@@ -141,9 +141,6 @@ async function fetchDailyFaceoffGoalies(homeAbbr, awayAbbr) {
     console.error('Goalie fetch error:', e.message);
     return {};
   }
-  
-  // Dead code kept for reference
-  const html = '';
 
     const goalies = {};
     goalies._htmlLength = html.length;
