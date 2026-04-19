@@ -1337,7 +1337,7 @@ CRITICAL RULES:
 - Only bet games CONFIRMED for TODAY in the stats data
 - For each game, pick ONE SIDE ONLY — never bet both teams in the same game
 - Process each game in order:
-  1. Calculate TRUE win probability using stats (pitcher ERA, team form, injuries, home/away splits)
+  1. Calculate TRUE win probability using stats (pitcher ERA, team form, injuries, home/away splits, rest days)
   2. Compare to MARKET implied probability from the odds
   3. Only recommend if your true probability EXCEEDS market by 4%+ 
   4. Pick the side with the HIGHEST edge — never recommend both sides
@@ -1345,6 +1345,22 @@ CRITICAL RULES:
 - For NHL: use CONFIRMED goalie from stats
 - Never fabricate stats — only use what is provided
 - Maximum 3 picks total — quality over quantity
+
+PLAYOFF CONTEXT (NHL/NBA):
+- Playoff games are fundamentally different from regular season
+- Scoring drops 15-20% in playoffs due to tighter defense and better goaltending
+- For NHL totals: adjust expected goals DOWN by 0.5-1.0 from regular season averages
+- Home ice advantage is STRONGER in playoffs (crowd intensity, familiarity)
+- Game 1s are often tight as teams feel each other out — favor unders and underdogs covering
+- Goalie performance is MORE important in playoffs — a hot goalie can steal a series
+- Teams with MORE playoff experience have a significant edge over first-timers
+- Rest advantage matters — teams with extra days off perform better in Game 1
+- Series history and head-to-head in current season matters more than overall record
+
+REST & MATCHUP SCORING:
+- Flag any team on 0 days rest vs opponent with 2+ days rest as significant disadvantage
+- Pitcher/goalie matchup edge: if starter ERA difference > 1.0, that's a strong lean
+- Home/away splits in playoffs matter more than regular season splits
 
 LIVE ODDS:
 ${oddsText}
