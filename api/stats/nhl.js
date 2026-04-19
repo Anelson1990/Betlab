@@ -114,6 +114,8 @@ async function fetchDailyFaceoffGoalies(homeAbbr, awayAbbr) {
     const html = await r.text();
 
     const goalies = {};
+    goalies._htmlLength = html.length;
+    goalies._sample = html.slice(0, 500);
 
     // Extract goalie names - pattern confirmed working
     const goalieMatches = [...html.matchAll(/text-lg xl:text-2xl[^>]*>([A-Z][a-z]+\s+[A-Z][a-zA-Z-]+)</g)];
@@ -242,6 +244,7 @@ export default async function handler(req, res) {
         moneyPuck:awayMPuck,
       },
       allDFOGoalies:dfoGoalies,
+      dfoDebug:{htmlLength:dfoGoalies._htmlLength||0, sample:dfoGoalies._sample||''},
       fetchedAt:new Date().toISOString(),
     });
   } catch(err) {
