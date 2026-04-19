@@ -748,7 +748,9 @@ After your research, return ONLY this JSON:
   );
 }
 
-export default function App() {
+export default const JSONBIN_MASTER_KEY = '\$2a\$10\$OgNCQZvgTz/DoMEzXLkBRu8m.1M0fsZT55WDrZxc5dnYU8WE/EV3u';
+
+function App() {
   const [state, setState] = useState(loadState);
   const [tab, setTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -2009,7 +2011,7 @@ Analyze:
     addLog(`🧠 Model self-tuned on ${graded.length} graded picks`);
   },[lastTuneCount]);
   // JSONBin.io cloud sync
-  const JSONBIN_KEY = '$2a$10$OgNCQZvgTz/DoMEzXLkBRu8m.1M0fsZT55WDrZxc5dnYU8WE/EV3u';
+  const JSONBIN_KEY = JSONBIN_MASTER_KEY;
   const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
 
   const saveToDrive = async (stateToSave) => {
