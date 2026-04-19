@@ -101,6 +101,35 @@ async function fetchRecentForm(teamId) {
   } catch { return null; }
 }
 
+async function fetchStatcast(pitcherId) {
+  try {
+    // Baseball Savant Statcast - free, no key needed
+    const url = `https://baseballsavant.mlb.com/statcast_search/csv?hfPT=&hfAB=&hfGT=R%7C&hfPR=&hfZ=&hfStadium=&hfBBL=&hfNewZones=&hfPull=&hfC=&hfSea=2025%7C&hfSit=&player_type=pitcher&hfOuts=&hfOpponent=&pitcher_throws=&batter_stands=&hfSA=&game_date_gt=&game_date_lt=&hfMo=&hfTeam=&home_road=&hfRO=&position=&hfInfield=&hfOutfield=&hfInn=&hfBBT=&batters_lookup%5B%5D=&pitchers_lookup%5B%5D=${pitcherId}&team=&position=&hfLandmark=&hfInn=&hfBBT=&metric_1=&hfInn=&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&player_event_sort=api_p_release_speed&sort_order=desc&min_abs=0&type=details`;
+    // Use the simpler summary endpoint instead
+    const summaryUrl = `https://baseballsavant.mlb.com/player-services/metrics?playerId=${pitcherId}&position=SP&year=2025&type=pitcher`;
+    const r = await fetch(summaryUrl, {
+      headers:{'User-Agent':'Mozilla/5.0','Accept':'application/json'}
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return {
+      xera: data.xera,
+      hardHitPct: data.hard_hit_percent,
+      barrelPct: data.barrel_batted_rate,
+      kPct: data.k_percent,
+      bbPct: data.bb_percent,
+      xwoba: data.xwoba,
+    };
+  } catch { return null; }
+}
+
+async function fetchPitcherStatcast(pitcherName, mlbId) {
+  if (!mlbId) return null;
+  try {
+    return await fetchStatcast(mlbId);
+  } catch { return null; }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET');
