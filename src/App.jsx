@@ -1825,6 +1825,7 @@ Analyze:
         }),
       });
       const analyzeData = await analyzeRes.json();
+      addLog(`📡 Analyze status: ${analyzeRes.status} ok=${analyzeRes.ok}`);
 
       addLog(`🧠 Groq response: success=${analyzeData.success} verdict=${analyzeData.analysis?.verdict} side=${analyzeData.analysis?.side} conf=${analyzeData.analysis?.confidence} error=${analyzeData.error||'none'}`);
       if (analyzeData.raw) addLog(`🧠 Groq raw: ${analyzeData.raw?.slice(0,100)}`);
