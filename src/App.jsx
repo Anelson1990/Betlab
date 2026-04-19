@@ -2273,9 +2273,9 @@ Analyze:
           {/* 3-Way AI Comparison */}
           {(()=>{
             const systems = [
-              {label:'🤖 Claude', bets:aiBets, color:'#38bdf8'},
-              {label:'🧠 Groq', bets:groqBets, color:'#8b5cf6'},
-              {label:'📈 My Picks', bets:myBets, color:'#f97316'},
+              {label:'🤖 Claude', bets:aiBets, color:'#38bdf8', bankroll:state.bankroll, startBankroll:state.startingBankroll},
+              {label:'🧠 Groq', bets:groqBets, color:'#8b5cf6', bankroll:state.groqBankroll, startBankroll:state.groqStartingBankroll},
+              {label:'📈 My Picks', bets:myBets, color:'#f97316', bankroll:state.myBankroll, startBankroll:state.myStartingBankroll},
             ];
             return (
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px',marginBottom:10}}>
