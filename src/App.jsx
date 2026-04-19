@@ -2711,12 +2711,12 @@ Analyze:
                 {groqGames.length>0&&(
                   <div>
                     <div style={{fontSize:10,color:'#475569',marginBottom:8}}>{groqGames.length} games — tap ANALYZE to run 10K sims + Llama 3.3</div>
-                    {groqGames.map(game=>{
+                    {groqGames.map((game,gi)=>{
                       const key=game.homeTeam+game.awayTeam+'ML';
                       const result=groqResults[key];
                       const isAnalyzing=groqAnalyzing===key;
                       return (
-                        <div key={key+Object.keys(groqResults).length} style={{marginBottom:10,padding:'12px 14px',background:'rgba(5,8,16,0.8)',borderRadius:10,border:`1px solid ${result?.analysis?.verdict==='BET'?'rgba(139,92,246,0.4)':'#1e293b'}`}}>
+                        <div key={`${key}-${result?'done':'pending'}-${isAnalyzing?'analyzing':''}`} style={{marginBottom:10,padding:'12px 14px',background:'rgba(5,8,16,0.8)',borderRadius:10,border:`1px solid ${result?.analysis?.verdict==='BET'?'rgba(139,92,246,0.4)':'#1e293b'}`}}>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
                             <div style={{fontSize:13,color:'#f1f5f9',fontWeight:700}}>{game.awayTeam} @ {game.homeTeam}</div>
                             <div style={{fontSize:10,color:'#64748b'}}>{game.awayOdds>0?'+':''}{game.awayOdds} / {game.homeOdds>0?'+':''}{game.homeOdds}</div>
