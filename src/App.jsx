@@ -2705,9 +2705,12 @@ Analyze:
                 <select value={groqSport} onChange={e=>setGroqSport(e.target.value)} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'10px 12px',fontSize:13,marginBottom:8,cursor:'pointer'}}>
                   {['NHL','MLB','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
                 </select>
-                <button onClick={loadGroqGames} disabled={groqLoading} style={{width:'100%',padding:'12px 0',borderRadius:8,border:'none',cursor:groqLoading?'not-allowed':'pointer',background:groqLoading?'#1e293b':'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:groqLoading?'#475569':'#fff',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1,marginBottom:10}}>
-                  {groqLoading?'LOADING...':'📡 LOAD TODAY GAMES'}
-                </button>
+                <div style={{display:'flex',gap:8,marginBottom:10}}>
+                  <button onClick={loadGroqGames} disabled={groqLoading} style={{flex:1,padding:'12px 0',borderRadius:8,border:'none',cursor:groqLoading?'not-allowed':'pointer',background:groqLoading?'#1e293b':'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:groqLoading?'#475569':'#fff',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
+                    {groqLoading?'LOADING...':'📡 LOAD TODAY GAMES'}
+                  </button>
+                  {groqGames.length>0&&<button onClick={()=>setGroqGames([])} style={{padding:'12px 14px',borderRadius:8,border:'1px solid #334155',background:'transparent',color:'#475569',fontSize:11,fontWeight:700,cursor:'pointer'}}>🗑 CLEAR</button>}
+                </div>
                 {groqGames.length>0&&(
                   <div>
                     <div style={{fontSize:10,color:'#475569',marginBottom:8}}>{groqGames.length} games — tap ANALYZE to run 10K sims + Llama 3.3</div>
