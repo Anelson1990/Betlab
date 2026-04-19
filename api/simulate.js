@@ -75,7 +75,7 @@ function runSimulation(sport, homeImpliedProb, awayImpliedProb) {
     }
   }
   const topScorelines = Object.entries(scoreDist).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([score,count])=>({score,probability:Math.round(count/SIMULATIONS*1000)/10}));
-  return { homeWinProb:Math.round(homeWinProb*1000)/10, awayWinProb:Math.round(awayWinProb*1000)/10, avgHomeScore:Math.round(avgHome*10)/10, avgAwayScore:Math.round(avgAway*10)/10, simulations:SIMULATIONS, topScorelines }, nrfiProb:sport==='MLB'?Math.round(nrfiCount/SIMULATIONS*1000)/10:null, yrfiProb:sport==='MLB'?Math.round((1-nrfiCount/SIMULATIONS)*1000)/10:null };
+  return { homeWinProb:Math.round(homeWinProb*1000)/10, awayWinProb:Math.round(awayWinProb*1000)/10, avgHomeScore:Math.round(avgHome*10)/10, avgAwayScore:Math.round(avgAway*10)/10, simulations:SIMULATIONS, topScorelines, nrfiProb:sport==='MLB'?Math.round(nrfiCount/SIMULATIONS*1000)/10:null, yrfiProb:sport==='MLB'?Math.round((1-nrfiCount/SIMULATIONS)*1000)/10:null };
 }
 
 function americanToImplied(odds) {
