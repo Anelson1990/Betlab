@@ -2027,7 +2027,7 @@ Analyze:
         betTypePerf:stateToSave.betTypePerf, confTiers:stateToSave.confTiers,
         savedAt:new Date().toISOString(),
       };
-      const url = binId ? `/api/cloud?action=save&binId=${binId}` : '/api/cloud?action=save';
+      const url = binId ? `/api/context?action=save&binId=${binId}` : '/api/context?action=save';
       const res = await fetch(url, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -2051,7 +2051,7 @@ Analyze:
     try {
       const binId = localStorage.getItem('betlab_bin_id');
       if (!binId) { addLog('⚠️ No cloud backup found — save first'); return false; }
-      const res = await fetch(`/api/cloud?action=load&binId=${binId}`);
+      const res = await fetch(`/api/context?action=load&binId=${binId}`);
       const data = await res.json();
       if (data.success && data.record) {
         setState(s=>({...s,...data.record}));
