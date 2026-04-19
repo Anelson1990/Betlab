@@ -2008,50 +2008,65 @@ Analyze:
     }, ...prev.slice(0,9)]);
     addLog(`🧠 Model self-tuned on ${graded.length} graded picks`);
   },[lastTuneCount]);
-
-  // Google Drive sync
-  const DRIVE_FILE_NAME = 'betlab-data.json';
+  // JSONBin.io cloud sync
+  const JSONBIN_KEY = '$2a$10$1jHlYOrD6y6uNOVO6gL2AuQ/PBiSIfRre5RFOv44QCW9qzV4hXqJO';
+  const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
 
   const saveToDrive = async (stateToSave) => {
     try {
-      const res = await fetch('/api/claude', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 100,
-          mcp_servers: [{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}],
-          system: 'Save the provided JSON data to Google Drive as betlab-data.json. Overwrite if exists. Respond with just "saved".',
-          messages: [{role:'user',content:`Save this to Google Drive as ${DRIVE_FILE_NAME}: ${JSON.stringify(stateToSave)}`}],
-        }),
-      });
-      console.log('Drive save:', res.ok ? 'success' : 'failed');
-    } catch(e) { console.error('Drive save error:', e); }
+      const binId = localStorage.getItem('betlab_bin_id');
+      const dataToSave = {
+        bankroll:stateToSave.bankroll, startingBankroll:stateToSave.startingBankroll,
+        myBankroll:stateToSave.myBankroll, myStartingBankroll:stateToSave.myStartingBankroll,
+        groqBankroll:stateToSave.groqBankroll, groqStartingBankroll:stateToSave.groqStartingBankroll,
+        bets:stateToSave.bets, lessons:stateToSave.lessons,
+        trackedPicks:stateToSave.trackedPicks, simTuning:stateToSave.simTuning,
+        betTypePerf:stateToSave.betTypePerf, confTiers:stateToSave.confTiers,
+        savedAt:new Date().toISOString(),
+      };
+      let res;
+      if (binId) {
+        res = await fetch(`${JSONBIN_URL}/${binId}`, {
+          method:'PUT',
+          headers:{'Content-Type':'application/json','X-Master-Key':JSONBIN_KEY},
+          body:JSON.stringify(dataToSave),
+        });
+      } else {
+        res = await fetch(JSONBIN_URL, {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-Master-Key':JSONBIN_KEY,'X-Bin-Name':'betlab-data'},
+          body:JSON.stringify(dataToSave),
+        });
+        if (res.ok) {
+          const d = await res.json();
+          localStorage.setItem('betlab_bin_id', d.metadata?.id||'');
+          addLog('☁️ Cloud backup created');
+          return;
+        }
+      }
+      if (res&&res.ok) addLog('☁️ Saved to cloud: '+new Date().toLocaleTimeString());
+      else addLog('❌ Cloud save failed: '+(res?.status||'unknown'));
+    } catch(e) { addLog('❌ Cloud save error: '+e.message); }
   };
 
   const loadFromDrive = async () => {
     try {
-      const res = await fetch('/api/claude', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 100000,
-          mcp_servers: [{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}],
-          system: 'Find and return the contents of betlab-data.json from Google Drive. Return ONLY the raw JSON content, nothing else.',
-          messages: [{role:'user',content:'Get the contents of betlab-data.json from Google Drive and return the raw JSON only.'}],
-        }),
+      const binId = localStorage.getItem('betlab_bin_id');
+      if (!binId) { addLog('⚠️ No cloud backup found — save first'); return false; }
+      const res = await fetch(`${JSONBIN_URL}/${binId}/latest`, {
+        headers:{'X-Master-Key':JSONBIN_KEY},
       });
+      if (!res.ok) { addLog('❌ Cloud load failed: '+res.status); return false; }
       const data = await res.json();
-      const text = data.content?.filter(b=>b.type==='text').map(b=>b.text).join('');
-      if (text) {
-        const parsed = JSON.parse(text.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim());
-        setState(s=>({...EMPTY_STATE,...parsed}));
-        addLog('☁️ Data loaded from Google Drive');
+      if (data.record) {
+        setState(s=>({...s,...data.record}));
+        addLog('☁️ Loaded from cloud ('+new Date(data.record.savedAt).toLocaleString()+')');
         return true;
       }
-    } catch(e) { console.error('Drive load error:', e); }
+    } catch(e) { addLog('❌ Cloud load error: '+e.message); }
     return false;
+  };
+
   };
 
   const exportData = () => {
