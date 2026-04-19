@@ -1,62 +1,32 @@
-// NBA Stats API - balldontlie.io (free, no key needed for basic)
-// Fetches team stats, recent form, rest days, back-to-backs
-
-const BDL_API = 'https://api.balldontlie.io/v1';
-const ESPN_API = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
+// NBA Stats - ESPN API (free, no key needed)
+const ESPN_NBA = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
+const ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba';
 
 const TEAM_MAP = {
-  'Atlanta Hawks':'ATL','Boston Celtics':'BOS','Brooklyn Nets':'BKN',
-  'Charlotte Hornets':'CHA','Chicago Bulls':'CHI','Cleveland Cavaliers':'CLE',
-  'Dallas Mavericks':'DAL','Denver Nuggets':'DEN','Detroit Pistons':'DET',
-  'Golden State Warriors':'GSW','Houston Rockets':'HOU','Indiana Pacers':'IND',
-  'Los Angeles Clippers':'LAC','Los Angeles Lakers':'LAL','Memphis Grizzlies':'MEM',
-  'Miami Heat':'MIA','Milwaukee Bucks':'MIL','Minnesota Timberwolves':'MIN',
-  'New Orleans Pelicans':'NOP','New York Knicks':'NYK','Oklahoma City Thunder':'OKC',
-  'Orlando Magic':'ORL','Philadelphia 76ers':'PHI','Phoenix Suns':'PHX',
-  'Portland Trail Blazers':'POR','Sacramento Kings':'SAC','San Antonio Spurs':'SAS',
-  'Toronto Raptors':'TOR','Utah Jazz':'UTA','Washington Wizards':'WAS',
-};
-
-const BDL_TEAM_IDS = {
-  'ATL':1,'BOS':2,'BKN':3,'CHA':4,'CHI':5,'CLE':6,'DAL':7,'DEN':8,
-  'DET':9,'GSW':10,'HOU':11,'IND':12,'LAC':13,'LAL':14,'MEM':15,
-  'MIA':16,'MIL':17,'MIN':18,'NOP':19,'NYK':20,'OKC':21,'ORL':22,
-  'PHI':23,'PHX':24,'POR':25,'SAC':26,'SAS':27,'TOR':28,'UTA':29,'WAS':30,
+  'Atlanta Hawks':'atl','Boston Celtics':'bos','Brooklyn Nets':'bkn',
+  'Charlotte Hornets':'cha','Chicago Bulls':'chi','Cleveland Cavaliers':'cle',
+  'Dallas Mavericks':'dal','Denver Nuggets':'den','Detroit Pistons':'det',
+  'Golden State Warriors':'gs','Houston Rockets':'hou','Indiana Pacers':'ind',
+  'Los Angeles Clippers':'lac','Los Angeles Lakers':'lal','Memphis Grizzlies':'mem',
+  'Miami Heat':'mia','Milwaukee Bucks':'mil','Minnesota Timberwolves':'min',
+  'New Orleans Pelicans':'no','New York Knicks':'ny','Oklahoma City Thunder':'okc',
+  'Orlando Magic':'orl','Philadelphia 76ers':'phi','Phoenix Suns':'phx',
+  'Portland Trail Blazers':'por','Sacramento Kings':'sac','San Antonio Spurs':'sa',
+  'Toronto Raptors':'tor','Utah Jazz':'utah','Washington Wizards':'wsh',
 };
 
 function getAbbr(teamName) {
   if (!teamName) return null;
   if (TEAM_MAP[teamName]) return TEAM_MAP[teamName];
   for (const [name, abbr] of Object.entries(TEAM_MAP)) {
-    if (teamName.includes(name.split(' ').pop()) || name.includes(teamName)) return abbr;
+    if (teamName.toLowerCase().includes(name.split(' ').pop().toLowerCase())) return abbr;
   }
   return null;
 }
 
-async function fetchTeamStats(abbr) {
+async function fetchTeamData(abbr) {
   try {
-    const teamId = BDL_TEAM_IDS[abbr];
-    if (!teamId) return null;
-    const r = await fetch(`${BDL_API}/season_averages?season=2024&team_ids[]=${teamId}`);
-    if (!r.ok) return null;
-    const data = await r.json();
-    const stats = data.data?.[0];
-    if (!stats) return null;
-    return {
-      pts: stats.pts,
-      reb: stats.reb,
-      ast: stats.ast,
-      fg_pct: stats.fg_pct,
-      fg3_pct: stats.fg3_pct,
-      ft_pct: stats.ft_pct,
-      turnover: stats.turnover,
-    };
-  } catch { return null; }
-}
-
-async function fetchESPNTeamData(abbr) {
-  try {
-    const r = await fetch(`${ESPN_API}/teams/${abbr}?enable=roster,stats`);
+    const r = await fetch(`${ESPN_NBA}/teams/${abbr}`);
     if (!r.ok) return null;
     const data = await r.json();
     const team = data.team;
@@ -67,47 +37,77 @@ async function fetchESPNTeamData(abbr) {
   } catch { return null; }
 }
 
-async function fetchRecentForm(abbr) {
+async function fetchTeamStats(abbr) {
   try {
-    const teamId = BDL_TEAM_IDS[abbr];
-    if (!teamId) return null;
-    const r = await fetch(`${BDL_API}/games?seasons[]=2024&team_ids[]=${teamId}&per_page=10&sort=date&order=desc`);
+    const r = await fetch(`${ESPN_NBA}/teams/${abbr}/statistics`);
     if (!r.ok) return null;
     const data = await r.json();
-    const games = data.data||[];
-    let wins = 0;
-    const results = games.map(g=>{
-      const isHome = g.home_team?.abbreviation===abbr;
-      const teamScore = isHome?g.home_team_score:g.visitor_team_score;
-      const oppScore = isHome?g.visitor_team_score:g.home_team_score;
-      const win = teamScore>oppScore;
-      if(win) wins++;
-      return { win, score:`${teamScore}-${oppScore}`, date:g.date, homeAway:isHome?'home':'away' };
+    const cats = data.results?.stats?.categories || data.splits?.categories || [];
+    
+    let ppg=null, rpg=null, apg=null, fgPct=null, fg3Pct=null, tov=null, offRtg=null, defRtg=null;
+    
+    for (const cat of cats) {
+      for (const stat of (cat.stats||cat.athletes||[])) {
+        const n = stat.name||stat.shortDisplayName;
+        const v = stat.value||stat.displayValue;
+        if (n==='avgPoints'||n==='PTS') ppg=v;
+        if (n==='avgRebounds'||n==='REB') rpg=v;
+        if (n==='avgAssists'||n==='AST') apg=v;
+        if (n==='avgFieldGoalPct'||n==='FG%') fgPct=v;
+        if (n==='avg3PointFieldGoalPct'||n==='3P%') fg3Pct=v;
+        if (n==='avgTurnovers'||n==='TO') tov=v;
+        if (n==='offensiveRating'||n==='OffRtg') offRtg=v;
+        if (n==='defensiveRating'||n==='DefRtg') defRtg=v;
+      }
+    }
+    return { ppg, rpg, apg, fgPct, fg3Pct, tov, offRtg, defRtg };
+  } catch { return null; }
+}
+
+async function fetchRecentForm(abbr) {
+  try {
+    const r = await fetch(`${ESPN_NBA}/teams/${abbr}/schedule?season=2025`);
+    if (!r.ok) return null;
+    const data = await r.json();
+    const completed = (data.events||[]).filter(e=>e.competitions?.[0]?.status?.type?.completed);
+    const last10 = completed.slice(-10).map(e=>{
+      const comp = e.competitions?.[0];
+      const home = comp?.competitors?.find(c=>c.homeAway==='home');
+      const away = comp?.competitors?.find(c=>c.homeAway==='away');
+      const isHome = home?.team?.slug===abbr||home?.team?.abbreviation?.toLowerCase()===abbr;
+      const teamScore = parseInt(isHome?home?.score:away?.score)||0;
+      const oppScore = parseInt(isHome?away?.score:home?.score)||0;
+      return {
+        win: teamScore>oppScore,
+        score:`${teamScore}-${oppScore}`,
+        opponent: isHome?away?.team?.abbreviation:home?.team?.abbreviation,
+        homeAway: isHome?'home':'away',
+        date: e.date,
+      };
     });
-    // Check back-to-back
-    const sortedDates = games.map(g=>new Date(g.date)).sort((a,b)=>b-a);
-    const isBackToBack = sortedDates.length>=2 &&
-      (sortedDates[0]-sortedDates[1])/(1000*60*60*24) <= 1;
-    const restDays = sortedDates.length>=1 ?
-      Math.floor((new Date()-sortedDates[0])/(1000*60*60*24)) : null;
-    return {
-      last10: `${wins}-${results.length-wins}`,
-      isBackToBack,
-      restDays,
-      games: results.slice(0,5),
-    };
+    const wins = last10.filter(g=>g.win).length;
+    
+    // Rest days
+    const lastGame = completed[completed.length-1];
+    const restDays = lastGame ? Math.floor((new Date()-new Date(lastGame.date))/(1000*60*60*24)) : null;
+    
+    // Back to back
+    const dates = completed.slice(-2).map(e=>new Date(e.date));
+    const isB2B = dates.length>=2 && (dates[1]-dates[0])/(1000*60*60*24)<=1;
+    
+    return { last10:`${wins}-${last10.length-wins}`, restDays, isBackToBack:isB2B, games:last10.slice(-5) };
   } catch { return null; }
 }
 
 async function fetchInjuries(abbr) {
   try {
-    const r = await fetch(`${ESPN_API}/teams/${abbr}/injuries`);
+    const r = await fetch(`${ESPN_NBA}/teams/${abbr}/injuries`);
     if (!r.ok) return [];
     const data = await r.json();
     return (data.injuries||[]).slice(0,5).map(i=>({
       player: i.athlete?.displayName,
       status: i.status,
-      detail: i.details?.detail,
+      detail: i.details?.detail||i.shortComment,
     }));
   } catch { return []; }
 }
@@ -124,13 +124,13 @@ export default async function handler(req, res) {
   if (!homeAbbr||!awayAbbr) return res.status(400).json({error:`Team not found: ${!homeAbbr?home:away}`});
 
   try {
-    const [homeStats, awayStats, homeForm, awayForm, homeESPN, awayESPN, homeInjuries, awayInjuries] = await Promise.all([
+    const [homeData,awayData,homeStats,awayStats,homeForm,awayForm,homeInj,awayInj] = await Promise.all([
+      fetchTeamData(homeAbbr),
+      fetchTeamData(awayAbbr),
       fetchTeamStats(homeAbbr),
       fetchTeamStats(awayAbbr),
       fetchRecentForm(homeAbbr),
       fetchRecentForm(awayAbbr),
-      fetchESPNTeamData(homeAbbr),
-      fetchESPNTeamData(awayAbbr),
       fetchInjuries(homeAbbr),
       fetchInjuries(awayAbbr),
     ]);
@@ -139,22 +139,22 @@ export default async function handler(req, res) {
       success:true,
       home:{
         team:home, abbr:homeAbbr,
+        record:homeData?.record,
         stats:homeStats,
         recentForm:homeForm?.last10,
-        isBackToBack:homeForm?.isBackToBack,
         restDays:homeForm?.restDays,
-        record:homeESPN?.record,
-        injuries:homeInjuries,
+        isBackToBack:homeForm?.isBackToBack,
+        injuries:homeInj,
         recentGames:homeForm?.games,
       },
       away:{
         team:away, abbr:awayAbbr,
+        record:awayData?.record,
         stats:awayStats,
         recentForm:awayForm?.last10,
-        isBackToBack:awayForm?.isBackToBack,
         restDays:awayForm?.restDays,
-        record:awayESPN?.record,
-        injuries:awayInjuries,
+        isBackToBack:awayForm?.isBackToBack,
+        injuries:awayInj,
         recentGames:awayForm?.games,
       },
       fetchedAt:new Date().toISOString(),
