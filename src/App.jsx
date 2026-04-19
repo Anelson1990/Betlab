@@ -2013,6 +2013,7 @@ Analyze:
   const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
 
   const saveToDrive = async (stateToSave) => {
+    addLog('☁️ Save to cloud started...');
     try {
       const binId = localStorage.getItem('betlab_bin_id');
       const dataToSave = {
