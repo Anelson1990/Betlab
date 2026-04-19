@@ -1800,12 +1800,16 @@ Analyze:
       } catch(e) { console.warn('Stats fetch failed:', e.message); }
 
       // Step 2: Run Monte Carlo simulation
-      const simRes = await fetch('/api/simulate', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({sport:game.sport, homeTeam:game.homeTeam, awayTeam:game.awayTeam, homeOdds:game.homeOdds, awayOdds:game.awayOdds}),
-      });
-      const simData = await simRes.json();
+      let simData = null;
+      try {
+        const simRes = await fetch('/api/simulate', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({sport:game.sport, homeTeam:game.homeTeam, awayTeam:game.awayTeam, homeOdds:game.homeOdds, awayOdds:game.awayOdds}),
+        });
+        simData = await simRes.json();
+        addLog(`📡 Sim OK: ${simData?.simulation?.homeWinProb}% home`);
+      } catch(e) { addLog(`❌ Sim failed: ${e.message}`); simData = {simulation:{homeWinProb:50,awayWinProb:50},analysis:{homeEdge:0,awayEdge:0,homeEV:0,awayEV:0,homeKelly:{halfKelly:0},awayKelly:{halfKelly:0}},recommendation:'PASS',homeImpliedProb:50,awayImpliedProb:50}; }
 
       // Step 3: Build app context (betting history + tuning)
       const appContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
