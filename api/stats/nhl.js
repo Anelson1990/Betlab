@@ -15,6 +15,18 @@ const TEAM_MAP = {
   'Winnipeg Jets':'WPG',
 };
 
+// Daily Faceoff team name mapping
+const DFO_TEAM_MAP = {
+  'ANA':'Anaheim','BOS':'Boston','BUF':'Buffalo','CGY':'Calgary','CAR':'Carolina',
+  'CHI':'Chicago','COL':'Colorado','CBJ':'Columbus','DAL':'Dallas','DET':'Detroit',
+  'EDM':'Edmonton','FLA':'Florida','LAK':'Los Angeles','MIN':'Minnesota',
+  'MTL':'Montreal','NSH':'Nashville','NJD':'New Jersey','NYI':'NY Islanders',
+  'NYR':'NY Rangers','OTT':'Ottawa','PHI':'Philadelphia','PIT':'Pittsburgh',
+  'SJS':'San Jose','SEA':'Seattle','STL':'St. Louis','TBL':'Tampa Bay',
+  'TOR':'Toronto','UTA':'Utah','VAN':'Vancouver','VGK':'Vegas','WSH':'Washington',
+  'WPG':'Winnipeg',
+};
+
 function getAbbr(teamName) {
   if (!teamName) return null;
   if (TEAM_MAP[teamName]) return TEAM_MAP[teamName];
@@ -42,10 +54,10 @@ async function fetchTeamStats(abbr, standings) {
       losses: team.losses,
       otLosses: team.otLosses,
       points: team.points,
-      goalsForPerGame: team.goalFor && team.gamesPlayed ? (team.goalFor/team.gamesPlayed).toFixed(2) : null,
-      goalsAgainstPerGame: team.goalAgainst && team.gamesPlayed ? (team.goalAgainst/team.gamesPlayed).toFixed(2) : null,
-      powerPlayPct: team.powerPlayPct ? (team.powerPlayPct*100).toFixed(1) : null,
-      penaltyKillPct: team.penaltyKillPct ? (team.penaltyKillPct*100).toFixed(1) : null,
+      goalsForPerGame: team.goalFor&&team.gamesPlayed?(team.goalFor/team.gamesPlayed).toFixed(2):null,
+      goalsAgainstPerGame: team.goalAgainst&&team.gamesPlayed?(team.goalAgainst/team.gamesPlayed).toFixed(2):null,
+      powerPlayPct: team.powerPlayPct?(team.powerPlayPct*100).toFixed(1):null,
+      penaltyKillPct: team.penaltyKillPct?(team.penaltyKillPct*100).toFixed(1):null,
       homeRecord: `${team.homeWins}-${team.homeLosses}-${team.homeOtLosses}`,
       awayRecord: `${team.roadWins}-${team.roadLosses}-${team.roadOtLosses}`,
       last10: `${team.l10Wins}-${team.l10Losses}-${team.l10OtLosses}`,
@@ -71,7 +83,7 @@ async function fetchRecentGames(abbr) {
           opponent: isHome?g.awayTeam?.abbrev:g.homeTeam?.abbrev,
           homeAway: isHome?'home':'away',
           win: teamScore>oppScore,
-          score: `${teamScore}-${oppScore}`,
+          score:`${teamScore}-${oppScore}`,
           date: g.gameDate,
         };
       });
@@ -80,25 +92,72 @@ async function fetchRecentGames(abbr) {
   } catch { return null; }
 }
 
-async function fetchTodayGoalie(abbr) {
+async function fetchDailyFaceoffGoalies() {
   try {
-    const r = await fetch(`${NHL_API}/schedule/now`);
+    const r = await fetch('https://www.dailyfaceoff.com/starting-goalies', {
+      headers:{
+        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept':'text/html',
+      }
+    });
+    if (!r.ok) return {};
+    const html = await r.text();
+    const goalies = {};
+    
+    // Parse goalie names from Daily Faceoff HTML
+    // Look for patterns like "Frederik Andersen" near team names
+    const teamMatches = html.matchAll(/class="[^"]*goalie[^"]*"[^>]*>([^<]+)</gi);
+    const nameMatches = html.matchAll(/([A-Z][a-z]+ [A-Z][a-z]+(?:-[A-Z][a-z]+)?)\s*<\/(?:a|span|div|h[1-6])[^>]*>/g);
+    
+    // Try JSON-LD structured data first
+    const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    if (jsonLdMatch) {
+      try {
+        const ld = JSON.parse(jsonLdMatch[1]);
+        // Extract from structured data if available
+      } catch {}
+    }
+
+    // Parse game blocks - look for team abbreviations near goalie names
+    for (const [abbr, city] of Object.entries(DFO_TEAM_MAP)) {
+      const cityRegex = new RegExp(`${city}[\\s\\S]{0,500}?([A-Z][a-z]+ [A-Z][a-z]+(?:-[A-Z][a-z]+)?)`, 'i');
+      const match = html.match(cityRegex);
+      if (match) goalies[abbr] = match[1];
+    }
+    
+    return goalies;
+  } catch { return {}; }
+}
+
+async function fetchGoalieStats(goalieName) {
+  try {
+    // Search NHL API for goalie stats
+    const r = await fetch(`https://api-web.nhle.com/v1/player-search?queryString=${encodeURIComponent(goalieName)}&culture=en-us`);
     if (!r.ok) return null;
     const data = await r.json();
-    const allGames = data.gameWeek?.flatMap(w=>w.games)||[];
-    const game = allGames.find(g=>
-      g.homeTeam?.abbrev===abbr||g.awayTeam?.abbrev===abbr
-    );
-    if (!game) return null;
-    const isHome = game.homeTeam?.abbrev===abbr;
-    const team = isHome?game.homeTeam:game.awayTeam;
-    return team?.probableGoalie?.fullName||null;
-  } catch { return null; }
+    const player = data.players?.[0];
+    if (!player) return null;
+    
+    const statsR = await fetch(`https://api-web.nhle.com/v1/player/${player.playerId}/landing`);
+    if (!statsR.ok) return null;
+    const statsData = await statsR.json();
+    const season = statsData.seasonTotals?.find(s=>s.season===20242025&&s.gameTypeId===2);
+    
+    return season ? {
+      name: goalieName,
+      gaa: season.goalsAgainstAvg?.toFixed(2),
+      savePct: season.savePctg?.toFixed(3),
+      wins: season.wins,
+      losses: season.losses,
+      shutouts: season.shutouts,
+      gamesPlayed: season.gamesPlayed,
+    } : { name: goalieName };
+  } catch { return { name: goalieName }; }
 }
 
 async function fetchMoneyPuck(abbr) {
   try {
-    const r = await fetch(`https://moneypuck.com/moneypuck/playerData/seasonSummary/2024/regular/teams.csv`);
+    const r = await fetch('https://moneypuck.com/moneypuck/playerData/seasonSummary/2024/regular/teams.csv');
     if (!r.ok) return null;
     const text = await r.text();
     const lines = text.split('\n');
@@ -135,18 +194,27 @@ export default async function handler(req, res) {
   });
 
   try {
-    const [standings, homeForm, awayForm, homeGoalie, awayGoalie, homeMPuck, awayMPuck] = await Promise.all([
+    const [standings, homeForm, awayForm, dfoGoalies, homeMPuck, awayMPuck] = await Promise.all([
       fetchStandings(),
       fetchRecentGames(homeAbbr),
       fetchRecentGames(awayAbbr),
-      fetchTodayGoalie(homeAbbr),
-      fetchTodayGoalie(awayAbbr),
+      fetchDailyFaceoffGoalies(),
       fetchMoneyPuck(homeAbbr),
       fetchMoneyPuck(awayAbbr),
     ]);
 
     const homeStats = await fetchTeamStats(homeAbbr, standings);
     const awayStats = await fetchTeamStats(awayAbbr, standings);
+
+    // Get goalie names from Daily Faceoff
+    const homeGoalieName = dfoGoalies[homeAbbr]||null;
+    const awayGoalieName = dfoGoalies[awayAbbr]||null;
+
+    // Fetch goalie stats if we have names
+    const [homeGoalie, awayGoalie] = await Promise.all([
+      homeGoalieName ? fetchGoalieStats(homeGoalieName) : null,
+      awayGoalieName ? fetchGoalieStats(awayGoalieName) : null,
+    ]);
 
     return res.status(200).json({
       success:true,
@@ -155,7 +223,7 @@ export default async function handler(req, res) {
         stats:homeStats,
         recentForm:homeForm?.last10,
         recentGames:homeForm?.games,
-        probableGoalie:homeGoalie,
+        probableGoalie:homeGoalie||homeGoalieName,
         moneyPuck:homeMPuck,
       },
       away:{
@@ -163,7 +231,7 @@ export default async function handler(req, res) {
         stats:awayStats,
         recentForm:awayForm?.last10,
         recentGames:awayForm?.games,
-        probableGoalie:awayGoalie,
+        probableGoalie:awayGoalie||awayGoalieName,
         moneyPuck:awayMPuck,
       },
       fetchedAt:new Date().toISOString(),
