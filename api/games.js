@@ -30,9 +30,9 @@ export default async function handler(req, res) {
     const data = await r.json();
 
     const games = (data.events||[]).filter(event => {
-      const completed = event.status?.type?.completed;
-      // Only show games that haven't completed yet
-      return !completed;
+      const status = event.status?.type?.name;
+      // Only show scheduled and in-progress games, not completed
+      return status !== 'STATUS_FINAL' && status !== 'STATUS_FULL_TIME' && status !== 'STATUS_POSTPONED';
     }).map(event => {
       const comp = event.competitions?.[0];
       const home = comp?.competitors?.find(c=>c.homeAway==='home');
