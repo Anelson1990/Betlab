@@ -103,15 +103,47 @@ async function fetchRecentGames(abbr) {
 
 async function fetchDailyFaceoffGoalies(homeAbbr, awayAbbr) {
   try {
-    const r = await fetch('https://www.dailyfaceoff.com/starting-goalies', {
-      headers:{
-        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept':'text/html,application/xhtml+xml',
-        'Accept-Language':'en-US,en;q=0.9',
-      }
-    });
+    // Try ESPN NHL scoreboard for goalie data
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard');
     if (!r.ok) return {};
-    const html = await r.text();
+    const data = await r.json();
+    const goalies = {};
+    
+    for (const event of (data.events||[])) {
+      const comp = event.competitions?.[0];
+      if (!comp) continue;
+      for (const team of (comp.competitors||[])) {
+        const abbr = team.team?.abbreviation;
+        // ESPN includes probable goalie in some feeds
+        const goalie = team.probables?.[0]?.athlete?.displayName ||
+                      comp.notes?.find(n=>n.text?.includes(abbr))?.text;
+        if (abbr && goalie) goalies[abbr] = goalie;
+      }
+    }
+    
+    // If ESPN doesn't have goalies, try NHL API schedule
+    if (Object.keys(goalies).length === 0) {
+      const nhlR = await fetch('https://api-web.nhle.com/v1/schedule/now');
+      if (nhlR.ok) {
+        const nhlData = await nhlR.json();
+        const games = nhlData.gameWeek?.flatMap(w=>w.games)||[];
+        for (const game of games) {
+          const homeGoalie = game.homeTeam?.probableGoalie?.fullName;
+          const awayGoalie = game.awayTeam?.probableGoalie?.fullName;
+          if (homeGoalie) goalies[game.homeTeam.abbrev] = homeGoalie;
+          if (awayGoalie) goalies[game.awayTeam.abbrev] = awayGoalie;
+        }
+      }
+    }
+    
+    return goalies;
+  } catch(e) {
+    console.error('Goalie fetch error:', e.message);
+    return {};
+  }
+  
+  // Dead code kept for reference
+  const html = '';
 
     const goalies = {};
     goalies._htmlLength = html.length;
