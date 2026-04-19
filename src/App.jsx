@@ -1833,6 +1833,7 @@ Analyze:
       addLog(`🧠 Groq response: success=${analyzeData.success} verdict=${analyzeData.analysis?.verdict} side=${analyzeData.analysis?.side} conf=${analyzeData.analysis?.confidence} error=${analyzeData.error||'none'}`);
       if (analyzeData.raw) addLog(`🧠 Groq raw: ${analyzeData.raw?.slice(0,100)}`);
       setGroqResults(r=>({...r,[key]:{sim:simData,analysis:analyzeData.analysis,game}}));
+      addLog(`✅ Stored result for key: ${key} verdict: ${analyzeData.analysis?.verdict}`);
 
       // If BET, add to AI picks
       if (analyzeData.analysis?.verdict==='BET' && analyzeData.analysis?.side) {
