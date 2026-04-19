@@ -2643,7 +2643,7 @@ Analyze:
             <div style={{animation:'slideIn .3s ease'}}>
               {state.lessons.length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🎓</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO LESSONS YET</div><div style={{fontSize:12,marginTop:6}}>Grade AI bets → Analyze This Bet</div></div>
-                :state.lessons.map(l=><LessonCard key={l.id} lesson={l}/>)
+                :state.lessons.filter(l=>l.lesson&&l.lesson.trim().length>10).map(l=><LessonCard key={l.id} lesson={l}/>)
               }
             </div>
           )}
