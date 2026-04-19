@@ -1825,7 +1825,6 @@ Analyze:
         }),
       });
       const analyzeData = await analyzeRes.json();
-      addLog(`📡 Analyze status: ${analyzeRes.status} ok=${analyzeRes.ok}`);
 
       addLog(`🧠 Groq response: success=${analyzeData.success} verdict=${analyzeData.analysis?.verdict} side=${analyzeData.analysis?.side} conf=${analyzeData.analysis?.confidence} error=${analyzeData.error||'none'}`);
       if (analyzeData.raw) addLog(`🧠 Groq raw: ${analyzeData.raw?.slice(0,100)}`);
@@ -2707,10 +2706,7 @@ Analyze:
                 </button>
                 {groqGames.length>0&&(
                   <div>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                  <div style={{fontSize:10,color:'#475569'}}>{groqGames.length} games — tap ANALYZE to run 10K sims + Llama 3.3</div>
-                  {groqAnalyzing&&<button onClick={()=>setGroqAnalyzing(null)} style={{fontSize:9,color:'#ef4444',background:'none',border:'1px solid #ef444444',borderRadius:4,padding:'2px 6px',cursor:'pointer'}}>RESET</button>}
-                </div>
+                    <div style={{fontSize:10,color:'#475569',marginBottom:8}}>{groqGames.length} games — tap ANALYZE to run 10K sims + Llama 3.3</div>
                     {groqGames.map(game=>{
                       const key=game.homeTeam+game.awayTeam+'ML';
                       const result=groqResults[key];
