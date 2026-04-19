@@ -5,7 +5,7 @@ const SYSTEM_PROMPT = `You are a sharp professional sports betting analyst with 
 Analyze ALL provided data including team stats, injuries, rest, recent form, simulation results, and the bettor's historical performance patterns.
 
 Return ONLY a valid JSON object with no markdown, no explanation, no code blocks:
-{"verdict":"BET","side":"team name","confidence":72,"edge_summary":"brief edge description","simulation_read":"what sims show","sharp_factors":"factors supporting bet","risk_factors":"risks","line_value":"line assessment","recommended_units":1.5,"full_analysis":"detailed 3-4 paragraph analysis covering stats, situational factors, sim results, and edge"}
+{"verdict":"BET","side":"NRFI or YRFI or team name","confidence":72,"edge_summary":"brief edge description","simulation_read":"what sims show","sharp_factors":"factors supporting bet","risk_factors":"risks","line_value":"line assessment","recommended_units":1.5,"full_analysis":"detailed 3-4 paragraph analysis covering stats, situational factors, sim results, and edge"}
 
 If no edge: {"verdict":"PASS","side":null,"confidence":0,"edge_summary":"no edge found","simulation_read":"","sharp_factors":"","risk_factors":"","line_value":"","recommended_units":0,"full_analysis":"no value"}`;
 
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers','Content-Type');
   if (req.method==='OPTIONS') return res.status(200).end();
 
-  const { gameData, simulationData, statsContext, appContext } = req.body||{};
+  const { gameData, simulationData, statsContext, appContext, betType, nrfiProb, yrfiProb } = req.body||{};
   if (!gameData||!simulationData) return res.status(400).json({error:'Missing data'});
 
   const apiKey = process.env.GROQ_API_KEY;
@@ -38,6 +38,15 @@ EDGE ANALYSIS:
 - Kelly: ${gameData.homeTeam} ${simulationData.analysis?.homeKelly?.halfKelly}% | ${gameData.awayTeam} ${simulationData.analysis?.awayKelly?.halfKelly}%
 
 MODEL RECOMMENDATION: ${simulationData.recommendation} ${simulationData.recommendedSide||''}
+${betType==='NRFI'&&nrfiProb?`
+NRFI/YRFI ANALYSIS (focus on this):
+- No Run First Inning probability: ${nrfiProb}%
+- Yes Run First Inning probability: ${yrfiProb}%
+- Starting pitchers are the KEY factor for NRFI
+- Analyze: pitcher ERA, WHIP, first inning tendencies, lineup quality batting 1-3
+- Recommend NRFI if prob >58% at -110 or better odds
+- Recommend YRFI if prob >58% at -110 or better odds
+- This is the PRIMARY bet to analyze, not the moneyline`:''}
 ${statsContext?'\nTEAM STATS & SITUATIONAL DATA:\n'+statsContext:''}
 ${appContext?'\nBETTOR PERFORMANCE PATTERNS:\n'+appContext:''}
 
