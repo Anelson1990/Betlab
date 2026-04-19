@@ -1701,6 +1701,7 @@ Analyze:
   const runGroqAnalysis = async (game, betType='ML') => {
     const key = game.homeTeam+game.awayTeam+(betType||'ML');
     setGroqAnalyzing(key);
+    addLog(`🧠 Groq analyzing: ${game.awayTeam} @ ${game.homeTeam} (${betType})`);
     try {
       // Step 1: Fetch stats context
       let statsContext = '';
