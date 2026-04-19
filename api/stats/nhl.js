@@ -107,6 +107,7 @@ async function fetchDailyFaceoffGoalies(homeAbbr, awayAbbr) {
     const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard');
     if (!r.ok) return {};
     const data = await r.json();
+  try {
     const goalies = {};
     
     for (const event of (data.events||[])) {
