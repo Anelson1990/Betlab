@@ -989,12 +989,9 @@ Sim confidence: ${bet.simConfidence}%`;
     addLog(`📅 Bet dates: ${[...betDates].join(', ')}`);
     addLog(`📡 Pending bets: ${pending.map(b=>b.sport+':'+b.pick.slice(0,15)).join(' | ')}`);
     addLog(`📡 Pending tracked: ${trackedPending.map(p=>p.sport+':'+p.date+'|'+p.pick.slice(0,15)).join(' | ')}`);
-    // Only add today and yesterday as buffer for late night games
+    // Only add today as buffer for same-day bets placed before game starts
     const todayD = new Date();
     betDates.add(toLocalDate(todayD.toISOString()));
-    const yesterdayD = new Date();
-    yesterdayD.setDate(yesterdayD.getDate()-1);
-    betDates.add(toLocalDate(yesterdayD.toISOString()));
     const dates = [...betDates].sort().reverse();
     addLog(`🔍 Checking dates: ${dates.join(', ')}`);
 
@@ -1082,7 +1079,7 @@ Sim confidence: ${bet.simConfidence}%`;
       return [];
     };
 
-    const matchBet = (pick, sport, games) => {
+    const matchBet = (pick, sport, games, betDate) => {
       if (!games?.length) return null;
       const pickAbbrs = getTeamAbbr(pick);
       // Match by abbreviation found in pick text
