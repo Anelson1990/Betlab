@@ -989,12 +989,12 @@ Sim confidence: ${bet.simConfidence}%`;
     addLog(`📅 Bet dates: ${[...betDates].join(', ')}`);
     addLog(`📡 Pending bets: ${pending.map(b=>b.sport+':'+b.pick.slice(0,15)).join(' | ')}`);
     addLog(`📡 Pending tracked: ${trackedPending.map(p=>p.sport+':'+p.date+'|'+p.pick.slice(0,15)).join(' | ')}`);
-    // Also add today and last 3 days as fallback
-    for (let i=0;i<4;i++) {
-      const d = new Date();
-      d.setDate(d.getDate()-i);
-      betDates.add(d.toISOString().split('T')[0]);
-    }
+    // Only add today and yesterday as buffer for late night games
+    const todayD = new Date();
+    betDates.add(toLocalDate(todayD.toISOString()));
+    const yesterdayD = new Date();
+    yesterdayD.setDate(yesterdayD.getDate()-1);
+    betDates.add(toLocalDate(yesterdayD.toISOString()));
     const dates = [...betDates].sort().reverse();
     addLog(`🔍 Checking dates: ${dates.join(', ')}`);
 
