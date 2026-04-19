@@ -29,7 +29,11 @@ export default async function handler(req, res) {
     if (!r.ok) return res.status(502).json({error:'ESPN API error'});
     const data = await r.json();
 
-    const games = (data.events||[]).map(event => {
+    const games = (data.events||[]).filter(event => {
+      const status = event.status?.type?.name;
+      // Only show scheduled and in-progress games, not completed
+      return status !== 'STATUS_FINAL' && status !== 'STATUS_FULL_TIME' && status !== 'STATUS_POSTPONED';
+    }).map(event => {
       const comp = event.competitions?.[0];
       const home = comp?.competitors?.find(c=>c.homeAway==='home');
       const away = comp?.competitors?.find(c=>c.homeAway==='away');
