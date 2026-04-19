@@ -2720,7 +2720,7 @@ Analyze:
                       // Find if this game already has a Groq pick logged
                       const existingPick = groqBets.find(b=>b.pick&&b.pick.includes(game.homeTeam)&&b.pick.includes(game.awayTeam));
                       return (
-                        <div key={`${key}-${existingPick?.id||'none'}`} style={{marginBottom:10,padding:'12px 14px',background:'rgba(5,8,16,0.8)',borderRadius:10,border:`1px solid ${result?.analysis?.verdict==='BET'?'rgba(139,92,246,0.4)':'#1e293b'}`}}>
+                        <div key={`${key}-${existingPick?.id||'none'}`} style={{marginBottom:10,padding:'12px 14px',background:'rgba(5,8,16,0.8)',borderRadius:10,border:`1px solid ${existingPick?'rgba(139,92,246,0.4)':'#1e293b'}`}}>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
                             <div style={{fontSize:13,color:'#f1f5f9',fontWeight:700}}>{game.awayTeam} @ {game.homeTeam}</div>
                             <div style={{fontSize:10,color:'#64748b'}}>{game.awayOdds>0?'+':''}{game.awayOdds} / {game.homeOdds>0?'+':''}{game.homeOdds}</div>
