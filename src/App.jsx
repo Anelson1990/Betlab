@@ -2068,7 +2068,6 @@ Analyze:
     return false;
   };
 
-  };
 
   const exportData = () => {
     const data = JSON.stringify(state, null, 2);
