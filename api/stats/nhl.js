@@ -58,6 +58,8 @@ async function fetchTeamStats(abbr, standings) {
     if (!standings?.standings) return null;
     const team = standings.standings.find(t=>t.teamAbbrev?.default===abbr);
     if (!team) return null;
+    // Log available fields
+    console.log('Team fields:', Object.keys(team).join(','));
     return {
       wins: team.wins,
       losses: team.losses,
