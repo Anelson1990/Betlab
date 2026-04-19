@@ -748,7 +748,7 @@ After your research, return ONLY this JSON:
   );
 }
 
-export default const JSONBIN_MASTER_KEY = '\$2a\$10\$OgNCQZvgTz/DoMEzXLkBRu8m.1M0fsZT55WDrZxc5dnYU8WE/EV3u';
+const JSONBIN_MASTER_KEY = '$2a$10$OgNCQZvgTz/DoMEzXLkBRu8m.1M0fsZT55WDrZxc5dnYU8WE/EV3u';
 
 function App() {
   const [state, setState] = useState(loadState);
