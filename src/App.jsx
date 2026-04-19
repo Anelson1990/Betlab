@@ -2281,17 +2281,19 @@ Analyze:
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px',marginBottom:10}}>
                 <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:10,color:'#475569',letterSpacing:2,marginBottom:10}}>⚡ AI COMPARISON</div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
-                  {systems.map(({label,bets,color})=>{
+                  {systems.map(({label,bets,color,bankroll,startBankroll})=>{
                     const graded=bets.filter(b=>b.result!=='pending');
                     const wins=graded.filter(b=>b.result==='win').length;
                     const staked=graded.reduce((a,b)=>a+b.stake,0);
                     const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
                     const roi=staked?profit/staked*100:0;
                     const wr=graded.length?wins/graded.length*100:0;
+                    const bankrollDiff=bankroll&&startBankroll?bankroll-startBankroll:null;
                     return (
                       <div key={label} style={{background:'rgba(5,8,16,0.8)',borderRadius:8,padding:'8px 10px',border:`1px solid ${color}22`}}>
                         <div style={{fontSize:10,color,fontWeight:700,marginBottom:4}}>{label}</div>
                         <div style={{fontSize:13,color:wr>=55?'#22c55e':wr>0?'#ef4444':'#475569',fontWeight:700}}>{graded.length?`${wins}W-${graded.length-wins}L`:'—'}</div>
+                        {bankroll&&<div style={{fontFamily:"'Orbitron',sans-serif",fontSize:14,color:bankrollDiff>=0?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${bankroll.toFixed(0)}</div>}
                         <div style={{fontSize:10,color:roi>=0?'#22c55e':'#ef4444'}}>{graded.length?`${roi>=0?'+':''}${roi.toFixed(1)}% ROI`:'No data'}</div>
                         <div style={{fontSize:9,color:'#334155',marginTop:2}}>{bets.filter(b=>b.result==='pending').length} pending</div>
                       </div>
