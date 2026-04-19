@@ -59,6 +59,11 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
       lines.push(`  Probable Goalie: ${goalieStr}`);
     }
     if (home.recentForm) lines.push(`  Last 10: ${home.recentForm}`);
+    if (home.recentGames?.length) {
+      const lastGame = home.recentGames[home.recentGames.length-1];
+      const daysSince = Math.floor((new Date()-new Date(lastGame.date))/(1000*60*60*24));
+      lines.push(`  Days rest: ${daysSince} (last game: ${lastGame.date} vs ${lastGame.opponent} ${lastGame.score})`);
+    }
     if (home.stats?.homeRecord) lines.push(`  Home Record: ${home.stats.homeRecord} | Away: ${home.stats.awayRecord}`);
     if (home.stats?.streak) lines.push(`  Current Streak: ${home.stats.streak}`);
     if (home.moneyPuck) lines.push(`  xG For: ${home.moneyPuck.xGoalsFor} | xG Against: ${home.moneyPuck.xGoalsAgainst} | xGF%: ${home.moneyPuck.xGoalsForPct} | Corsi: ${home.moneyPuck.corsiForPct} | HD Goals For: ${home.moneyPuck.highDangerGoalsFor}`);
@@ -76,6 +81,11 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
       lines.push(`  Probable Goalie: ${goalieStr}`);
     }
     if (away.recentForm) lines.push(`  Last 10: ${away.recentForm}`);
+    if (away.recentGames?.length) {
+      const lastGame = away.recentGames[away.recentGames.length-1];
+      const daysSince = Math.floor((new Date()-new Date(lastGame.date))/(1000*60*60*24));
+      lines.push(`  Days rest: ${daysSince} (last game: ${lastGame.date} vs ${lastGame.opponent} ${lastGame.score})`);
+    }
     if (away.stats?.homeRecord) lines.push(`  Home Record: ${away.stats.homeRecord} | Away: ${away.stats.awayRecord}`);
     if (away.stats?.streak) lines.push(`  Current Streak: ${away.stats.streak}`);
     if (away.moneyPuck) lines.push(`  xG For: ${away.moneyPuck.xGoalsFor} | xG Against: ${away.moneyPuck.xGoalsAgainst} | xGF%: ${away.moneyPuck.xGoalsForPct} | Corsi: ${away.moneyPuck.corsiForPct} | HD Goals For: ${away.moneyPuck.highDangerGoalsFor}`);
