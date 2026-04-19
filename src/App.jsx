@@ -885,18 +885,18 @@ function App() {
   const analyzeGroqPick = useCallback(async (bet)=>{
     setTeaching(bet.id);
     try {
-      const sys = `You are a sharp sports betting analyst reviewing a completed bet. Analyze what the model got right or wrong and provide a lesson.
-Return a concise 2-3 paragraph analysis covering:
-1. Was the edge real or illusory?
-2. What factors were weighted correctly/incorrectly?
-3. What should the model do differently next time?
-Be direct and data-driven.`;
-      const msg = `Bet: ${bet.pick} (${bet.sport})
-Odds: ${bet.odds} | Stake: $${bet.stake} | Result: ${bet.result?.toUpperCase()}
-Confidence: ${bet.confidence}% | Edge: ${bet.edge}
-Reasoning: ${bet.reasoning}
-Key Factors: ${bet.keyFactors?.join(', ')}
-Sim confidence: ${bet.simConfidence}%`;
+      const impliedProb = bet.odds > 0 ? Math.round(100/(bet.odds+100)*100) : Math.round(Math.abs(bet.odds)/(Math.abs(bet.odds)+100)*100);
+      const wasOverconfident = bet.confidence > impliedProb + 10;
+      const isPlayoff = bet.reasoning?.toLowerCase().includes('playoff')||bet.reasoning?.toLowerCase().includes('series');
+      const sys = `You are a sharp betting coach reviewing a graded bet. Be brutally honest.
+Tag your response with ONE category: [WRONG_PITCHER] [WRONG_GOALIE] [IGNORED_INJURIES] [OVERCONFIDENT] [BAD_SPOT] [PLAYOFF_MISTAKE] [GOOD_PROCESS] [LUCKY_WIN]
+Then give 2-3 sentences on what specifically went wrong or right and what to do differently.`;
+      const msg = `Bet: ${bet.pick} (${bet.sport} ${bet.betType})
+Odds: ${bet.odds>0?'+':''}${bet.odds} | Result: ${bet.result?.toUpperCase()} | Confidence: ${bet.confidence}% | Market implied: ${impliedProb}%
+Overconfident vs market: ${wasOverconfident?'YES by '+(bet.confidence-impliedProb)+'%':'no'} | Playoff game: ${isPlayoff?'YES':'no'}
+Reasoning: ${bet.reasoning?.slice(0,400)||'none'}
+Key factors cited: ${bet.keyFactors?.join(', ')||'none'}
+Sim confidence: ${bet.simConfidence||'N/A'}%`;
       const raw = await callClaude([{role:'user',content:msg}], sys, false);
       const lesson = {id:uid(), date:new Date().toISOString().split('T')[0], sport:bet.sport, pick:bet.pick, result:bet.result, lesson:raw, source:'groq'};
       setState(s=>({...s, lessons:[lesson,...s.lessons], bets:s.bets.map(b=>b.id===bet.id?{...b,lesson:raw}:b)}));
