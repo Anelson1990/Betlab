@@ -1826,7 +1826,8 @@ Analyze:
       });
       const analyzeData = await analyzeRes.json();
 
-      addLog(`🧠 Groq response: verdict=${analyzeData.analysis?.verdict} side=${analyzeData.analysis?.side} conf=${analyzeData.analysis?.confidence}`);
+      addLog(`🧠 Groq response: success=${analyzeData.success} verdict=${analyzeData.analysis?.verdict} side=${analyzeData.analysis?.side} conf=${analyzeData.analysis?.confidence} error=${analyzeData.error||'none'}`);
+      if (analyzeData.raw) addLog(`🧠 Groq raw: ${analyzeData.raw?.slice(0,100)}`);
       setGroqResults(r=>({...r,[key]:{sim:simData,analysis:analyzeData.analysis,game}}));
 
       // If BET, add to AI picks
