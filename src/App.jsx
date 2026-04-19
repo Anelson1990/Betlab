@@ -2015,40 +2015,35 @@ Analyze:
   const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
 
   const saveToDrive = async (stateToSave) => {
-    addLog('☁️ Save to cloud started...');
+    addLog('☁️ Saving to cloud...');
     try {
       const binId = localStorage.getItem('betlab_bin_id');
       const dataToSave = {
         bankroll:stateToSave.bankroll, startingBankroll:stateToSave.startingBankroll,
         myBankroll:stateToSave.myBankroll, myStartingBankroll:stateToSave.myStartingBankroll,
         groqBankroll:stateToSave.groqBankroll, groqStartingBankroll:stateToSave.groqStartingBankroll,
-        bets:stateToSave.bets.slice(0,100),
+        bets:stateToSave.bets.slice(0,100), lessons:stateToSave.lessons,
         trackedPicks:stateToSave.trackedPicks, simTuning:stateToSave.simTuning,
         betTypePerf:stateToSave.betTypePerf, confTiers:stateToSave.confTiers,
         savedAt:new Date().toISOString(),
       };
-      let res;
-      if (binId) {
-        res = await fetch(`${JSONBIN_URL}/${binId}`, {
-          method:'PUT',
-          headers:{'Content-Type':'application/json','X-Master-Key':JSONBIN_KEY},
-          body:JSON.stringify(dataToSave),
-        });
-      } else {
-        res = await fetch(JSONBIN_URL, {
-          method:'POST',
-          headers:{'Content-Type':'application/json','X-Master-Key':JSONBIN_KEY,'X-Bin-Name':'betlab-data'},
-          body:JSON.stringify(dataToSave),
-        });
-        if (res.ok) {
-          const d = await res.json();
-          localStorage.setItem('betlab_bin_id', d.metadata?.id||'');
-          addLog('☁️ Cloud backup created');
-          return;
+      const url = binId ? `/api/cloud?action=save&binId=${binId}` : '/api/cloud?action=save';
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(dataToSave),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (!binId && data.metadata?.id) {
+          localStorage.setItem('betlab_bin_id', data.metadata.id);
+          addLog('☁️ Cloud backup created! ID: '+data.metadata.id);
+        } else {
+          addLog('☁️ Saved to cloud: '+new Date().toLocaleTimeString());
         }
+      } else {
+        addLog('❌ Cloud save failed: '+JSON.stringify(data));
       }
-      if (res&&res.ok) addLog('☁️ Saved to cloud: '+new Date().toLocaleTimeString());
-      else addLog('❌ Cloud save failed: '+(res?.status||'unknown'));
     } catch(e) { addLog('❌ Cloud save error: '+e.message); }
   };
 
@@ -2056,17 +2051,18 @@ Analyze:
     try {
       const binId = localStorage.getItem('betlab_bin_id');
       if (!binId) { addLog('⚠️ No cloud backup found — save first'); return false; }
-      const res = await fetch(`${JSONBIN_URL}/${binId}/latest`, {
-        headers:{'X-Master-Key':JSONBIN_KEY},
-      });
-      if (!res.ok) { addLog('❌ Cloud load failed: '+res.status); return false; }
+      const res = await fetch(`/api/cloud?action=load&binId=${binId}`);
       const data = await res.json();
-      if (data.record) {
+      if (data.success && data.record) {
         setState(s=>({...s,...data.record}));
         addLog('☁️ Loaded from cloud ('+new Date(data.record.savedAt).toLocaleString()+')');
         return true;
       }
+      addLog('❌ Cloud load failed');
     } catch(e) { addLog('❌ Cloud load error: '+e.message); }
+    return false;
+  };
+
     return false;
   };
 
