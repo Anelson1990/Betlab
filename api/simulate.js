@@ -66,6 +66,13 @@ function runSimulation(sport, homeImpliedProb, awayImpliedProb) {
   // NRFI - first inning simulation for MLB
   let nrfiCount = 0;
   if (sport === 'MLB') {
+    const hLambda = impliedProbToLambda(homeImpliedProb, sport, true);
+    const aLambda = impliedProbToLambda(awayImpliedProb, sport, false);
+    for (let n = 0; n < SIMULATIONS; n++) {
+      if (poissonRandom(hLambda/9) === 0 && poissonRandom(aLambda/9) === 0) nrfiCount++;
+    }
+  }
+  if (sport === 'MLB') {
     const homeLambdaPerInning = homeLambda / 9;
     const awayLambdaPerInning = awayLambda / 9;
     for (let i = 0; i < SIMULATIONS; i++) {
