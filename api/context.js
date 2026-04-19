@@ -48,8 +48,7 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
     if (home.stats) {
       lines.push(`  Record: ${home.stats.wins}-${home.stats.losses}-${home.stats.otLosses}`);
       lines.push(`  Goals For/Game: ${home.stats.goalsForPerGame} | Goals Against/Game: ${home.stats.goalsAgainstPerGame}`);
-      lines.push(`  Power Play: ${home.stats.powerPlayPct}% | Penalty Kill: ${home.stats.penaltyKillPct}%`);
-      lines.push(`  Shots For/Game: ${home.stats.shotsForPerGame} | Shots Against/Game: ${home.stats.shotsAgainstPerGame}`);
+      if(home.stats.goalDifferential) lines.push(`  Goal Differential: ${home.stats.goalDifferential>0?'+':''}${home.stats.goalDifferential} | Regulation Wins: ${home.stats.regulationWins}`);
     }
     if (home.probableGoalie) {
       const g = home.probableGoalie;
@@ -66,7 +65,7 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
     if (away.stats) {
       lines.push(`  Record: ${away.stats.wins}-${away.stats.losses}-${away.stats.otLosses}`);
       lines.push(`  Goals For/Game: ${away.stats.goalsForPerGame} | Goals Against/Game: ${away.stats.goalsAgainstPerGame}`);
-      lines.push(`  Power Play: ${away.stats.powerPlayPct}% | Penalty Kill: ${away.stats.penaltyKillPct}%`);
+      if(away.stats.goalDifferential) lines.push(`  Goal Differential: ${away.stats.goalDifferential>0?'+':''}${away.stats.goalDifferential} | Regulation Wins: ${away.stats.regulationWins}`);
     }
     if (away.probableGoalie) {
       const g = away.probableGoalie;
