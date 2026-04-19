@@ -1325,7 +1325,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
           .then(r=>r.json()).catch(()=>null)
         );
         const statsResults = await Promise.all(statPromises);
-        gamesWithStats = statsResults.filter(r=>r?.success).map(r=>r.context).join('
+          gamesWithStats = statsResults.filter(r=>r?.success).map(r=>r.context).join('\n\n');
 
 ');
       }
