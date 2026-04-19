@@ -1853,8 +1853,7 @@ Analyze:
         });
         addLog(`🤖 Groq AI: ${analyzeData.analysis.side} (${analyzeData.analysis.confidence}% conf)`);
       }
-    } catch(e) { setError('Groq analysis failed: '+e.message); addLog('❌ Groq error: '+e.message); }
-    setGroqAnalyzing(null);
+    } catch(e) { addLog(`❌ Groq error: ${e.message}`); } finally { setGroqAnalyzing(null); }
   };
 
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
