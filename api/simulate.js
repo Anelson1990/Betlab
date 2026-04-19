@@ -63,8 +63,19 @@ function runSimulation(sport, homeImpliedProb, awayImpliedProb) {
       scoreDist[k] = (scoreDist[k]||0)+1;
     }
   }
+  // NRFI - first inning simulation for MLB
+  let nrfiCount = 0;
+  if (sport === 'MLB') {
+    const homeLambdaPerInning = homeLambda / 9;
+    const awayLambdaPerInning = awayLambda / 9;
+    for (let i = 0; i < SIMULATIONS; i++) {
+      const homeR1 = poissonRandom(homeLambdaPerInning);
+      const awayR1 = poissonRandom(awayLambdaPerInning);
+      if (homeR1 === 0 && awayR1 === 0) nrfiCount++;
+    }
+  }
   const topScorelines = Object.entries(scoreDist).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([score,count])=>({score,probability:Math.round(count/SIMULATIONS*1000)/10}));
-  return { homeWinProb:Math.round(homeWinProb*1000)/10, awayWinProb:Math.round(awayWinProb*1000)/10, avgHomeScore:Math.round(avgHome*10)/10, avgAwayScore:Math.round(avgAway*10)/10, simulations:SIMULATIONS, topScorelines };
+  return { homeWinProb:Math.round(homeWinProb*1000)/10, awayWinProb:Math.round(awayWinProb*1000)/10, avgHomeScore:Math.round(avgHome*10)/10, avgAwayScore:Math.round(avgAway*10)/10, simulations:SIMULATIONS, topScorelines }, nrfiProb:sport==='MLB'?Math.round(nrfiCount/SIMULATIONS*1000)/10:null, yrfiProb:sport==='MLB'?Math.round((1-nrfiCount/SIMULATIONS)*1000)/10:null };
 }
 
 function americanToImplied(odds) {
