@@ -51,18 +51,33 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
       lines.push(`  Power Play: ${home.stats.powerPlayPct}% | Penalty Kill: ${home.stats.penaltyKillPct}%`);
       lines.push(`  Shots For/Game: ${home.stats.shotsForPerGame} | Shots Against/Game: ${home.stats.shotsAgainstPerGame}`);
     }
-    if (home.probableGoalie) lines.push(`  Probable Goalie: ${home.probableGoalie}`);
+    if (home.probableGoalie) {
+      const g = home.probableGoalie;
+      const goalieStr = typeof g==='object' ? 
+        `${g.name}${g.gaa?` (GAA:${g.gaa} SV%:${g.savePct} W:${g.wins}-${g.losses})`:''}` : g;
+      lines.push(`  Probable Goalie: ${goalieStr}`);
+    }
     if (home.recentForm) lines.push(`  Last 10: ${home.recentForm}`);
+    if (home.stats?.homeRecord) lines.push(`  Home Record: ${home.stats.homeRecord} | Away: ${home.stats.awayRecord}`);
+    if (home.stats?.streak) lines.push(`  Current Streak: ${home.stats.streak}`);
+    if (home.moneyPuck) lines.push(`  xG For: ${home.moneyPuck.xGoalsFor} | xG Against: ${home.moneyPuck.xGoalsAgainst} | xGF%: ${home.moneyPuck.xGoalsForPct} | Corsi: ${home.moneyPuck.corsiForPct} | HD Goals For: ${home.moneyPuck.highDangerGoalsFor}`);
 
     lines.push(`\nAWAY: ${awayTeam}`);
     if (away.stats) {
       lines.push(`  Record: ${away.stats.wins}-${away.stats.losses}-${away.stats.otLosses}`);
       lines.push(`  Goals For/Game: ${away.stats.goalsForPerGame} | Goals Against/Game: ${away.stats.goalsAgainstPerGame}`);
       lines.push(`  Power Play: ${away.stats.powerPlayPct}% | Penalty Kill: ${away.stats.penaltyKillPct}%`);
-      lines.push(`  Shots For/Game: ${away.stats.shotsForPerGame} | Shots Against/Game: ${away.stats.shotsAgainstPerGame}`);
     }
-    if (away.probableGoalie) lines.push(`  Probable Goalie: ${away.probableGoalie}`);
+    if (away.probableGoalie) {
+      const g = away.probableGoalie;
+      const goalieStr = typeof g==='object' ?
+        `${g.name}${g.gaa?` (GAA:${g.gaa} SV%:${g.savePct} W:${g.wins}-${g.losses})`:''}` : g;
+      lines.push(`  Probable Goalie: ${goalieStr}`);
+    }
     if (away.recentForm) lines.push(`  Last 10: ${away.recentForm}`);
+    if (away.stats?.homeRecord) lines.push(`  Home Record: ${away.stats.homeRecord} | Away: ${away.stats.awayRecord}`);
+    if (away.stats?.streak) lines.push(`  Current Streak: ${away.stats.streak}`);
+    if (away.moneyPuck) lines.push(`  xG For: ${away.moneyPuck.xGoalsFor} | xG Against: ${away.moneyPuck.xGoalsAgainst} | xGF%: ${away.moneyPuck.xGoalsForPct} | Corsi: ${away.moneyPuck.corsiForPct} | HD Goals For: ${away.moneyPuck.highDangerGoalsFor}`);
   }
 
   if (sport==='MLB') {
