@@ -1782,6 +1782,114 @@ Analyze:
     setGroqLoading(false);
   };
 
+  const generateGroqPicks = async () => {
+    setGroqLoading(true);
+    addLog(`🧠 Groq finding value in ${groqSport}...`);
+    try {
+      // Step 1: Load today's games
+      const gamesRes = await fetch(`/api/games?sport=${groqSport}`);
+      const gamesData = await gamesRes.json();
+      if (!gamesData.success || !gamesData.games?.length) {
+        addLog(`⚠️ No ${groqSport} games today`);
+        setGroqLoading(false);
+        return;
+      }
+      setGroqGames(gamesData.games);
+      addLog(`📡 ${gamesData.games.length} games loaded`);
+
+      // Step 2: Run sims on all games
+      const simResults = await Promise.all(
+        gamesData.games.map(async g => {
+          try {
+            const r = await fetch('/api/simulate', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({sport:g.sport, homeTeam:g.homeTeam, awayTeam:g.awayTeam, homeOdds:g.homeOdds, awayOdds:g.awayOdds}),
+            });
+            const sim = await r.json();
+            return {...g, sim};
+          } catch { return {...g, sim:null}; }
+        })
+      );
+
+      // Step 3: Filter games with edge
+      const withEdge = simResults
+        .filter(g=>g.sim?.success)
+        .map(g=>({
+          ...g,
+          homeEdge: g.sim.simulation.homeWinProb - g.sim.homeNoVigProb,
+          awayEdge: g.sim.simulation.awayWinProb - g.sim.awayNoVigProb,
+        }))
+        .filter(g=>Math.max(g.homeEdge,g.awayEdge)>=3)
+        .sort((a,b)=>Math.max(b.homeEdge,b.awayEdge)-Math.max(a.homeEdge,a.awayEdge))
+        .slice(0,5);
+
+      if (!withEdge.length) {
+        addLog(`⚠️ No strong edges found in ${groqSport} today`);
+        setGroqLoading(false);
+        return;
+      }
+
+      addLog(`📊 Found ${withEdge.length} games with edge — sending to Groq...`);
+
+      // Step 4: Get stats and send to Groq for final analysis
+      const appContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
+
+      for (const g of withEdge) {
+        try {
+          // Get stats context
+          let statsContext = '';
+          try {
+            const ctxRes = await fetch('/api/context', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({sport:g.sport, homeTeam:g.homeTeam, awayTeam:g.awayTeam}),
+            });
+            const ctxData = await ctxRes.json();
+            if (ctxData.success) statsContext = ctxData.context;
+          } catch {}
+
+          const analyzeRes = await fetch('/api/analyze', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              gameData:{...g, homeImpliedProb:g.sim.homeImpliedProb, awayImpliedProb:g.sim.awayImpliedProb},
+              simulationData:g.sim,
+              statsContext,
+              appContext,
+              betType:'ML',
+              nrfiProb:g.sim.simulation?.nrfiProb,
+              yrfiProb:g.sim.simulation?.yrfiProb,
+            }),
+          });
+          const analyzeData = await analyzeRes.json();
+
+          if (analyzeData.analysis?.verdict==='BET' && analyzeData.analysis?.side) {
+            const odds = analyzeData.analysis.side===g.homeTeam ? parseInt(g.homeOdds) : parseInt(g.awayOdds);
+            const dec = odds>0?odds/100+1:100/Math.abs(odds)+1;
+            const kelly = Math.max(0,((dec-1)*(analyzeData.analysis.confidence/100)-(1-analyzeData.analysis.confidence/100))/(dec-1)*0.25);
+            const stake = Math.max(5,Math.min(Math.round(state.groqBankroll*kelly/5)*5,Math.round(state.groqBankroll*0.05)));
+            addGroqPick({
+              pick:`${analyzeData.analysis.side} — ${g.awayTeam} @ ${g.homeTeam}`,
+              sport:g.sport, betType:'Moneyline', odds, stake,
+              confidence:analyzeData.analysis.confidence,
+              reasoning:analyzeData.analysis.edge_summary+' | '+(analyzeData.analysis.full_analysis?.slice(0,300)||''),
+              keyFactors:[analyzeData.analysis.sharp_factors||'',analyzeData.analysis.risk_factors||''].filter(Boolean),
+              modelProb:analyzeData.analysis.side===g.homeTeam?g.sim.simulation?.homeWinProb:g.sim.simulation?.awayWinProb,
+              edge:`${analyzeData.analysis.confidence}% conf`,
+              simConfidence:analyzeData.analysis.confidence,
+            });
+            addLog(`🤖 Groq: ${analyzeData.analysis.side} (${analyzeData.analysis.confidence}% conf)`);
+          }
+        } catch(e) { addLog(`❌ Analysis failed for ${g.homeTeam}: ${e.message}`); }
+      }
+
+      addLog(`✅ Groq analysis complete`);
+      setTab('groq');
+    } catch(e) { addLog(`❌ Groq error: ${e.message}`); }
+    setGroqLoading(false);
+  };
+
   const runGroqAnalysis = async (game, betType='ML') => {
     const key = game.homeTeam+game.awayTeam+(betType||'ML');
     setGroqAnalyzing(key);
@@ -2705,11 +2813,14 @@ Analyze:
                 <select value={groqSport} onChange={e=>setGroqSport(e.target.value)} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'10px 12px',fontSize:13,marginBottom:8,cursor:'pointer'}}>
                   {['NHL','MLB','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
                 </select>
-                <div style={{display:'flex',gap:8,marginBottom:10}}>
-                  <button onClick={loadGroqGames} disabled={groqLoading} style={{flex:1,padding:'12px 0',borderRadius:8,border:'none',cursor:groqLoading?'not-allowed':'pointer',background:groqLoading?'#1e293b':'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:groqLoading?'#475569':'#fff',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
-                    {groqLoading?'LOADING...':'📡 LOAD TODAY GAMES'}
+                <div style={{display:'flex',gap:8,marginBottom:8}}>
+                  <button onClick={generateGroqPicks} disabled={groqLoading} style={{flex:2,padding:'12px 0',borderRadius:8,border:'none',cursor:groqLoading?'not-allowed':'pointer',background:groqLoading?'#1e293b':'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:groqLoading?'#475569':'#fff',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
+                    {groqLoading?'🧠 FINDING VALUE...':'🧠 FIND VALUE'}
                   </button>
-                  {groqGames.length>0&&<button onClick={()=>setGroqGames([])} style={{padding:'12px 14px',borderRadius:8,border:'1px solid #334155',background:'transparent',color:'#475569',fontSize:11,fontWeight:700,cursor:'pointer'}}>🗑 CLEAR</button>}
+                  <button onClick={loadGroqGames} disabled={groqLoading} style={{flex:1,padding:'12px 0',borderRadius:8,border:'1px solid #8b5cf644',background:'rgba(139,92,246,0.05)',color:'#8b5cf6',fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                    📡 LOAD GAMES
+                  </button>
+                  {groqGames.length>0&&<button onClick={()=>setGroqGames([])} style={{padding:'12px 14px',borderRadius:8,border:'1px solid #334155',background:'transparent',color:'#475569',fontSize:11,fontWeight:700,cursor:'pointer'}}>🗑</button>}
                 </div>
                 {groqGames.length>0&&(
                   <div>
