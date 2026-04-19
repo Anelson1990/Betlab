@@ -12,6 +12,8 @@ export function analyzeBetTypePerf(gradedBets) {
     Total:     { wins:0, total:0, profit:0 },
     Parlay:    { wins:0, total:0, profit:0 },
   };
+  // Sport+type breakdown
+  const bySport = {};
   for (const bet of gradedBets) {
     const type = bet.betType?.includes('Parlay')?'Parlay':
                  bet.betType?.includes('Spread')||bet.betType?.includes('Puck')||bet.betType?.includes('Run')?'Spread':
@@ -26,7 +28,14 @@ export function analyzeBetTypePerf(gradedBets) {
     } else if (bet.result==='loss') {
       perf[type].profit -= bet.stake;
     }
+    // Track by sport+type
+    const sport = bet.sport||'Unknown';
+    const key = `${sport}_${type}`;
+    if (!bySport[key]) bySport[key] = {wins:0, total:0, sport, type};
+    bySport[key].total++;
+    if (bet.result==='win') bySport[key].wins++;
   }
+  perf._bySport = bySport;
   return perf;
 }
 
@@ -155,6 +164,15 @@ export function buildTuningPrompt(simTuning, betTypePerf, confTiers, insights) {
   }
   if (goodTypes.length) lines.push(`Strong bet types: ${goodTypes.join(', ')}`);
   if (badTypes.length) lines.push(`Avoid bet types: ${badTypes.join(', ')} — below break-even`);
+  // Sport+type breakdown
+  if (betTypePerf._bySport) {
+    const sportBreakdown = Object.values(betTypePerf._bySport)
+      .filter(s=>s.total>=5)
+      .sort((a,b)=>(b.wins/b.total)-(a.wins/a.total))
+      .map(s=>`${s.sport} ${s.type}: ${(s.wins/s.total*100).toFixed(0)}% (${s.total})`)
+      .join(', ');
+    if (sportBreakdown) lines.push(`By sport+type: ${sportBreakdown}`);
+  }
 
   // Confidence tiers
   for (const [tier, t] of Object.entries(confTiers)) {
