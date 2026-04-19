@@ -1327,7 +1327,6 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
         const statsResults = await Promise.all(statPromises);
           gamesWithStats = statsResults.filter(r=>r?.success).map(r=>r.context).join('\n\n');
 
-');
       }
     } catch(e) { console.warn('Games stats fetch failed:', e.message); }
     const sys=`You are a sharp sports bettor finding value in ${pickSport} games. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${gamesWithStats?'\n\nTEAM STATS & CONTEXT:\n'+gamesWithStats:''}${history}\n${tuningContext?tuningContext+'\n':''}\nIMPORTANT: Always return at least 1-3 picks even if edge is small. Never return empty array unless there are literally no games.\nReturn ONLY a JSON array. Each object must have ALL these fields: {"pick","sport","betType","odds"(integer American odds for the bet),"homeOdds"(integer ML odds for home team),"awayOdds"(integer ML odds for away team),"totalLine"(number over/under total e.g. 6.5),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nNo markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
