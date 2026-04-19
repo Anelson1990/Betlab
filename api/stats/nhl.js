@@ -210,24 +210,15 @@ async function fetchMoneyPuck(abbr) {
     const row = {};
     headers.forEach((h,i)=>row[h.trim()]=vals[i]?.trim());
     // Log available fields for debugging
-    const xgf = row['xGoalsFor'] || row['xGoalsForPer60'] || row['xGF'];
-    const xga = row['xGoalsAgainst'] || row['xGoalsAgainstPer60'] || row['xGA'];
-    const xgfPct = row['xGoalsForPercentage'] || row['xGF%'] || row['xGoalsForPct'];
-    const corsi = row['corsiForPercentage'] || row['CF%'] || row['corsiForPct'];
-    const fenwick = row['fenwickForPercentage'] || row['FF%'];
-    const hdgf = row['highDangerGoalsFor'] || row['hdGoalsFor'] || row['HDGF'];
-    const hdga = row['highDangerGoalsAgainst'] || row['hdGoalsAgainst'] || row['HDGA'];
-    // Return first available field name for debugging
-    const availableFields = Object.keys(row).slice(0,20).join(',');
     return {
-      xGoalsFor: xgf,
-      xGoalsAgainst: xga,
-      xGoalsForPct: xgfPct,
-      corsiForPct: corsi,
-      fenwickForPct: fenwick,
-      highDangerGoalsFor: hdgf,
-      highDangerGoalsAgainst: hdga,
-      _availableFields: availableFields,
+      xGoalsFor: row['xGoalsFor'],
+      xGoalsAgainst: row['xGoalsAgainst'],
+      xGoalsForPct: row['xGoalsPercentage'],
+      corsiForPct: row['corsiPercentage'],
+      fenwickForPct: row['fenwickPercentage'],
+      highDangerGoalsFor: row['highDangerGoalsFor'],
+      highDangerGoalsAgainst: row['highDangerGoalsAgainst'],
+      shotAttemptsFor: row['shotAttemptsFor'],
     };
   } catch { return null; }
 }
