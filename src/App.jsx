@@ -2009,7 +2009,7 @@ Analyze:
     addLog(`🧠 Model self-tuned on ${graded.length} graded picks`);
   },[lastTuneCount]);
   // JSONBin.io cloud sync
-  const JSONBIN_KEY = ['$2a$10$1jHlYOrD6y6uNOVO6gL2AuQ','PBiSIfRre5RFOv44QCW9qzV4hXqJO'].join('/');
+  const JSONBIN_KEY = '$2a$10$OgNCQZvgTz/DoMEzXLkBRu8m.1M0fsZT55WDrZxc5dnYU8WE/EV3u';
   const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
 
   const saveToDrive = async (stateToSave) => {
