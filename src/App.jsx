@@ -1312,7 +1312,25 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     const stakeAmount=Math.max(10,Math.round(state.bankroll*0.03/5)*5);
     const history=buildHistorySummary();
     const tuningContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
-    const sys=`You are a sharp sports bettor finding value in ${pickSport} games. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${history}\n${tuningContext?tuningContext+'\n':''}\nIMPORTANT: Always return at least 1-3 picks even if edge is small. Never return empty array unless there are literally no games.\nReturn ONLY a JSON array. Each object must have ALL these fields: {"pick","sport","betType","odds"(integer American odds for the bet),"homeOdds"(integer ML odds for home team),"awayOdds"(integer ML odds for away team),"totalLine"(number over/under total e.g. 6.5),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nNo markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
+
+    // Fetch today's games with stats for Claude context
+    let gamesWithStats = '';
+    try {
+      const gamesRes = await fetch(`/api/games?sport=${pickSport}`);
+      const gamesData = await gamesRes.json();
+      if (gamesData.success && gamesData.games?.length) {
+        // Fetch stats for top 3 games
+        const statPromises = gamesData.games.slice(0,3).map(g=>
+          fetch('/api/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sport:pickSport,homeTeam:g.homeTeam,awayTeam:g.awayTeam})})
+          .then(r=>r.json()).catch(()=>null)
+        );
+        const statsResults = await Promise.all(statPromises);
+        gamesWithStats = statsResults.filter(r=>r?.success).map(r=>r.context).join('
+
+');
+      }
+    } catch(e) { console.warn('Games stats fetch failed:', e.message); }
+    const sys=`You are a sharp sports bettor finding value in ${pickSport} games. Find value bets from these live odds.\nLIVE ODDS:\n${oddsText}${gamesWithStats?'\n\nTEAM STATS & CONTEXT:\n'+gamesWithStats:''}${history}\n${tuningContext?tuningContext+'\n':''}\nIMPORTANT: Always return at least 1-3 picks even if edge is small. Never return empty array unless there are literally no games.\nReturn ONLY a JSON array. Each object must have ALL these fields: {"pick","sport","betType","odds"(integer American odds for the bet),"homeOdds"(integer ML odds for home team),"awayOdds"(integer ML odds for away team),"totalLine"(number over/under total e.g. 6.5),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}\nNo markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
     setLoadingMsg('🧠 Finding value...');
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,true);
@@ -1688,7 +1706,19 @@ Analyze:
     const key = game.homeTeam+game.awayTeam;
     setGroqAnalyzing(key);
     try {
-      // Step 1: Run Monte Carlo simulation
+      // Step 1: Fetch stats context
+      let statsContext = '';
+      try {
+        const ctxRes = await fetch('/api/context', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({sport:game.sport, homeTeam:game.homeTeam, awayTeam:game.awayTeam}),
+        });
+        const ctxData = await ctxRes.json();
+        if (ctxData.success) statsContext = ctxData.context;
+      } catch(e) { console.warn('Stats fetch failed:', e.message); }
+
+      // Step 2: Run Monte Carlo simulation
       const simRes = await fetch('/api/simulate', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -1696,11 +1726,19 @@ Analyze:
       });
       const simData = await simRes.json();
 
-      // Step 2: Run Groq AI analysis
+      // Step 3: Build app context (betting history + tuning)
+      const appContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
+
+      // Step 4: Run Groq AI analysis with full context
       const analyzeRes = await fetch('/api/analyze', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({gameData:{...game, homeImpliedProb:simData.homeImpliedProb, awayImpliedProb:simData.awayImpliedProb}, simulationData:simData}),
+        body:JSON.stringify({
+          gameData:{...game, homeImpliedProb:simData.homeImpliedProb, awayImpliedProb:simData.awayImpliedProb},
+          simulationData:simData,
+          statsContext,
+          appContext,
+        }),
       });
       const analyzeData = await analyzeRes.json();
 
