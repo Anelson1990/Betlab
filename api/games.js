@@ -25,15 +25,9 @@ export default async function handler(req, res) {
     if (!r.ok) return res.status(502).json({error:'ESPN API error'});
     const data = await r.json();
 
-    // Get today's date in EST
-    const now = new Date();
-    const todayEST = new Date(now.toLocaleString('en-US', {timeZone:'America/New_York'}));
-    const todayStr = todayEST.toISOString().split('T')[0];
-
     const games = (data.events||[]).filter(event => {
-      // Only include today's games
-      const gameDate = event.date?.split('T')[0];
-      return gameDate === todayStr;
+      // Filter out completed games
+      return !event.status?.type?.completed;
     }).map(event => {
       const comp = event.competitions?.[0];
       const home = comp?.competitors?.find(c=>c.homeAway==='home');
