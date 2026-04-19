@@ -2713,15 +2713,16 @@ Analyze:
                     <div style={{fontSize:10,color:'#475569',marginBottom:8}}>{groqGames.length} games — tap ANALYZE to run 10K sims + Llama 3.3</div>
                     {groqGames.map((game,gi)=>{
                       const key=game.homeTeam+game.awayTeam+'ML';
-                      const result=groqResults[key];
                       const isAnalyzing=groqAnalyzing===key;
+                      // Find if this game already has a Groq pick logged
+                      const existingPick = groqBets.find(b=>b.pick&&b.pick.includes(game.homeTeam)&&b.pick.includes(game.awayTeam));
                       return (
-                        <div key={`${key}-${result?'done':'pending'}-${isAnalyzing?'analyzing':''}`} style={{marginBottom:10,padding:'12px 14px',background:'rgba(5,8,16,0.8)',borderRadius:10,border:`1px solid ${result?.analysis?.verdict==='BET'?'rgba(139,92,246,0.4)':'#1e293b'}`}}>
+                        <div key={`${key}-${existingPick?.id||'none'}`} style={{marginBottom:10,padding:'12px 14px',background:'rgba(5,8,16,0.8)',borderRadius:10,border:`1px solid ${result?.analysis?.verdict==='BET'?'rgba(139,92,246,0.4)':'#1e293b'}`}}>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
                             <div style={{fontSize:13,color:'#f1f5f9',fontWeight:700}}>{game.awayTeam} @ {game.homeTeam}</div>
                             <div style={{fontSize:10,color:'#64748b'}}>{game.awayOdds>0?'+':''}{game.awayOdds} / {game.homeOdds>0?'+':''}{game.homeOdds}</div>
                           </div>
-                          {!result&&(
+                          {!existingPick&&!isAnalyzing&&(
                             <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                               <button onClick={()=>runGroqAnalysis(game,'ML')} disabled={!!groqAnalyzing} style={{flex:1,padding:'8px 0',borderRadius:6,border:'1px solid #8b5cf644',background:'rgba(139,92,246,0.1)',color:'#8b5cf6',fontSize:11,fontWeight:700,cursor:groqAnalyzing?'not-allowed':'pointer'}}>
                                 {isAnalyzing?'🧠 RUNNING...':'🧠 ML'}
@@ -2736,24 +2737,12 @@ Analyze:
                               </>)}
                             </div>
                           )}
-                          {result&&(
-                            <div>
-                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                                <span style={{fontFamily:"'Orbitron',sans-serif",fontSize:14,color:result.analysis?.verdict==='BET'?'#22c55e':'#64748b',fontWeight:700}}>
-                                  {result.analysis?.verdict} {result.analysis?.side?`— ${result.analysis.side}`:''}
-                                </span>
-                                <span style={{fontSize:11,color:'#8b5cf6',fontWeight:700}}>{result.analysis?.confidence}% conf</span>
-                              </div>
-                              <div style={{fontSize:11,color:'#94a3b8',marginBottom:6,lineHeight:1.5}}>{result.analysis?.edge_summary}</div>
-                              <div style={{display:'flex',gap:8,fontSize:10,color:'#475569',marginBottom:4,flexWrap:'wrap'}}>
-                                <span>🏠 {result.sim?.simulation?.homeWinProb}% | ✈️ {result.sim?.simulation?.awayWinProb}%</span>
-                                <span>EV: {result.sim?.analysis?.homeEV>0?'+':''}{result.sim?.analysis?.homeEV}%</span>
-                                <span>Kelly: {result.sim?.analysis?.homeKelly?.halfKelly}%</span>
-                              </div>
-                              {result.analysis?.sharp_factors&&<div style={{fontSize:10,color:'#22c55e',marginBottom:3}}>✅ {result.analysis.sharp_factors}</div>}
-                              {result.analysis?.risk_factors&&<div style={{fontSize:10,color:'#ef4444',marginBottom:6}}>⚠️ {result.analysis.risk_factors}</div>}
-                              {result.analysis?.verdict==='BET'&&<div style={{fontSize:10,color:'#8b5cf6',padding:'4px 8px',background:'rgba(139,92,246,0.1)',borderRadius:4,border:'1px solid rgba(139,92,246,0.2)'}}>✅ Auto-logged to Groq bankroll</div>}
-                              {result.analysis?.verdict==='PASS'&&<div style={{fontSize:10,color:'#64748b',padding:'4px 8px',background:'rgba(51,65,85,0.3)',borderRadius:4}}>⏭ No edge found — passing</div>}
+                          {isAnalyzing&&<div style={{fontSize:11,color:'#8b5cf6',padding:'6px',textAlign:'center'}}>🧠 Running 10K sims + Llama 3.3...</div>}
+                          {existingPick&&!isAnalyzing&&(
+                            <div style={{padding:'8px 10px',background:'rgba(34,197,94,0.05)',borderRadius:6,border:'1px solid rgba(34,197,94,0.2)'}}>
+                              <div style={{fontSize:12,color:'#22c55e',fontWeight:700}}>✅ {existingPick.pick}</div>
+                              <div style={{fontSize:10,color:'#94a3b8',marginTop:4}}>{existingPick.reasoning?.slice(0,120)}</div>
+                              <div style={{fontSize:10,color:'#8b5cf6',marginTop:2}}>{existingPick.confidence}% conf · {existingPick.odds>0?'+':''}{existingPick.odds}</div>
                             </div>
                           )}
                         </div>
