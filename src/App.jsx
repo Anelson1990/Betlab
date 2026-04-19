@@ -2020,7 +2020,7 @@ Analyze:
         bankroll:stateToSave.bankroll, startingBankroll:stateToSave.startingBankroll,
         myBankroll:stateToSave.myBankroll, myStartingBankroll:stateToSave.myStartingBankroll,
         groqBankroll:stateToSave.groqBankroll, groqStartingBankroll:stateToSave.groqStartingBankroll,
-        bets:stateToSave.bets, lessons:stateToSave.lessons,
+        bets:stateToSave.bets.slice(0,100),
         trackedPicks:stateToSave.trackedPicks, simTuning:stateToSave.simTuning,
         betTypePerf:stateToSave.betTypePerf, confTiers:stateToSave.confTiers,
         savedAt:new Date().toISOString(),
