@@ -30,6 +30,28 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers','Content-Type');
   if (req.method==='OPTIONS') return res.status(200).end();
 
+  // Direct Groq chat - used as Claude fallback
+  const { _groqDirect, _messages, _system, messages, system } = req.body||{};
+  if (_groqDirect || req.query.mode==='chat') {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return res.status(500).json({error:'GROQ_API_KEY not set'});
+    const chatMessages = _messages||messages||[];
+    const chatSystem = _system||system||'';
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method:'POST',
+        headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'llama-3.3-70b-versatile',
+          max_tokens:2000,
+          messages:[...(chatSystem?[{role:'system',content:chatSystem}]:[]),...chatMessages],
+        }),
+      });
+      const data = await r.json();
+      return res.status(200).json({success:true, content:data.choices?.[0]?.message?.content||''});
+    } catch(e) { return res.status(500).json({error:e.message}); }
+  }
+
   const { gameData, simulationData, statsContext, appContext, betType, nrfiProb, yrfiProb, backtestContext } = req.body||{};
   if (!gameData||!simulationData) return res.status(400).json({error:'Missing data'});
 

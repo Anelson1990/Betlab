@@ -37,7 +37,7 @@ export async function callClaude(messages, systemPrompt, useSearch = false) {
   } catch(e) {
     if (e.message === 'credits_low' || e.message?.includes('credit')) {
       // Fall back to Groq
-      const groqRes = await fetch('/api/groq', {
+      const groqRes = await fetch('/api/analyze?mode=chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages, system: systemPrompt }),
