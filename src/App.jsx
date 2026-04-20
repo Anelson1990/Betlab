@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchOdds, callClaude } from './api.js';
 import { SPORT_CONFIG, SPORTS, formatOddsForClaude } from './sportsMap.js';
 import { runSim, getSimConfidence, calcTuningParams } from './simEngine.js';
-import { analyzeSimTuning, analyzeBetTypePerf, analyzeConfTiers, getBettingInsights, shouldRetune, buildTuningPrompt, getCalibrationFilter, applyCalibrationToConfidence } from './tuningEngine.js';
+import { analyzeSimTuning, analyzeBetTypePerf, analyzeConfTiers, getBettingInsights, shouldRetune, buildTuningPrompt, getCalibrationFilter, applyCalibrationToConfidence, getDynamicConfidenceAdjustment } from './tuningEngine.js';
 import {
   loadState, persist, uid,
   americanToDecimal, impliedProb, formatMoney, formatOdds,
@@ -1337,6 +1337,10 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     const stakeAmount=Math.max(10,Math.round(state.bankroll*0.03/5)*5);
     const history=buildHistorySummary();
     const tuningContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
+    // Dynamic confidence adjustments by sport
+    const gradedAI = state.bets.filter(b=>b.result!=='pending'&&b.tracked&&b.source==='ai');
+    const sportConfAdj = getDynamicConfidenceAdjustment(gradedAI);
+    const sportAdjStr = Object.entries(sportConfAdj).filter(([,v])=>Math.abs(v)>2).map(([s,v])=>`${s}: ${v>0?'+':''}${v.toFixed(1)}% confidence adjustment`).join(', ');
     // Add backtest results to context
     const backtestLessons = state.lessons
       .filter(l=>l.source==='backtest')
@@ -1398,6 +1402,7 @@ ${gamesWithStats?'VERIFIED TEAM STATS & CONFIRMED STARTERS:\n'+gamesWithStats:''
 ${history}
 ${tuningContext?tuningContext+'\n':''}
 ${backtestLessons?'\nBACKTEST FINDINGS (follow these rules):\n'+backtestLessons:''}
+${sportAdjStr?'\nCALIBRATION ADJUSTMENTS (confidence is being auto-adjusted):\n'+sportAdjStr:''}
 
 Return ONLY a JSON array of your best 1-3 picks. Each object must have:
 {"pick","sport","betType","odds"(integer),"homeOdds"(integer),"awayOdds"(integer),"totalLine"(number),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}

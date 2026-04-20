@@ -54,6 +54,41 @@ export function analyzeConfTiers(gradedBets) {
   return tiers;
 }
 
+export function getDynamicConfidenceAdjustment(gradedBets) {
+  // Per-sport calibration
+  const sports = ['NHL','MLB','NBA','NFL'];
+  const sportAdj = {};
+  
+  for (const sport of sports) {
+    const sportBets = gradedBets.filter(b=>b.sport===sport&&b.confidence);
+    if (sportBets.length < 10) { sportAdj[sport] = 0; continue; }
+    
+    // Group into confidence buckets
+    const buckets = {};
+    sportBets.forEach(b=>{
+      const bucket = Math.floor(b.confidence/10)*10;
+      if (!buckets[bucket]) buckets[bucket] = {wins:0,total:0,sumConf:0};
+      buckets[bucket].total++;
+      buckets[bucket].sumConf += b.confidence;
+      if (b.result==='win') buckets[bucket].wins++;
+    });
+    
+    // Calculate average drift
+    let totalDrift = 0, bucketCount = 0;
+    for (const [,b] of Object.entries(buckets)) {
+      if (b.total >= 5) {
+        const avgConf = b.sumConf/b.total;
+        const actualWR = b.wins/b.total*100;
+        totalDrift += actualWR - avgConf;
+        bucketCount++;
+      }
+    }
+    sportAdj[sport] = bucketCount > 0 ? Math.max(-20, Math.min(20, totalDrift/bucketCount)) : 0;
+  }
+  
+  return sportAdj;
+}
+
 export function analyzeSimTuning(gradedBets, currentTuning) {
   const sports = ['NHL','MLB','NBA','NFL'];
   const tuning = {...currentTuning};
