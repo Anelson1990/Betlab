@@ -1,6 +1,29 @@
 // Context Builder - packages stats + app data for AI pick generation
 // Called before Claude or Groq makes picks to give full context
 
+async function fetchESPNGameSummary(sport, gameId) {
+  if (!gameId) return null;
+  const sportMap = {
+    NHL: 'hockey/nhl', MLB: 'baseball/mlb',
+    NBA: 'basketball/nba', NFL: 'football/nfl'
+  };
+  const path = sportMap[sport];
+  if (!path) return null;
+  try {
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/summary?event=${gameId}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return {
+      seasonSeries: d.seasonseries?.[0]?.summary || null,
+      ats: d.againstTheSpread?.map(t=>({
+        team: t.team?.abbreviation,
+        record: t.stats?.find(s=>s.name==='ats')?.displayValue
+      }))||[],
+      news: d.news?.headlines?.slice(0,2).map(n=>n.title)||[],
+    };
+  } catch { return null; }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET,POST,PUT,OPTIONS');
@@ -9,7 +32,7 @@ export default async function handler(req, res) {
   // Route cloud sync requests
   if (req.query.action==='save'||req.query.action==='load') return handleCloud(req,res);
 
-  const { sport, homeTeam, awayTeam } = req.body||{};
+  const { sport, homeTeam, awayTeam, gameId } = req.body||{};
   if (!sport||!homeTeam||!awayTeam) return res.status(400).json({error:'Missing fields'});
 
   const base = `https://${req.headers.host}`;
@@ -23,8 +46,14 @@ export default async function handler(req, res) {
       if (statsRes.ok) statsData = await statsRes.json();
     } catch(e) { console.error('Stats fetch error:', e.message); }
 
+    // Fetch ESPN game summary for head to head and ATS
+    let gameSummary = null;
+    if (gameId) {
+      try { gameSummary = await fetchESPNGameSummary(sport, gameId); } catch {}
+    }
+
     // Build formatted context string for AI
-    const context = formatContext(sport, homeTeam, awayTeam, statsData);
+    const context = formatContext(sport, homeTeam, awayTeam, statsData, gameSummary);
 
     return res.status(200).json({
       success: true,
@@ -39,10 +68,16 @@ export default async function handler(req, res) {
   }
 }
 
-function formatContext(sport, homeTeam, awayTeam, stats) {
+function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
+  // Add game summary to top of context
+  const summaryLines = [];
+  if (gameSummary?.seasonSeries) summaryLines.push(`Season Series: ${gameSummary.seasonSeries}`);
+  if (gameSummary?.ats?.length) summaryLines.push(`ATS Records: ${gameSummary.ats.map(t=>`${t.team} ${t.record}`).join(' | ')}`);
+  if (gameSummary?.news?.length) summaryLines.push(`Recent News: ${gameSummary.news.join(' | ')}`);
   if (!stats?.success) return `No stats available for ${homeTeam} vs ${awayTeam}`;
 
   const lines = [`=== ${sport} GAME CONTEXT: ${awayTeam} @ ${homeTeam} ===`];
+  if (summaryLines.length) lines.push(...summaryLines);
   const { home, away } = stats;
 
   if (sport==='NHL') {
