@@ -2096,8 +2096,8 @@ Analyze:
   };
 
   const runBacktest = async (source) => {
-    const sourceBets = state.bets.filter(b=>b.source===source&&b.result!=='pending'&&b.tracked);
-    if (sourceBets.length < 5) { setError(`Need at least 5 graded ${source} picks to backtest`); return; }
+    const sourceBets = state.bets.filter(b=>b.source===source&&b.result!=='pending');
+    if (sourceBets.length < 3) { setError(`Need at least 3 graded ${source} picks to backtest`); return; }
     setCoachLoading(true);
     addLog(`🔬 Running ${source} backtest on ${sourceBets.length} picks...`);
     try {
