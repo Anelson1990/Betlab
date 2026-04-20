@@ -93,7 +93,8 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
         `${g.name}${g.gaa?` (GAA:${g.gaa} SV%:${g.savePct} W:${g.wins}-${g.losses})`:''}` : g;
       lines.push(`  Probable Goalie: ${goalieStr}`);
     }
-    if (home.recentForm) lines.push(`  Last 10: ${home.recentForm}`);
+    if (home.recentForm) lines.push(`  Last 10: ${home.recentForm} | L5: ${home.last5||'?'} | L3: ${home.last3||'?'}`);
+    if (home.avgGF_L5) lines.push(`  L5 Avg: ${home.avgGF_L5} GF/game | ${home.avgGA_L5} GA/game`);
     if (home.recentGames?.length) {
       const lastGame = home.recentGames[home.recentGames.length-1];
       const daysSince = Math.floor((new Date()-new Date(lastGame.date))/(1000*60*60*24));
@@ -103,6 +104,11 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     if (home.stats?.streak) lines.push(`  Current Streak: ${home.stats.streak}`);
     if (home.moneyPuck) lines.push(`  xG For: ${home.moneyPuck.xGoalsFor} | xG Against: ${home.moneyPuck.xGoalsAgainst} | xGF%: ${home.moneyPuck.xGoalsForPct} | Corsi: ${home.moneyPuck.corsiForPct} | HD Goals For: ${home.moneyPuck.highDangerGoalsFor}`);
     if (home.injuries?.length) lines.push(`  Injuries: ${home.injuries.map(i=>`${i.player}(${i.status})`).join(', ')}`);
+    // Opponent defensive weakness - how well does home team score vs away team's GA rate
+    if (home.stats?.goalsForPerGame && away.stats?.goalsAgainstPerGame) {
+      const offEdge = (parseFloat(home.stats.goalsForPerGame) - parseFloat(away.stats.goalsAgainstPerGame)).toFixed(2);
+      lines.push(`  Offensive matchup vs opp defense: ${offEdge>0?'+':''}${offEdge} (home GF/g vs away GA/g)`);
+    }
 
     lines.push(`\nAWAY: ${awayTeam}`);
     if (away.stats) {
@@ -116,7 +122,8 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
         `${g.name}${g.gaa?` (GAA:${g.gaa} SV%:${g.savePct} W:${g.wins}-${g.losses})`:''}` : g;
       lines.push(`  Probable Goalie: ${goalieStr}`);
     }
-    if (away.recentForm) lines.push(`  Last 10: ${away.recentForm}`);
+    if (away.recentForm) lines.push(`  Last 10: ${away.recentForm} | L5: ${away.last5||'?'} | L3: ${away.last3||'?'}`);
+    if (away.avgGF_L5) lines.push(`  L5 Avg: ${away.avgGF_L5} GF/game | ${away.avgGA_L5} GA/game`);
     if (away.recentGames?.length) {
       const lastGame = away.recentGames[away.recentGames.length-1];
       const daysSince = Math.floor((new Date()-new Date(lastGame.date))/(1000*60*60*24));
@@ -126,6 +133,11 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     if (away.stats?.streak) lines.push(`  Current Streak: ${away.stats.streak}`);
     if (away.moneyPuck) lines.push(`  xG For: ${away.moneyPuck.xGoalsFor} | xG Against: ${away.moneyPuck.xGoalsAgainst} | xGF%: ${away.moneyPuck.xGoalsForPct} | Corsi: ${away.moneyPuck.corsiForPct} | HD Goals For: ${away.moneyPuck.highDangerGoalsFor}`);
     if (away.injuries?.length) lines.push(`  Injuries: ${away.injuries.map(i=>`${i.player}(${i.status})`).join(', ')}`);
+    // Opponent defensive weakness
+    if (away.stats?.goalsForPerGame && home.stats?.goalsAgainstPerGame) {
+      const offEdge = (parseFloat(away.stats.goalsForPerGame) - parseFloat(home.stats.goalsAgainstPerGame)).toFixed(2);
+      lines.push(`  Offensive matchup vs opp defense: ${offEdge>0?'+':''}${offEdge} (away GF/g vs home GA/g)`);
+    }
   }
 
   if (sport==='MLB') {
@@ -173,6 +185,11 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     if (home.restDays) lines.push(`  Rest: ${home.restDays} days`);
     if (home.recentForm) lines.push(`  Last 10: ${home.recentForm}`);
     if (home.injuries?.length) lines.push(`  Injuries: ${home.injuries.map(i=>`${i.player}(${i.status})`).join(', ')}`);
+    // Opponent defensive weakness - how well does home team score vs away team's GA rate
+    if (home.stats?.goalsForPerGame && away.stats?.goalsAgainstPerGame) {
+      const offEdge = (parseFloat(home.stats.goalsForPerGame) - parseFloat(away.stats.goalsAgainstPerGame)).toFixed(2);
+      lines.push(`  Offensive matchup vs opp defense: ${offEdge>0?'+':''}${offEdge} (home GF/g vs away GA/g)`);
+    }
 
     lines.push(`\nAWAY: ${awayTeam}`);
     if (away.stats) {
@@ -184,6 +201,11 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     if (away.restDays) lines.push(`  Rest: ${away.restDays} days`);
     if (away.recentForm) lines.push(`  Last 10: ${away.recentForm}`);
     if (away.injuries?.length) lines.push(`  Injuries: ${away.injuries.map(i=>`${i.player}(${i.status})`).join(', ')}`);
+    // Opponent defensive weakness
+    if (away.stats?.goalsForPerGame && home.stats?.goalsAgainstPerGame) {
+      const offEdge = (parseFloat(away.stats.goalsForPerGame) - parseFloat(home.stats.goalsAgainstPerGame)).toFixed(2);
+      lines.push(`  Offensive matchup vs opp defense: ${offEdge>0?'+':''}${offEdge} (away GF/g vs home GA/g)`);
+    }
   }
 
   if (sport==='NFL') {

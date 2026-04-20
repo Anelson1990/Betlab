@@ -96,11 +96,26 @@ async function fetchRecentGames(abbr) {
           homeAway:isHome?'home':'away',
           win:teamScore>oppScore,
           score:`${teamScore}-${oppScore}`,
+          goalsFor:teamScore,
+          goalsAgainst:oppScore,
           date:g.gameDate,
         };
       });
-    const wins = games.filter(g=>g.win).length;
-    return { last10:`${wins}-${games.length-wins}`, games:games.slice(-5) };
+    const wins10 = games.filter(g=>g.win).length;
+    const last5 = games.slice(-5);
+    const last3 = games.slice(-3);
+    const wins5 = last5.filter(g=>g.win).length;
+    const wins3 = last3.filter(g=>g.win).length;
+    const avgGF5 = last5.length ? (last5.reduce((a,g)=>a+g.goalsFor,0)/last5.length).toFixed(1) : null;
+    const avgGA5 = last5.length ? (last5.reduce((a,g)=>a+g.goalsAgainst,0)/last5.length).toFixed(1) : null;
+    return {
+      last10:`${wins10}-${games.length-wins10}`,
+      last5:`${wins5}-${last5.length-wins5}`,
+      last3:`${wins3}-${last3.length-wins3}`,
+      avgGF_L5: avgGF5,
+      avgGA_L5: avgGA5,
+      games:games.slice(-5),
+    };
   } catch { return null; }
 }
 
