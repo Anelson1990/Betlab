@@ -130,6 +130,21 @@ async function fetchPitcherStatcast(pitcherName, mlbId) {
   } catch { return null; }
 }
 
+async function fetchMLBInjuries(teamName) {
+  try {
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/injuries');
+    if (!r.ok) return [];
+    const data = await r.json();
+    const teamData = data.injuries?.find(t=>t.displayName?.toLowerCase().includes(teamName.toLowerCase()));
+    if (!teamData) return [];
+    return teamData.injuries?.map(i=>({
+      player: i.athlete?.displayName,
+      status: i.status,
+      comment: i.shortComment,
+    }))||[];
+  } catch { return []; }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET');
@@ -151,15 +166,17 @@ export default async function handler(req, res) {
       fetchTodayPitcher(awayId),
     ]);
 
-    const [homePitcher, awayPitcher] = await Promise.all([
+    const [homePitcher, awayPitcher, homeInjuries, awayInjuries] = await Promise.all([
       homePitcherName ? fetchPitcherStats(homePitcherName) : null,
       awayPitcherName ? fetchPitcherStats(awayPitcherName) : null,
+      fetchMLBInjuries(home),
+      fetchMLBInjuries(away),
     ]);
 
     return res.status(200).json({
       success:true,
-      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, probablePitcher:homePitcher },
-      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, probablePitcher:awayPitcher },
+      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, probablePitcher:homePitcher, injuries:homeInjuries },
+      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, probablePitcher:awayPitcher, injuries:awayInjuries },
       fetchedAt: new Date().toISOString(),
     });
   } catch(err) {
