@@ -133,6 +133,7 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     if (away.stats?.streak) lines.push(`  Current Streak: ${away.stats.streak}`);
     if (away.moneyPuck) lines.push(`  xG For: ${away.moneyPuck.xGoalsFor} | xG Against: ${away.moneyPuck.xGoalsAgainst} | xGF%: ${away.moneyPuck.xGoalsForPct} | Corsi: ${away.moneyPuck.corsiForPct} | HD Goals For: ${away.moneyPuck.highDangerGoalsFor}`);
     if (away.injuries?.length) lines.push(`  Injuries: ${away.injuries.map(i=>`${i.player}(${i.status})`).join(', ')}`);
+    if (away.stats?.pitching && home.stats?.batting) lines.push(`  Offensive matchup: Home OPS ${home.stats.batting?.ops} vs Away ERA ${away.stats.pitching?.era} | Away OPS ${away.stats.batting?.ops} vs Home ERA ${home.stats.pitching?.era}`);
     // Opponent defensive weakness
     if (away.stats?.goalsForPerGame && home.stats?.goalsAgainstPerGame) {
       const offEdge = (parseFloat(away.stats.goalsForPerGame) - parseFloat(home.stats.goalsAgainstPerGame)).toFixed(2);
