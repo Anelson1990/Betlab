@@ -1323,7 +1323,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
       if (gamesData.success && gamesData.games?.length) {
         // Fetch stats for top 3 games
         const statPromises = gamesData.games.slice(0,3).map(g=>
-          fetch('/api/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sport:pickSport,homeTeam:g.homeTeam,awayTeam:g.awayTeam})})
+          fetch('/api/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sport:pickSport,homeTeam:g.homeTeam,awayTeam:g.awayTeam,gameId:g.gameId})})
           .then(r=>r.json()).catch(()=>null)
         );
         const statsResults = await Promise.all(statPromises);
@@ -1942,7 +1942,7 @@ Analyze:
         const ctxRes = await fetch('/api/context', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({sport:game.sport, homeTeam:game.homeTeam, awayTeam:game.awayTeam}),
+          body:JSON.stringify({sport:game.sport, homeTeam:game.homeTeam, awayTeam:game.awayTeam, gameId:game.gameId}),
         });
         const ctxData = await ctxRes.json();
         if (ctxData.success) statsContext = ctxData.context;
