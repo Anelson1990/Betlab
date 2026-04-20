@@ -112,6 +112,21 @@ async function fetchInjuries(abbr) {
   } catch { return []; }
 }
 
+async function fetchNBAInjuries(teamName) {
+  try {
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries');
+    if (!r.ok) return [];
+    const data = await r.json();
+    const teamData = data.injuries?.find(t=>t.displayName?.toLowerCase().includes(teamName.toLowerCase()));
+    if (!teamData) return [];
+    return teamData.injuries?.map(i=>({
+      player: i.athlete?.displayName,
+      status: i.status,
+      comment: i.shortComment,
+    }))||[];
+  } catch { return []; }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET');
