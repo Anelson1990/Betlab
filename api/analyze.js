@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers','Content-Type');
   if (req.method==='OPTIONS') return res.status(200).end();
 
-  const { gameData, simulationData, statsContext, appContext, betType, nrfiProb, yrfiProb } = req.body||{};
+  const { gameData, simulationData, statsContext, appContext, betType, nrfiProb, yrfiProb, backtestContext } = req.body||{};
   if (!gameData||!simulationData) return res.status(400).json({error:'Missing data'});
 
   const apiKey = process.env.GROQ_API_KEY;
@@ -64,6 +64,7 @@ NRFI/YRFI ANALYSIS (focus on this):
 - This is the PRIMARY bet to analyze, not the moneyline`:''}
 ${statsContext?'\nTEAM STATS & SITUATIONAL DATA:\n'+statsContext:''}
 ${appContext?'\nBETTOR PERFORMANCE PATTERNS:\n'+appContext:''}
+${backtestContext?'\nBACKTEST RULES (must follow):\n'+backtestContext:''}
 
 Return ONLY the JSON object.`;
 
