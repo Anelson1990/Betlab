@@ -1817,17 +1817,29 @@ Based ONLY on this data, provide a coaching report. Do NOT make up stats or refe
   const parseTrackerOutput = async () => {
     if (!trackerPaste.trim()) { setTrackerError('Paste model output first.'); return; }
     setTrackerParsing(true); setTrackerError('');
-    const sys = `You are parsing sports model terminal output. Extract ALL picks/recommendations.
+    const sys = `You are parsing NHL/MLB sports model terminal output. Extract ALL Kelly bet recommendations.
+
+For NHL output look for sections like:
+  KELLY BETS section with: AWAY | Edge:+12.08% | Kelly:5.34% | STRONG BET
+  GAME: PHI@PIT with WIN%: Home:44.5% Away:55.5%
+  ML odds like Home:-154 Away:+130
+  O/U lines like Best edge: O6.5(62.9%)
+  Confidence: 60% DataQuality:90%
+
 Return a JSON array where each object has:
-  pick - string: matchup and bet e.g. "TBR @ CHW — NRFI"
-  sport - string: MLB/NHL/NBA/NFL
-  modelProb - number: model probability % e.g. 81.7
-  odds - integer: American odds e.g. -446
-  rating - string: model rating e.g. "STRONG NRFI" "T1_STRONG" "LEAN"
-  pitchers - string: pitcher names if MLB e.g. "McClanahan vs Schultz"
-  keyStats - string: key model stats in one line
-  recommendation - string: NRFI/YRFI/HOME/AWAY/OVER/UNDER/SKIP
-Respond ONLY with a JSON array.`;
+  pick - string: e.g. "PHI @ PIT — AWAY ML" or "OTT @ CAR — Over 5.5"
+  sport - string: NHL or MLB
+  modelProb - number: the win% for recommended side e.g. 55.5
+  odds - integer: American odds for the recommended bet e.g. 130
+  rating - string: STRONG BET, VALUE BET, or SKIP
+  edge - string: e.g. "+12.08%"
+  kelly - string: e.g. "5.34%"
+  keyStats - string: key stats in one line (xG, goalie, injuries)
+  recommendation - string: HOME/AWAY/OVER/UNDER
+  confidence - number: model confidence % e.g. 60
+  dataQuality - number: data quality % e.g. 90
+
+Only include games where Kelly Bets section shows a bet (not SKIP). Respond ONLY with a JSON array.`;
     try {
       const raw = await callClaude([{role:'user',content:`Sport: ${trackerSport}
 
