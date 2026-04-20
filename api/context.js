@@ -173,6 +173,11 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     if (away.homeRecord) lines.push(`  Home: ${away.homeRecord} | Away: ${away.awayRecord}`);
     if (away.streak) lines.push(`  Streak: ${away.streak}`);
     if (away.injuries?.length) lines.push(`  Injuries: ${away.injuries.map(i=>i.player+'('+i.status+')').join(', ')}`);
+    if (stats.espnOdds) {
+      const o = stats.espnOdds;
+      lines.push(`  DraftKings: Home ML ${o.homeMl>0?'+':''}${o.homeMl} | Away ML ${o.awayMl>0?'+':''}${o.awayMl} | O/U ${o.overUnder} (O:${o.overOdds} U:${o.underOdds})`);
+    }
+    if (stats.espnWinProb) lines.push(`  ESPN Win Prob: Home ${(stats.espnWinProb.homeWinPct*100).toFixed(1)}% | Away ${(stats.espnWinProb.awayWinPct*100).toFixed(1)}%`);
   }
 
   if (sport==='NBA') {
