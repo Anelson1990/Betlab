@@ -3006,9 +3006,67 @@ Rules: ${report.rules?.join(' | ')}`,
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,textAlign:'center',marginBottom:12}}>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#e2e8f0'}}>{sportPicks.length}</div><div style={{fontSize:9,color:'#475569'}}>{trackerSport} TOTAL</div></div>
                       <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:'#f59e0b'}}>{pending}</div><div style={{fontSize:9,color:'#475569'}}>PENDING</div></div>
-                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=55?'#22c55e':'#ef4444'}}>{actualWR.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>WIN RATE</div></div>
-                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=avgProb?'#22c55e':'#ef4444'}}>{avgProb.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>AVG PROB</div></div>
+                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=55?'#22c55e':'#ef4444'}}>{actualWR.toFixed(0)}%</div><div style={{fontSize:9,color:'#475569'}}>ACTUAL WR</div></div>
+                      <div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:actualWR>=avgProb?'#22c55e':'#ef4444'}}>{(actualWR-avgProb).toFixed(1)}%</div><div style={{fontSize:9,color:'#475569'}}>DRIFT</div></div>
                     </div>
+
+                    {/* Calibration by tier */}
+                    {graded.length>=3&&(()=>{
+                      const tiers = [
+                        {label:'STRONG BET', min:75, color:'#22c55e'},
+                        {label:'VALUE BET', min:60, max:74, color:'#f59e0b'},
+                        {label:'LEAN', min:0, max:59, color:'#64748b'},
+                      ];
+                      const byRating = {};
+                      graded.forEach(p=>{
+                        const r = p.rating?.includes('STRONG')?'STRONG BET':p.rating?.includes('VALUE')?'VALUE BET':'LEAN';
+                        if(!byRating[r]) byRating[r]={wins:0,total:0,probs:[]};
+                        byRating[r].total++;
+                        if(p.result==='win') byRating[r].wins++;
+                        if(p.modelProb) byRating[r].probs.push(parseFloat(p.modelProb));
+                      });
+                      return (
+                        <div style={{marginBottom:12}}>
+                          <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,marginBottom:6}}>CALIBRATION BY TIER</div>
+                          {Object.entries(byRating).filter(([,v])=>v.total>0).map(([tier,v])=>{
+                            const wr = (v.wins/v.total*100).toFixed(0);
+                            const avgP = v.probs.length?(v.probs.reduce((a,b)=>a+b,0)/v.probs.length).toFixed(0):'?';
+                            const drift = v.probs.length?(parseFloat(wr)-parseFloat(avgP)).toFixed(1):'?';
+                            const color = parseFloat(wr)>=55?'#22c55e':parseFloat(wr)>=45?'#f59e0b':'#ef4444';
+                            return (
+                              <div key={tier} style={{display:'flex',justifyContent:'space-between',padding:'4px 8px',background:'rgba(5,8,16,0.5)',borderRadius:6,marginBottom:4,fontSize:11}}>
+                                <span style={{color:'#94a3b8'}}>{tier}</span>
+                                <span style={{color}}>{v.wins}W-{v.total-v.wins}L ({wr}%)</span>
+                                <span style={{color:'#64748b'}}>Model: {avgP}% | Drift: {drift}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
+                    {/* By bet type */}
+                    {graded.length>=3&&(()=>{
+                      const byType = {};
+                      graded.forEach(p=>{
+                        const t = p.recommendation||'OTHER';
+                        if(!byType[t]) byType[t]={wins:0,total:0};
+                        byType[t].total++;
+                        if(p.result==='win') byType[t].wins++;
+                      });
+                      return (
+                        <div style={{marginBottom:12}}>
+                          <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,marginBottom:6}}>BY BET TYPE</div>
+                          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                            {Object.entries(byType).map(([type,v])=>{
+                              const wr=(v.wins/v.total*100).toFixed(0);
+                              const c=parseFloat(wr)>=55?'#22c55e':parseFloat(wr)>=45?'#f59e0b':'#ef4444';
+                              return <span key={type} style={{fontSize:10,padding:'3px 8px',borderRadius:20,background:'rgba(5,8,16,0.8)',border:`1px solid ${c}44`,color:c}}>{type}: {wr}% ({v.total})</span>;
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div style={{display:'flex',gap:8}}>
                       <button onClick={analyzeTracker} disabled={trackerAnalyzing||graded.length<5} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',cursor:trackerAnalyzing||graded.length<5?'not-allowed':'pointer',background:graded.length>=5?'linear-gradient(135deg,#a78bfa,#7c3aed)':'#1e293b',color:graded.length>=5?'#fff':'#475569',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>
