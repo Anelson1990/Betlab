@@ -1679,41 +1679,81 @@ Should this bet be placed? Give BET or PASS with 2-3 sentences of specific reaso
     })();
 
     try {
-      const raw = await callClaude([{role:'user',content:`You are an elite sports betting coach. Analyze these TWO separate betting systems and compare them.
+      // Build sport+betType breakdown
+      const sportBetBreakdown = (() => {
+        const all = [...aiGradedBets, ...myGradedBets];
+        const map = {};
+        all.forEach(b => {
+          const key = `${b.sport} ${b.betType||'ML'}`;
+          if (!map[key]) map[key] = {w:0,l:0};
+          if (b.result==='win') map[key].w++;
+          else map[key].l++;
+        });
+        return Object.entries(map)
+          .filter(([,v])=>v.w+v.l>=3)
+          .map(([k,v])=>`${k}: ${v.w}W-${v.l}L (${(v.w/(v.w+v.l)*100).toFixed(0)}%)`)
+          .join(' | ');
+      })();
 
-${summarize(aiGradedBets,'AI PAPER BETS (autonomous AI picks from live odds)')}
+      // Get pending picks with their reasoning
+      const pendingPicks = state.bets.filter(b=>b.result==='pending'&&b.tracked)
+        .slice(0,5)
+        .map(b=>`${b.pick} (${b.sport} ${b.betType} ${b.odds>0?'+':''}${b.odds} conf:${b.confidence}%)`);
 
-${summarize(myGradedBets,'MY SCRIPT PICKS (picks from Austin Python models)')}
+      // Lesson categories
+      const lessonCategories = state.lessons
+        .filter(l=>l.lesson)
+        .slice(0,10)
+        .map(l=>{
+          const tag = l.lesson.match(/\[([A-Z_]+)\]/)?.[1]||'GENERAL';
+          return `[${tag}] ${l.lesson.slice(0,100)}`;
+        });
 
-MODEL TRACKER DATA (raw model performance):
-${trackerSummary}
+      // Recent losing picks with reasoning
+      const recentLosses = [...aiGradedBets,...myGradedBets]
+        .filter(b=>b.result==='loss')
+        .slice(0,5)
+        .map(b=>`${b.pick} (${b.sport} ${b.odds>0?'+':''}${b.odds}): ${b.reasoning?.slice(0,150)||'no reasoning'}`);
 
-CONFIDENCE CALIBRATION (predicted vs actual win rate):
+      const msg = `SPORTS BETTING COACH REPORT
+
+=== YOUR BETTING HISTORY ===
+${summarize(aiGradedBets,'CLAUDE AI PICKS')}
+${summarize(myGradedBets,'MY OWN PICKS')}
+${summarize(groqGraded,'GROQ AI PICKS')}
+
+=== SPORT + BET TYPE BREAKDOWN ===
+${sportBetBreakdown||'Not enough data'}
+
+=== CONFIDENCE CALIBRATION ===
 ${calibration}
 
-LESSONS FROM PAST ANALYSIS:
-${lessons.join(' | ')}
+=== RECENT LOSSES (what went wrong) ===
+${recentLosses.join('\n')||'None'}
 
-Provide separate analysis for each, then a comparison. Return ONLY this JSON:
+=== LESSONS LEARNED SO FAR ===
+${lessonCategories.join('\n')||'None yet'}
+
+=== PENDING PICKS TONIGHT ===
+${pendingPicks.join('\n')||'None'}
+
+=== SELF-TUNING STATUS ===
+${buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, [])}
+
+Based ONLY on this data, provide a coaching report. Do NOT make up stats or reference games you don't have data for. Return ONLY this JSON:
 {
   "grade": "A/B/C/D/F",
-  "headline": "one sharp sentence comparing both systems",
-  "ai_analysis": {
-    "strengths": ["2 specific strengths with data"],
-    "weaknesses": ["2 specific weaknesses with data"],
-    "grade": "A/B/C/D/F"
-  },
-  "script_analysis": {
-    "strengths": ["2 specific strengths with data"],
-    "weaknesses": ["2 specific weaknesses with data"],
-    "grade": "A/B/C/D/F"
-  },
-  "comparison": "2-3 sentences comparing the two systems — which is better and why",
-  "recommendations": ["3 specific actionable changes — one for AI, one for scripts, one for both"],
-  "sizing": "stake sizing advice based on which system is performing better",
-  "next_focus": "single most important thing to improve across both systems"
-}`}],
-      'You are an elite sports betting coach. Be brutally honest, specific, and data-driven. JSON only.',false);
+  "headline": "one sharp sentence summarizing current performance",
+  "strengths": ["2-3 specific strengths with actual numbers from the data"],
+  "weaknesses": ["2-3 specific weaknesses with actual numbers from the data"],
+  "patterns": ["2-3 betting patterns identified — good or bad"],
+  "rules": ["3 specific rules to follow going forward based on the data — e.g. stop betting NHL totals, increase stake on MLB ML underdogs"],
+  "pending_opinion": "brief opinion on tonight's pending picks if any",
+  "next_focus": "single most important thing to change right now"
+}`;
+
+      const raw = await callClaude([{role:'user',content:msg}],
+      'You are a sharp sports betting coach. Analyze ONLY the data provided. Never hallucinate stats or reference games not in the data. Be specific with numbers. JSON only.',false);
       let report={};
       try {
         const clean=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
