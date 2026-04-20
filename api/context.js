@@ -67,6 +67,7 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
     if (home.stats?.homeRecord) lines.push(`  Home Record: ${home.stats.homeRecord} | Away: ${home.stats.awayRecord}`);
     if (home.stats?.streak) lines.push(`  Current Streak: ${home.stats.streak}`);
     if (home.moneyPuck) lines.push(`  xG For: ${home.moneyPuck.xGoalsFor} | xG Against: ${home.moneyPuck.xGoalsAgainst} | xGF%: ${home.moneyPuck.xGoalsForPct} | Corsi: ${home.moneyPuck.corsiForPct} | HD Goals For: ${home.moneyPuck.highDangerGoalsFor}`);
+    if (home.injuries?.length) lines.push(`  Injuries: ${home.injuries.map(i=>`${i.player}(${i.status})`).join(', ')}`);
 
     lines.push(`\nAWAY: ${awayTeam}`);
     if (away.stats) {
@@ -89,6 +90,7 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
     if (away.stats?.homeRecord) lines.push(`  Home Record: ${away.stats.homeRecord} | Away: ${away.stats.awayRecord}`);
     if (away.stats?.streak) lines.push(`  Current Streak: ${away.stats.streak}`);
     if (away.moneyPuck) lines.push(`  xG For: ${away.moneyPuck.xGoalsFor} | xG Against: ${away.moneyPuck.xGoalsAgainst} | xGF%: ${away.moneyPuck.xGoalsForPct} | Corsi: ${away.moneyPuck.corsiForPct} | HD Goals For: ${away.moneyPuck.highDangerGoalsFor}`);
+    if (away.injuries?.length) lines.push(`  Injuries: ${away.injuries.map(i=>`${i.player}(${i.status})`).join(', ')}`);
   }
 
   if (sport==='MLB') {
