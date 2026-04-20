@@ -1863,6 +1863,92 @@ ${trackerPaste.slice(0,10000)}`}],sys,false);
     setTrackerParsing(false);
   };
 
+  const runTrackerBacktest = async () => {
+    const sportPicks = state.trackedPicks.filter(p=>p.sport===trackerSport);
+    const graded = sportPicks.filter(p=>p.result!=='pending');
+    if (graded.length < 5) { setTrackerError('Need at least 5 graded picks to backtest'); return; }
+    setTrackerAnalyzing(true);
+    addLog(`🔬 Running ${trackerSport} model backtest on ${graded.length} picks...`);
+    try {
+      const wins = graded.filter(p=>p.result==='win').length;
+      
+      // By rating
+      const byRating = {};
+      graded.forEach(p=>{
+        const r = p.rating?.includes('STRONG')?'STRONG BET':p.rating?.includes('VALUE')?'VALUE BET':'LEAN';
+        if(!byRating[r]) byRating[r]={wins:0,total:0,probs:[]};
+        byRating[r].total++;
+        if(p.result==='win') byRating[r].wins++;
+        if(p.modelProb) byRating[r].probs.push(parseFloat(p.modelProb));
+      });
+
+      // By bet type
+      const byType = {};
+      graded.forEach(p=>{
+        const t = p.recommendation||'OTHER';
+        if(!byType[t]) byType[t]={wins:0,total:0};
+        byType[t].total++;
+        if(p.result==='win') byType[t].wins++;
+      });
+
+      // By odds range
+      const byOdds = {'heavy fav (<-150)':{w:0,l:0},'fav (-110 to -150)':{w:0,l:0},'pick':{w:0,l:0},'dog (+110+)':{w:0,l:0}};
+      graded.forEach(p=>{
+        const o = p.odds||0;
+        const tier = o<-150?'heavy fav (<-150)':o<=-110?'fav (-110 to -150)':o<=109?'pick':'dog (+110+)';
+        if(p.result==='win') byOdds[tier].w++;
+        else byOdds[tier].l++;
+      });
+
+      const ratingStr = Object.entries(byRating).map(([r,v])=>{
+        const wr=(v.wins/v.total*100).toFixed(0);
+        const avgP=v.probs.length?(v.probs.reduce((a,b)=>a+b,0)/v.probs.length).toFixed(0):'?';
+        return `${r}: ${v.wins}W-${v.total-v.wins}L (${wr}% actual vs ${avgP}% model)`;
+      }).join(' | ');
+
+      const typeStr = Object.entries(byType).filter(([,v])=>v.total>0).map(([t,v])=>`${t}: ${v.wins}W-${v.total-v.wins}L (${(v.wins/v.total*100).toFixed(0)}%)`).join(' | ');
+      const oddsStr = Object.entries(byOdds).filter(([,v])=>v.w+v.l>0).map(([t,v])=>`${t}: ${v.w}W-${v.l}L (${(v.w/(v.w+v.l)*100).toFixed(0)}%)`).join(' | ');
+
+      const losses = graded.filter(p=>p.result==='loss').slice(0,8).map(p=>`${p.pick} | prob:${p.modelProb}% | ${p.rating} | score:${p.score||'?'}`);
+      const wins_list = graded.filter(p=>p.result==='win').slice(0,5).map(p=>`${p.pick} | prob:${p.modelProb}% | ${p.rating}`);
+
+      const msg = `You are analyzing a ${trackerSport} prediction model (Dixon-Coles/Monte Carlo) to identify specific parameter tweaks.
+
+OVERALL: ${graded.length} picks | ${wins}W-${graded.length-wins}L | ${(wins/graded.length*100).toFixed(1)}% win rate
+
+BY RATING TIER (model prob vs actual):
+${ratingStr}
+
+BY BET TYPE:
+${typeStr}
+
+BY ODDS RANGE:
+${oddsStr}
+
+WINNING PICKS:
+${wins_list.join('\n')}
+
+LOSING PICKS:
+${losses.join('\n')}
+
+Provide specific ${trackerSport} model calibration recommendations:
+1. Which rating thresholds need adjustment and by how much?
+2. Which bet types to focus on or eliminate?
+3. Specific parameter changes (lambda multiplier, home advantage, Kelly threshold)?
+4. Filter rules to add before placing bets?
+5. Overall grade A-F
+
+Be specific with numbers. This is for the model developer.`;
+
+      const analysis = await callClaude([{role:'user',content:msg}],
+        `You are a quantitative ${trackerSport} model analyst. Give specific parameter recommendations with numbers. Plain text.`,false);
+      
+      setTrackerAnalysis(analysis);
+      addLog(`✅ ${trackerSport} model backtest complete`);
+    } catch(e) { setTrackerError('Backtest failed: '+e.message); addLog('❌ Backtest error: '+e.message); }
+    setTrackerAnalyzing(false);
+  };
+
   const gradeTracked = (id, result, score='') => {
     setState(s=>({...s,trackedPicks:s.trackedPicks.map(p=>p.id===id?{...p,result,score}:p)}));
     addLog(`📡 Graded tracked pick: ${result.toUpperCase()}`);
@@ -3092,6 +3178,9 @@ Rules: ${report.rules?.join(' | ')}`,
                     <div style={{display:'flex',gap:8}}>
                       <button onClick={analyzeTracker} disabled={trackerAnalyzing||graded.length<5} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',cursor:trackerAnalyzing||graded.length<5?'not-allowed':'pointer',background:graded.length>=5?'linear-gradient(135deg,#a78bfa,#7c3aed)':'#1e293b',color:graded.length>=5?'#fff':'#475569',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>
                         {trackerAnalyzing?'ANALYZING...':'🤖 AI ANALYZE MODEL'}
+                      </button>
+                      <button onClick={runTrackerBacktest} disabled={trackerAnalyzing||graded.length<5} style={{flex:1,padding:'10px 0',borderRadius:8,border:'1px solid #38bdf844',background:graded.length>=5?'rgba(56,189,248,0.1)':'#1e293b',color:graded.length>=5?'#38bdf8':'#475569',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1,cursor:trackerAnalyzing||graded.length<5?'not-allowed':'pointer'}}>
+                        {trackerAnalyzing?'RUNNING...':'🔬 BACKTEST MODEL'}
                       </button>
                     </div>
                     {trackerAnalysis&&(
