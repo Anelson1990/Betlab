@@ -104,6 +104,21 @@ async function fetchRecentGames(abbr) {
   } catch { return null; }
 }
 
+async function fetchInjuries(teamName) {
+  try {
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries');
+    if (!r.ok) return [];
+    const data = await r.json();
+    const teamData = data.injuries?.find(t=>t.displayName?.toLowerCase().includes(teamName.toLowerCase()));
+    if (!teamData) return [];
+    return teamData.injuries?.map(i=>({
+      player: i.athlete?.displayName,
+      status: i.status,
+      comment: i.shortComment,
+    }))||[];
+  } catch { return []; }
+}
+
 async function fetchDailyFaceoffGoalies(homeAbbr, awayAbbr) {
   try {
     // Try ESPN NHL scoreboard for goalie data
@@ -240,13 +255,15 @@ export default async function handler(req, res) {
   });
 
   try {
-    const [standings, homeForm, awayForm, dfoGoalies, homeMPuck, awayMPuck] = await Promise.all([
+    const [standings, homeForm, awayForm, dfoGoalies, homeMPuck, awayMPuck, homeInjuries, awayInjuries] = await Promise.all([
       fetchStandings(),
       fetchRecentGames(homeAbbr),
       fetchRecentGames(awayAbbr),
       fetchDailyFaceoffGoalies(homeAbbr, awayAbbr),
       fetchMoneyPuck(homeAbbr),
       fetchMoneyPuck(awayAbbr),
+      fetchInjuries(home),
+      fetchInjuries(away),
     ]);
 
     const homeStats = await fetchTeamStats(homeAbbr, standings);
@@ -269,6 +286,7 @@ export default async function handler(req, res) {
         recentGames:homeForm?.games,
         probableGoalie:homeGoalie||homeGoalieName,
         moneyPuck:homeMPuck,
+        injuries:homeInjuries,
       },
       away:{
         team:away, abbr:awayAbbr,
@@ -277,6 +295,7 @@ export default async function handler(req, res) {
         recentGames:awayForm?.games,
         probableGoalie:awayGoalie||awayGoalieName,
         moneyPuck:awayMPuck,
+        injuries:awayInjuries,
       },
       allDFOGoalies:dfoGoalies,
       dfoDebug:{htmlLength:dfoGoalies._htmlLength||0, sample:dfoGoalies._sample||''},
