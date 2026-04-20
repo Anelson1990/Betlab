@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchOdds, callClaude } from './api.js';
 import { SPORT_CONFIG, SPORTS, formatOddsForClaude } from './sportsMap.js';
 import { runSim, getSimConfidence, calcTuningParams } from './simEngine.js';
-import { analyzeSimTuning, analyzeBetTypePerf, analyzeConfTiers, getBettingInsights, shouldRetune, buildTuningPrompt } from './tuningEngine.js';
+import { analyzeSimTuning, analyzeBetTypePerf, analyzeConfTiers, getBettingInsights, shouldRetune, buildTuningPrompt, getCalibrationFilter, applyCalibrationToConfidence } from './tuningEngine.js';
 import {
   loadState, persist, uid,
   americanToDecimal, impliedProb, formatMoney, formatOdds,
@@ -921,13 +921,36 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
 
 
   const addGroqPick = useCallback(pickData=>{
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,tracked:true};
+    // Apply calibration filter for Groq
+    const groqGradedBets = state.bets.filter(b=>b.result!=='pending'&&b.tracked&&b.source==='groq');
+    const groqCalibFilter = getCalibrationFilter(groqGradedBets);
+    const groqCalibResult = applyCalibrationToConfidence(pickData.confidence||60, groqCalibFilter);
+    
+    if (groqCalibResult.blocked) {
+      addLog(`🚫 GROQ BLOCKED: ${pickData.pick} — confidence tier below break-even`);
+      return;
+    }
+    if (groqCalibResult.warning) addLog(groqCalibResult.warning);
+
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:groqCalibResult.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,tracked:true};
     setState(s=>({...s,groqBankroll:parseFloat((s.groqBankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🧠 Groq pick: ${bet.pick}`);
   },[]);
 
   const addAIPick = useCallback(pickData=>{
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'ai',tracked:true};
+    // Apply calibration filter
+    const gradedBets = state.bets.filter(b=>b.result!=='pending'&&b.tracked&&b.source==='ai');
+    const calibFilter = getCalibrationFilter(gradedBets);
+    const calibResult = applyCalibrationToConfidence(pickData.confidence||60, calibFilter);
+    
+    if (calibResult.blocked) {
+      addLog(`🚫 BLOCKED: ${pickData.pick} — ${calibFilter[pickData.confidence>=75?'high':pickData.confidence>=65?'mid':'low']?.actualWR?.toFixed(0)}% actual win rate below break-even in this confidence tier`);
+      return;
+    }
+    if (calibResult.warning) addLog(calibResult.warning);
+    
+    const adjustedConf = calibResult.confidence;
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:adjustedConf,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'ai',tracked:true};
     setState(s=>({...s,bankroll:parseFloat((s.bankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🤖 AI: ${bet.pick}`);
   },[]);

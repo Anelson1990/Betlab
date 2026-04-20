@@ -138,6 +138,61 @@ export function getBettingInsights(gradedBets, betTypePerf, confTiers) {
   return insights;
 }
 
+export function getCalibrationFilter(gradedBets) {
+  // Calculate actual win rates by confidence tier
+  const tiers = {
+    low:  { min:55, max:64, wins:0, total:0 },
+    mid:  { min:65, max:74, wins:0, total:0 },
+    high: { min:75, max:100, wins:0, total:0 },
+  };
+  
+  gradedBets.forEach(b => {
+    const conf = b.confidence||60;
+    const tier = conf>=75?'high':conf>=65?'mid':'low';
+    tiers[tier].total++;
+    if (b.result==='win') tiers[tier].wins++;
+  });
+
+  const BREAKEVEN = 52.4; // break-even at -110
+  const MIN_SAMPLE = 15; // need 15 picks before filtering
+
+  const filter = {};
+  for (const [name, t] of Object.entries(tiers)) {
+    const actualWR = t.total>=MIN_SAMPLE ? (t.wins/t.total*100) : null;
+    const expectedWR = name==='low'?59.5:name==='mid'?69.5:80;
+    const drift = actualWR !== null ? actualWR - expectedWR : 0;
+    
+    filter[name] = {
+      actualWR,
+      expectedWR,
+      drift: drift.toFixed(1),
+      sampleSize: t.total,
+      status: actualWR===null ? 'insufficient_data' :
+              actualWR < BREAKEVEN ? 'block' :      // below break-even
+              actualWR < expectedWR - 10 ? 'warn' : // significantly underperforming
+              'pass',
+      adjustment: actualWR !== null ? Math.max(-15, Math.min(15, drift)) : 0,
+    };
+  }
+  return filter;
+}
+
+export function applyCalibrationToConfidence(confidence, calibrationFilter) {
+  const tier = confidence>=75?'high':confidence>=65?'mid':'low';
+  const f = calibrationFilter[tier];
+  if (!f || f.status==='insufficient_data') return { confidence, blocked:false, warning:null };
+  
+  // Adjust confidence down if underperforming
+  const adjustedConf = Math.max(55, confidence + parseFloat(f.adjustment||0));
+  
+  return {
+    confidence: Math.round(adjustedConf),
+    blocked: f.status==='block',
+    warning: f.status==='warn' ? `⚠️ ${tier} confidence tier hitting ${f.actualWR?.toFixed(0)}% (expected ${f.expectedWR}%)` : null,
+    originalConf: confidence,
+  };
+}
+
 export function shouldRetune(gradedBets, lastTuneCount) {
   return gradedBets.length >= MIN_SAMPLE && 
          (gradedBets.length - lastTuneCount) >= TUNE_INTERVAL;
