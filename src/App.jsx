@@ -1921,8 +1921,6 @@ Based on this data provide SPECIFIC model tweaks:
 
 Be specific with numbers. This goes directly to the model developer.`}],
       'You are a quantitative sports model analyst. Give specific, actionable parameter recommendations with numbers. Plain text, no JSON.',false);
-5. Overall model grade A-F with explanation`}],
-      'You are a quantitative sports model analyst. Be specific and data-driven. Plain text.',false);
       setTrackerAnalysis(analysis);
       // Feed into lessons for AI coach
       setState(s=>({...s,lessons:[{id:uid(),date:new Date().toISOString(),title:`📡 Model Analysis (${graded.length} picks)`,category:'Model Tracker',body:analysis,takeaway:analysis.split('.')[0]},...s.lessons]}));
