@@ -1314,6 +1314,13 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     const stakeAmount=Math.max(10,Math.round(state.bankroll*0.03/5)*5);
     const history=buildHistorySummary();
     const tuningContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
+    // Add backtest results to context
+    const backtestLessons = state.lessons
+      .filter(l=>l.source==='backtest')
+      .slice(0,3)
+      .map(l=>l.lesson?.slice(0,300))
+      .filter(Boolean)
+      .join('\n---\n');
 
     // Fetch today's games with stats for Claude context
     let gamesWithStats = '';
@@ -1367,6 +1374,7 @@ ${oddsText}
 ${gamesWithStats?'VERIFIED TEAM STATS & CONFIRMED STARTERS:\n'+gamesWithStats:''}
 ${history}
 ${tuningContext?tuningContext+'\n':''}
+${backtestLessons?'\nBACKTEST FINDINGS (follow these rules):\n'+backtestLessons:''}
 
 Return ONLY a JSON array of your best 1-3 picks. Each object must have:
 {"pick","sport","betType","odds"(integer),"homeOdds"(integer),"awayOdds"(integer),"totalLine"(number),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}
@@ -1702,12 +1710,15 @@ Should this bet be placed? Give BET or PASS with 2-3 sentences of specific reaso
 
       // Lesson categories
       const lessonCategories = state.lessons
-        .filter(l=>l.lesson)
+        .filter(l=>l.lesson&&l.source!=='backtest')
         .slice(0,10)
         .map(l=>{
           const tag = l.lesson.match(/\[([A-Z_]+)\]/)?.[1]||'GENERAL';
           return `[${tag}] ${l.lesson.slice(0,100)}`;
         });
+      const backtestReports = state.lessons
+        .filter(l=>l.source==='backtest')
+        .map(l=>`${l.pick}: ${l.lesson?.slice(0,300)}`);
 
       // Recent losing picks with reasoning
       const recentLosses = [...aiGradedBets,...myGradedBets]
@@ -1739,6 +1750,9 @@ ${pendingPicks.join('\n')||'None'}
 
 === SELF-TUNING STATUS ===
 ${buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, [])}
+
+=== PREVIOUS BACKTEST FINDINGS ===
+${backtestReports.length?backtestReports.join('\n'):'No backtests run yet — run backtest buttons above'}
 
 Based ONLY on this data, provide a coaching report. Do NOT make up stats or reference games you don't have data for. Return ONLY this JSON:
 {
