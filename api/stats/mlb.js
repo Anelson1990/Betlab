@@ -96,8 +96,21 @@ async function fetchRecentForm(teamId) {
     if (!r.ok) return null;
     const data = await r.json();
     const games = data.stats?.[0]?.splits?.slice(-10)||[];
-    const wins = games.filter(g=>g.isWin).length;
-    return { last10:`${wins}-${games.length-wins}`, games:games.length };
+    const wins10 = games.filter(g=>g.isWin).length;
+    const last5 = games.slice(-5);
+    const last3 = games.slice(-3);
+    const wins5 = last5.filter(g=>g.isWin).length;
+    const wins3 = last3.filter(g=>g.isWin).length;
+    // Get runs scored from game log
+    const runsL5 = last5.reduce((a,g)=>a+(g.stat?.runs||0),0);
+    const runsAllowedL5 = last5.reduce((a,g)=>a+(g.stat?.runsAllowed||0),0);
+    return {
+      last10:`${wins10}-${games.length-wins10}`,
+      last5:`${wins5}-${last5.length-wins5}`,
+      last3:`${wins3}-${last3.length-wins3}`,
+      avgRS_L5: last5.length?(runsL5/last5.length).toFixed(1):null,
+      avgRA_L5: last5.length?(runsAllowedL5/last5.length).toFixed(1):null,
+    };
   } catch { return null; }
 }
 
@@ -175,8 +188,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success:true,
-      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, probablePitcher:homePitcher, injuries:homeInjuries },
-      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, probablePitcher:awayPitcher, injuries:awayInjuries },
+      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries },
+      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, last5:awayForm?.last5, last3:awayForm?.last3, avgRS_L5:awayForm?.avgRS_L5, avgRA_L5:awayForm?.avgRA_L5, probablePitcher:awayPitcher, injuries:awayInjuries },
       fetchedAt: new Date().toISOString(),
     });
   } catch(err) {
