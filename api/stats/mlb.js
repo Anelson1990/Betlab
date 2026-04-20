@@ -90,6 +90,38 @@ async function fetchPitcherStats(pitcherName) {
   } catch { return { name: pitcherName }; }
 }
 
+async function fetchESPNOdds(espnGameId) {
+  if (!espnGameId) return null;
+  try {
+    const r = await fetch(`https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/events/${espnGameId}/competitions/${espnGameId}/odds`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const item = d.items?.[0];
+    if (!item) return null;
+    return {
+      provider: item.provider?.name,
+      overUnder: item.overUnder,
+      spread: item.spread,
+      overOdds: item.overOdds,
+      underOdds: item.underOdds,
+      homeMl: item.homeTeamOdds?.moneyLine,
+      awayMl: item.awayTeamOdds?.moneyLine,
+      details: item.details,
+    };
+  } catch { return null; }
+}
+
+async function fetchESPNWinProb(espnGameId) {
+  if (!espnGameId) return null;
+  try {
+    const r = await fetch(`https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/events/${espnGameId}/competitions/${espnGameId}/probabilities?limit=1`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const item = d.items?.[0];
+    return item ? { homeWinPct: item.homeWinPercentage, awayWinPct: item.awayWinPercentage } : null;
+  } catch { return null; }
+}
+
 async function fetchRecentForm(teamId) {
   try {
     const r = await fetch(`${MLB_API}/teams/${teamId}/stats?stats=gameLog&group=hitting&season=2025`);
@@ -162,7 +194,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET');
 
-  const { home, away } = req.query;
+  const { home, away, espnGameId } = req.query;
   if (!home||!away) return res.status(400).json({error:'Missing home/away'});
 
   const homeId = getTeamId(home);
@@ -179,17 +211,20 @@ export default async function handler(req, res) {
       fetchTodayPitcher(awayId),
     ]);
 
-    const [homePitcher, awayPitcher, homeInjuries, awayInjuries] = await Promise.all([
+    const [homePitcher, awayPitcher, homeInjuries, awayInjuries, espnOdds, espnWinProb] = await Promise.all([
       homePitcherName ? fetchPitcherStats(homePitcherName) : null,
       awayPitcherName ? fetchPitcherStats(awayPitcherName) : null,
       fetchMLBInjuries(home),
       fetchMLBInjuries(away),
+      espnGameId ? fetchESPNOdds(espnGameId) : Promise.resolve(null),
+      espnGameId ? fetchESPNWinProb(espnGameId) : Promise.resolve(null),
     ]);
 
     return res.status(200).json({
       success:true,
       home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries },
       away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, last5:awayForm?.last5, last3:awayForm?.last3, avgRS_L5:awayForm?.avgRS_L5, avgRA_L5:awayForm?.avgRA_L5, probablePitcher:awayPitcher, injuries:awayInjuries },
+      espnOdds, espnWinProb,
       fetchedAt: new Date().toISOString(),
     });
   } catch(err) {
