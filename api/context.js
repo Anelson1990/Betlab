@@ -106,6 +106,8 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
       if (home.probablePitcher.era) lines.push(`    ERA: ${home.probablePitcher.era} | WHIP: ${home.probablePitcher.whip} | IP: ${home.probablePitcher.inningsPitched}`);
     }
     if (home.recentForm) lines.push(`  Last 10: ${home.recentForm}`);
+    if (home.homeRecord) lines.push(`  Home: ${home.homeRecord} | Away: ${home.awayRecord}`);
+    if (home.streak) lines.push(`  Streak: ${home.streak}`);
     if (home.injuries?.length) lines.push(`  Injuries: ${home.injuries.map(i=>i.player+'('+i.status+')').join(', ')}`);
 
     lines.push(`\nAWAY: ${awayTeam}`);
@@ -120,6 +122,8 @@ function formatContext(sport, homeTeam, awayTeam, stats) {
       if (away.probablePitcher.era) lines.push(`    ERA: ${away.probablePitcher.era} | WHIP: ${away.probablePitcher.whip} | IP: ${away.probablePitcher.inningsPitched}`);
     }
     if (away.recentForm) lines.push(`  Last 10: ${away.recentForm}`);
+    if (away.homeRecord) lines.push(`  Home: ${away.homeRecord} | Away: ${away.awayRecord}`);
+    if (away.streak) lines.push(`  Streak: ${away.streak}`);
     if (away.injuries?.length) lines.push(`  Injuries: ${away.injuries.map(i=>i.player+'('+i.status+')').join(', ')}`);
   }
 
