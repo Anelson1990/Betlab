@@ -3225,9 +3225,28 @@ Rules: ${report.rules?.join(' | ')}`,
 
           {tab==='lessons'&&(
             <div style={{animation:'slideIn .3s ease'}}>
-              {state.lessons.length===0
+              {/* Backtest reports */}
+              {state.lessons.filter(l=>l.source==='backtest').length>0&&(
+                <div style={{marginBottom:14}}>
+                  <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:10,color:'#38bdf8',letterSpacing:2,marginBottom:8}}>🔬 BACKTEST REPORTS</div>
+                  {state.lessons.filter(l=>l.source==='backtest').map(l=>(
+                    <div key={l.id} style={{background:'rgba(10,18,35,0.95)',border:'1px solid rgba(56,189,248,0.2)',borderRadius:12,padding:14,marginBottom:8}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                        <div style={{fontSize:11,color:'#38bdf8',fontWeight:700}}>{l.pick}</div>
+                        <div style={{fontSize:10,color:'#475569'}}>{l.date}</div>
+                      </div>
+                      {l.report?.overall_grade&&<div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:l.report.overall_grade==='A'?'#22c55e':l.report.overall_grade==='B'?'#86efac':l.report.overall_grade==='C'?'#fbbf24':'#ef4444',fontWeight:700,marginBottom:6}}>{l.report.overall_grade}</div>}
+                      {l.report?.summary&&<div style={{fontSize:11,color:'#94a3b8',marginBottom:8,lineHeight:1.5}}>{l.report.summary}</div>}
+                      {l.report?.best_spots?.length>0&&<div style={{marginBottom:6}}><div style={{fontSize:9,color:'#22c55e',letterSpacing:1,marginBottom:4}}>✅ BEST SPOTS</div>{l.report.best_spots.map((s,i)=><div key={i} style={{fontSize:11,color:'#86efac',marginBottom:2}}>• {s}</div>)}</div>}
+                      {l.report?.avoid?.length>0&&<div style={{marginBottom:6}}><div style={{fontSize:9,color:'#ef4444',letterSpacing:1,marginBottom:4}}>🔴 AVOID</div>{l.report.avoid.map((s,i)=><div key={i} style={{fontSize:11,color:'#fca5a5',marginBottom:2}}>• {s}</div>)}</div>}
+                      {l.report?.rules?.length>0&&<div><div style={{fontSize:9,color:'#f59e0b',letterSpacing:1,marginBottom:4}}>📋 RULES</div>{l.report.rules.map((s,i)=><div key={i} style={{fontSize:11,color:'#fcd34d',marginBottom:2}}>• {s}</div>)}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {state.lessons.filter(l=>l.lesson&&l.lesson.trim().length>10&&l.source!=='backtest').length===0&&state.lessons.filter(l=>l.source==='backtest').length===0
                 ?<div style={{textAlign:'center',padding:'40px 20px',color:'#475569'}}><div style={{fontSize:32,marginBottom:10}}>🎓</div><div style={{fontFamily:"'Orbitron',sans-serif",fontSize:12,letterSpacing:2}}>NO LESSONS YET</div><div style={{fontSize:12,marginTop:6}}>Grade AI bets → Analyze This Bet</div></div>
-                :state.lessons.filter(l=>l.lesson&&l.lesson.trim().length>10).map(l=><LessonCard key={l.id} lesson={l}/>)
+                :state.lessons.filter(l=>l.lesson&&l.lesson.trim().length>10&&l.source!=='backtest').map(l=><LessonCard key={l.id} lesson={l}/>)
               }
             </div>
           )}
