@@ -1888,16 +1888,39 @@ ${trackerPaste.slice(0,10000)}`}],sys,false);
     });
     const ratingStr=Object.entries(byRating).map(([r,v])=>`${r}: ${v.w}W-${v.l}L avg_prob=${v.probs.length?((v.probs.reduce((a,b)=>a+b,0)/v.probs.length).toFixed(1)):'-'}%`).join(', ');
     try {
-      const analysis = await callClaude([{role:'user',content:`Analyze this sports model performance data:
-Total: ${graded.length} graded picks | ${wins}W-${graded.length-wins}L | ${(wins/graded.length*100).toFixed(1)}% win rate
-By rating tier: ${ratingStr}
-Recent picks: ${JSON.stringify(graded.slice(0,15).map(p=>({pick:p.pick,prob:p.modelProb,rating:p.rating,result:p.result,score:p.score})))}
+      // Build bet type breakdown
+      const byType = {};
+      graded.forEach(p=>{
+        const t = p.recommendation||'OTHER';
+        if(!byType[t]) byType[t]={w:0,l:0};
+        byType[t][p.result==='win'?'w':'l']++;
+      });
+      const typeStr = Object.entries(byType).map(([t,v])=>`${t}: ${v.w}W-${v.l}L (${(v.w/(v.w+v.l)*100).toFixed(0)}%)`).join(' | ');
 
-Analyze:
-1. Is the model well-calibrated? (predicted prob vs actual win rate)
-2. Which rating tiers are performing vs underperforming?
-3. What patterns do you see in the losses?
-4. Specific recommendations to improve model usage
+      const analysis = await callClaude([{role:'user',content:`You are analyzing a Dixon-Coles NHL prediction model to identify specific parameter tweaks needed.
+
+MODEL: ${trackerSport} Dixon-Coles with Bayesian updating, Monte Carlo simulation, temporal decay
+TOTAL: ${graded.length} graded picks | ${wins}W-${graded.length-wins}L | ${(wins/graded.length*100).toFixed(1)}% actual win rate
+
+BY RATING TIER (model predicted prob vs actual):
+${ratingStr}
+
+BY BET TYPE:
+${typeStr}
+
+RECENT PICKS (pick, model prob, rating, result):
+${graded.slice(0,20).map(p=>`${p.pick} | prob:${p.modelProb}% | ${p.rating} | ${p.result} | score:${p.score||'?'}`).join('\n')}
+
+Based on this data provide SPECIFIC model tweaks:
+1. CALIBRATION: Is the model over/underconfident? By how much? What lambda multiplier adjustment is needed?
+2. HOME/AWAY BIAS: Is the model biased toward home or away teams? How to fix?
+3. RATING THRESHOLDS: Should STRONG BET threshold be raised/lowered? Current edge cutoffs?
+4. BET TYPE PERFORMANCE: Which bet types to focus on or eliminate?
+5. SPECIFIC PARAMETER CHANGES: e.g. "Increase temporal decay weight", "Reduce home ice advantage factor by X%", "Raise Kelly threshold from 3% to 5%"
+6. FILTER RULES: What filters to add before placing a bet (e.g. only bet when confidence>65% AND data quality>80%)
+
+Be specific with numbers. This goes directly to the model developer.`}],
+      'You are a quantitative sports model analyst. Give specific, actionable parameter recommendations with numbers. Plain text, no JSON.',false);
 5. Overall model grade A-F with explanation`}],
       'You are a quantitative sports model analyst. Be specific and data-driven. Plain text.',false);
       setTrackerAnalysis(analysis);
