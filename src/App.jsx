@@ -1349,7 +1349,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     const backtestLessons = state.lessons
       .filter(l=>l.source==='backtest')
       .slice(0,3)
-      .map(l=>l.lesson?.slice(0,300))
+      .map(l=>l.lesson?.slice(0,800))
       .filter(Boolean)
       .join('\n---\n');
 
