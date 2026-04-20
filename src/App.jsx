@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchOdds, callClaude } from './api.js';
 import { SPORT_CONFIG, SPORTS, formatOddsForClaude } from './sportsMap.js';
 import { runSim, getSimConfidence, calcTuningParams } from './simEngine.js';
-import { analyzeSimTuning, analyzeBetTypePerf, analyzeConfTiers, getBettingInsights, shouldRetune, buildTuningPrompt, getCalibrationFilter, applyCalibrationToConfidence, getDynamicConfidenceAdjustment } from './tuningEngine.js';
+import { analyzeSimTuning, analyzeBetTypePerf, analyzeConfTiers, getBettingInsights, shouldRetune, buildTuningPrompt, getCalibrationFilter, applyCalibrationToConfidence, getDynamicConfidenceAdjustment, analyzeReasoningPatterns } from './tuningEngine.js';
 import {
   loadState, persist, uid,
   americanToDecimal, impliedProb, formatMoney, formatOdds,
@@ -1341,6 +1341,10 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     const gradedAI = state.bets.filter(b=>b.result!=='pending'&&b.tracked&&b.source==='ai');
     const sportConfAdj = getDynamicConfidenceAdjustment(gradedAI);
     const sportAdjStr = Object.entries(sportConfAdj).filter(([,v])=>Math.abs(v)>2).map(([s,v])=>`${s}: ${v>0?'+':''}${v.toFixed(1)}% confidence adjustment`).join(', ');
+    // Reasoning pattern analysis
+    const reasoningPatterns = analyzeReasoningPatterns(gradedAI);
+    const topPatterns = reasoningPatterns.slice(0,5).map(p=>`"${p.keyword}": ${p.winRate}% WR (${p.edge>0?'+':''}${p.edge}% edge vs baseline)`).join(', ');
+    const avoidPatterns = reasoningPatterns.filter(p=>parseFloat(p.edge)<-5).map(p=>p.keyword).join(', ');
     // Add backtest results to context
     const backtestLessons = state.lessons
       .filter(l=>l.source==='backtest')
@@ -1403,6 +1407,8 @@ ${history}
 ${tuningContext?tuningContext+'\n':''}
 ${backtestLessons?'\nBACKTEST FINDINGS (follow these rules):\n'+backtestLessons:''}
 ${sportAdjStr?'\nCALIBRATION ADJUSTMENTS (confidence is being auto-adjusted):\n'+sportAdjStr:''}
+${topPatterns?'\nREASONING PATTERNS FROM YOUR HISTORY:\nWinning patterns: '+topPatterns:''}
+${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
 
 Return ONLY a JSON array of your best 1-3 picks. Each object must have:
 {"pick","sport","betType","odds"(integer),"homeOdds"(integer),"awayOdds"(integer),"totalLine"(number),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}
