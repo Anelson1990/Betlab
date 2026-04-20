@@ -2016,6 +2016,7 @@ Analyze:
 
       // Step 3: Build app context (betting history + tuning)
       const appContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
+      const groqBacktest = state.lessons.filter(l=>l.source==='backtest').slice(0,2).map(l=>l.lesson?.slice(0,200)).filter(Boolean).join('\n');
 
       // Step 4: Run Groq AI analysis with full context
       const analyzeRes = await fetch('/api/analyze', {
@@ -2028,6 +2029,7 @@ Analyze:
           appContext,
           betType,
           nrfiProb:simData.simulation?.nrfiProb,
+          backtestContext:groqBacktest||'',
           yrfiProb:simData.simulation?.yrfiProb,
         }),
       });
