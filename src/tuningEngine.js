@@ -291,7 +291,11 @@ export function buildTuningPrompt(simTuning, betTypePerf, confTiers, insights) {
     const sportBreakdown = Object.values(betTypePerf._bySport)
       .filter(s=>s.total>=5)
       .sort((a,b)=>(b.wins/b.total)-(a.wins/a.total))
-      .map(s=>`${s.sport} ${s.type}: ${(s.wins/s.total*100).toFixed(0)}% (${s.total})`)
+      .map(s=>{
+        const wr=(s.wins/s.total*100).toFixed(0);
+        const flag=s.wins/s.total<0.524?'🔴':s.wins/s.total>0.58?'🟢':'🟡';
+        return `${flag}${s.sport} ${s.type}: ${wr}% (${s.total})`;
+      })
       .join(', ');
     if (sportBreakdown) lines.push(`By sport+type: ${sportBreakdown}`);
   }
