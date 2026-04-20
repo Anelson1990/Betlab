@@ -1373,7 +1373,7 @@ Return ONLY a JSON array of your best 1-3 picks. Each object must have:
 No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
     setLoadingMsg('🧠 Finding value...');
     try {
-      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,true);
+      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,false);
       let picks=[];
       const s=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
       const start=s.indexOf('[');
