@@ -8,27 +8,46 @@ export async function fetchOdds(oddsKey, markets = 'h2h,spreads,totals') {
 }
 
 export async function callClaude(messages, systemPrompt, useSearch = false) {
-  const body = {
-    model: useSearch ? 'claude-sonnet-4-5' : 'claude-haiku-4-5-20251001',
-    max_tokens: 2000,
-    system: systemPrompt,
-    messages,
-  };
-  if (useSearch) {
-    body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+  // Try Claude first, fall back to Groq if credits are low
+  try {
+    const body = {
+      model: useSearch ? 'claude-sonnet-4-5' : 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages,
+    };
+    if (useSearch) {
+      body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+    }
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.error?.type === 'invalid_request_error' && data.error?.message?.includes('credit')) {
+      throw new Error('credits_low');
+    }
+    if (!res.ok) throw new Error(data.error?.message || `API error ${res.status}`);
+    return data.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('\n')
+      .trim();
+  } catch(e) {
+    if (e.message === 'credits_low' || e.message?.includes('credit')) {
+      // Fall back to Groq
+      const groqRes = await fetch('/api/groq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, system: systemPrompt }),
+      });
+      const groqData = await groqRes.json();
+      if (!groqData.success) throw new Error(groqData.error || 'Groq fallback failed');
+      return groqData.content;
+    }
+    throw e;
   }
-  const res = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `API error ${res.status}`);
-  return data.content
-    .filter(b => b.type === 'text')
-    .map(b => b.text)
-    .join('\n')
-    .trim();
 }
 
 export function extractJSON(raw) {
