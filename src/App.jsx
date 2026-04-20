@@ -2045,6 +2045,118 @@ Analyze:
     } catch(e) { addLog(`❌ Groq error: ${e.message}`); } finally { setGroqAnalyzing(null); }
   };
 
+  const runBacktest = async (source) => {
+    const sourceBets = state.bets.filter(b=>b.source===source&&b.result!=='pending'&&b.tracked);
+    if (sourceBets.length < 5) { setError(`Need at least 5 graded ${source} picks to backtest`); return; }
+    setCoachLoading(true);
+    addLog(`🔬 Running ${source} backtest on ${sourceBets.length} picks...`);
+    try {
+      // Group by sport
+      const bySport = {};
+      sourceBets.forEach(b=>{
+        if(!bySport[b.sport]) bySport[b.sport]={wins:0,losses:0,bets:[]};
+        if(b.result==='win') bySport[b.sport].wins++;
+        else bySport[b.sport].losses++;
+        bySport[b.sport].bets.push(b);
+      });
+
+      // Group by confidence tier
+      const byConf = {'55-64':{w:0,l:0},'65-74':{w:0,l:0},'75+':{w:0,l:0}};
+      sourceBets.forEach(b=>{
+        const tier = b.confidence>=75?'75+':b.confidence>=65?'65-74':'55-64';
+        if(b.result==='win') byConf[tier].w++;
+        else byConf[tier].l++;
+      });
+
+      // Group by odds range
+      const byOdds = {'heavy fav (<-150)':{w:0,l:0},'fav (-110 to -150)':{w:0,l:0},'pick (-109 to +109)':{w:0,l:0},'dog (+110 to +200)':{w:0,l:0},'big dog (>+200)':{w:0,l:0}};
+      sourceBets.forEach(b=>{
+        const o = b.odds;
+        const tier = o<-150?'heavy fav (<-150)':o<=-110?'fav (-110 to -150)':o<=109?'pick (-109 to +109)':o<=200?'dog (+110 to +200)':'big dog (>+200)';
+        if(b.result==='win') byOdds[tier].w++;
+        else byOdds[tier].l++;
+      });
+
+      // Recent reasoning patterns in losses
+      const losses = sourceBets.filter(b=>b.result==='loss')
+        .map(b=>`${b.pick} (${b.sport} ${b.odds>0?'+':''}${b.odds} conf:${b.confidence}%): ${b.reasoning?.slice(0,200)||'no reasoning'}`);
+
+      const wins = sourceBets.filter(b=>b.result==='win')
+        .map(b=>`${b.pick} (${b.sport} ${b.odds>0?'+':''}${b.odds} conf:${b.confidence}%): ${b.reasoning?.slice(0,150)||'no reasoning'}`);
+
+      const sportStr = Object.entries(bySport).map(([s,v])=>`${s}: ${v.wins}W-${v.losses}L (${(v.wins/(v.wins+v.losses)*100).toFixed(0)}%)`).join(' | ');
+      const confStr = Object.entries(byConf).map(([t,v])=>v.w+v.l>0?`${t}%: ${v.w}W-${v.l}L (${(v.w/(v.w+v.l)*100).toFixed(0)}% actual)`:null).filter(Boolean).join(' | ');
+      const oddsStr = Object.entries(byOdds).map(([t,v])=>v.w+v.l>0?`${t}: ${v.w}W-${v.l}L (${(v.w/(v.w+v.l)*100).toFixed(0)}%)`:null).filter(Boolean).join(' | ');
+
+      const msg = `BACKTEST ANALYSIS for ${source.toUpperCase()} PICKS (${sourceBets.length} graded bets)
+
+PERFORMANCE BY SPORT:
+${sportStr}
+
+CONFIDENCE CALIBRATION (predicted% vs actual win rate):
+${confStr}
+
+PERFORMANCE BY ODDS RANGE:
+${oddsStr}
+
+SAMPLE WINNING REASONING (what worked):
+${wins.slice(0,5).join('\n')}
+
+SAMPLE LOSING REASONING (what failed):
+${losses.slice(0,5).join('\n')}
+
+Based ONLY on this backtest data, identify:
+1. Where is this model over/underperforming vs expected?
+2. What reasoning patterns appear in wins vs losses?
+3. Which sports/odds ranges should this model focus on or avoid?
+4. Is the confidence calibration accurate?
+
+Return ONLY this JSON:
+{
+  "overall_grade": "A/B/C/D/F",
+  "calibration": "is confidence% matching actual win rate? specific numbers",
+  "best_spots": ["top 2-3 specific situations where model performs well with data"],
+  "avoid": ["top 2-3 specific situations to stop betting with data"],
+  "reasoning_patterns": ["2-3 patterns found in wins vs losses"],
+  "rules": ["3-5 specific rules this model should follow going forward"],
+  "summary": "2-3 sentence honest assessment"
+}`;
+
+      const raw = await callClaude([{role:'user',content:msg}],
+        'You are a quantitative sports betting analyst running a backtest. Analyze ONLY the provided data. Never reference games not in the data. Output specific actionable rules. JSON only.',false);
+
+      let report = {};
+      try {
+        const clean = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+        const s=clean.indexOf('{'), e=clean.lastIndexOf('}');
+        if(s!==-1&&e!==-1) report = JSON.parse(clean.slice(s,e+1));
+      } catch {}
+
+      // Store as a special lesson
+      const lesson = {
+        id: uid(),
+        date: new Date().toISOString().split('T')[0],
+        sport: 'ALL',
+        pick: `${source.toUpperCase()} BACKTEST (${sourceBets.length} picks)`,
+        result: 'backtest',
+        lesson: `BACKTEST REPORT
+
+Grade: ${report.overall_grade}
+${report.summary}
+
+Best spots: ${report.best_spots?.join(', ')}
+Avoid: ${report.avoid?.join(', ')}
+Rules: ${report.rules?.join(' | ')}`,
+        source: 'backtest',
+        report,
+      };
+      setState(s=>({...s, lessons:[lesson,...s.lessons]}));
+      addLog(`✅ ${source} backtest complete — grade: ${report.overall_grade}`);
+
+    } catch(e) { addLog(`❌ Backtest failed: ${e.message}`); }
+    setCoachLoading(false);
+  };
+
   const resetAll=()=>{if(!confirm('Reset ALL data?'))return;setState({...EMPTY_STATE});};
 
   const runAutoTune = useCallback((bets, currentTuning, currentBetTypePerf, currentConfTiers) => {
@@ -2490,6 +2602,11 @@ Analyze:
               <button onClick={runCoach} disabled={coachLoading||state.bets.filter(b=>b.result!=='pending').length<10} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #a78bfa44',background:'rgba(167,139,250,.1)',color:state.bets.filter(b=>b.result!=='pending').length>=10?'#a78bfa':'#475569',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:14}}>
                 {coachLoading?'🎯 ANALYZING...':'🎯 AI COACH'} {state.bets.filter(b=>b.result!=='pending').length<10?`(${10-state.bets.filter(b=>b.result!=='pending').length} more bets needed)`:''}
               </button>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:14}}>
+                  <button onClick={()=>runBacktest('ai')} disabled={coachLoading} style={{padding:'8px 0',borderRadius:8,border:'1px solid #38bdf844',background:'rgba(56,189,248,0.1)',color:'#38bdf8',fontSize:10,fontWeight:700,cursor:'pointer'}}>🔬 CLAUDE BT</button>
+                  <button onClick={()=>runBacktest('groq')} disabled={coachLoading} style={{padding:'8px 0',borderRadius:8,border:'1px solid #8b5cf644',background:'rgba(139,92,246,0.1)',color:'#8b5cf6',fontSize:10,fontWeight:700,cursor:'pointer'}}>🔬 GROQ BT</button>
+                  <button onClick={()=>runBacktest('paste')} disabled={coachLoading} style={{padding:'8px 0',borderRadius:8,border:'1px solid #f9731644',background:'rgba(249,115,22,0.1)',color:'#f97316',fontSize:10,fontWeight:700,cursor:'pointer'}}>🔬 MY BT</button>
+                </div>
 
               {coachReport&&(
                 <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #a78bfa44',borderRadius:14,padding:18,marginBottom:14}}>
