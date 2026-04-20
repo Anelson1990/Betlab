@@ -173,6 +173,38 @@ export function getBettingInsights(gradedBets, betTypePerf, confTiers) {
   return insights;
 }
 
+export function analyzeReasoningPatterns(gradedBets) {
+  // Find reasoning patterns that correlate with wins vs losses
+  const winKeywords = {};
+  const lossKeywords = {};
+  const keywords = ['home advantage','road','injury','streak','rest','pitcher','goalie','ERA','xG','form','momentum','playoff','weather','back-to-back','revenge','division'];
+  
+  for (const bet of gradedBets) {
+    const text = ((bet.reasoning||'')+(bet.keyFactors||[]).join(' ')).toLowerCase();
+    for (const kw of keywords) {
+      if (text.includes(kw.toLowerCase())) {
+        if (bet.result==='win') winKeywords[kw] = (winKeywords[kw]||0)+1;
+        else if (bet.result==='loss') lossKeywords[kw] = (lossKeywords[kw]||0)+1;
+      }
+    }
+  }
+
+  const total = gradedBets.length;
+  const wins = gradedBets.filter(b=>b.result==='win').length;
+  const baseWR = total ? wins/total : 0.5;
+
+  const patterns = keywords.map(kw=>{
+    const w = winKeywords[kw]||0;
+    const l = lossKeywords[kw]||0;
+    if (w+l < 5) return null;
+    const wr = w/(w+l);
+    const edge = wr - baseWR;
+    return { keyword:kw, wins:w, losses:l, winRate:(wr*100).toFixed(0), edge:(edge*100).toFixed(1) };
+  }).filter(Boolean).sort((a,b)=>parseFloat(b.edge)-parseFloat(a.edge));
+
+  return patterns;
+}
+
 export function getCalibrationFilter(gradedBets) {
   // Calculate actual win rates by confidence tier
   const tiers = {
