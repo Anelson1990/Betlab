@@ -1,11 +1,8 @@
-// Games API - uses The Odds API (same as Claude)
-// Returns today's games with live odds
-
 const SPORT_MAP = {
-  NHL: 'icehockey_nhl',
-  MLB: 'baseball_mlb', 
-  NBA: 'basketball_nba',
-  NFL: 'americanfootball_nfl',
+  NHL: {espn:'hockey/nhl', odds:'icehockey_nhl'},
+  MLB: {espn:'baseball/mlb', odds:'baseball_mlb'},
+  NBA: {espn:'basketball/nba', odds:'basketball_nba'},
+  NFL: {espn:'football/nfl', odds:'americanfootball_nfl'},
 };
 
 function americanToImplied(odds) {
@@ -14,51 +11,87 @@ function americanToImplied(odds) {
   return n > 0 ? 100/(n+100) : Math.abs(n)/(Math.abs(n)+100);
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin','*');
-  res.setHeader('Access-Control-Allow-Methods','GET');
-
-  const { sport='NHL' } = req.query;
-  const sportKey = SPORT_MAP[sport.toUpperCase()];
-  if (!sportKey) return res.status(400).json({error:'Invalid sport'});
-
-  const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return res.status(500).json({error:'ODDS_API_KEY not set'});
-
+async function getESPNGames(sport) {
   try {
-    const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h&oddsFormat=american&dateFormat=iso`;
-    const r = await fetch(url);
-    if (!r.ok) return res.status(502).json({error:'Odds API error'});
+    const path = SPORT_MAP[sport]?.espn;
+    if (!path) return [];
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard`);
+    if (!r.ok) return [];
+    const d = await r.json();
+    const games = [];
+    for (const event of d.events||[]) {
+      const comp = event.competitions?.[0];
+      if (!comp) continue;
+      const home = comp.competitors?.find(c=>c.homeAway==='home');
+      const away = comp.competitors?.find(c=>c.homeAway==='away');
+      if (!home||!away) continue;
+      const odds = comp.odds?.[0];
+      const homeML = odds?.homeTeamOdds?.moneyLine||null;
+      const awayML = odds?.awayTeamOdds?.moneyLine||null;
+      const overUnder = odds?.overUnder||null;
+      games.push({
+        id: event.id,
+        espnId: event.id,
+        homeTeam: home.team.displayName,
+        awayTeam: away.team.displayName,
+        homeAbbr: home.team.abbreviation,
+        awayAbbr: away.team.abbreviation,
+        commenceTime: event.date,
+        sport,
+        homeML, awayML, overUnder,
+        homeImplied: homeML ? americanToImplied(homeML)*100 : 50,
+        awayImplied: awayML ? americanToImplied(awayML)*100 : 50,
+        status: event.status?.type?.name||'scheduled',
+      });
+    }
+    return games;
+  } catch(e) { return []; }
+}
+
+async function getOddsAPIGames(sport, apiKey) {
+  try {
+    const slug = SPORT_MAP[sport]?.odds;
+    if (!slug||!apiKey) return [];
+    const r = await fetch(`https://api.the-odds-api.com/v4/sports/${slug}/odds?apiKey=${apiKey}&regions=us&markets=h2h,totals&oddsFormat=american`);
+    if (!r.ok) return [];
     const data = await r.json();
-
-    const games = data.map(g => {
-      const book = g.bookmakers?.[0];
-      const h2h = book?.markets?.find(m=>m.key==='h2h');
-      const homeOutcome = h2h?.outcomes?.find(o=>o.name===g.home_team);
-      const awayOutcome = h2h?.outcomes?.find(o=>o.name===g.away_team);
-      const homeOdds = homeOutcome?.price || -110;
-      const awayOdds = awayOutcome?.price || -110;
-      const homeImpl = americanToImplied(homeOdds)*100;
-      const awayImpl = americanToImplied(awayOdds)*100;
-      const total = homeImpl+awayImpl;
-
+    return data.map(g=>{
+      const dk = g.bookmakers?.find(b=>b.key==='draftkings')||g.bookmakers?.[0];
+      const h2h = dk?.markets?.find(m=>m.key==='h2h');
+      const tot = dk?.markets?.find(m=>m.key==='totals');
+      const homeO = h2h?.outcomes?.find(o=>o.name===g.home_team);
+      const awayO = h2h?.outcomes?.find(o=>o.name===g.away_team);
+      const overO = tot?.outcomes?.find(o=>o.name==='Over');
       return {
-        sport: sport.toUpperCase(),
-        gameId: g.id,
-        homeTeam: g.home_team,
-        awayTeam: g.away_team,
-        homeOdds,
-        awayOdds,
-        homeImpliedProb: Math.round(homeImpl/total*1000)/10,
-        awayImpliedProb: Math.round(awayImpl/total*1000)/10,
-        startTime: g.commence_time,
-        status: 'Scheduled',
-        completed: false,
+        id: g.id, espnId: null,
+        homeTeam: g.home_team, awayTeam: g.away_team,
+        commenceTime: g.commence_time, sport,
+        homeML: homeO?.price||null, awayML: awayO?.price||null,
+        overUnder: overO?.point||null,
+        homeImplied: homeO ? americanToImplied(homeO.price)*100 : 50,
+        awayImplied: awayO ? americanToImplied(awayO.price)*100 : 50,
       };
     });
+  } catch(e) { return []; }
+}
 
-    return res.status(200).json({success:true, count:games.length, games, date:new Date().toISOString()});
-  } catch(err) {
-    return res.status(500).json({success:false, error:err.message});
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Access-Control-Allow-Methods','GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers','Content-Type');
+  if (req.method==='OPTIONS') return res.status(200).end();
+
+  const sport = req.query.sport||'NHL';
+  const apiKey = process.env.ODDS_API_KEY;
+
+  // Try ESPN first (free)
+  let games = await getESPNGames(sport);
+
+  // Fall back to Odds API if ESPN has no odds
+  if (games.length===0 || games.every(g=>!g.homeML)) {
+    const oddsGames = await getOddsAPIGames(sport, apiKey);
+    if (oddsGames.length > 0) games = oddsGames;
   }
+
+  return res.status(200).json({success:true, sport, games, source: games[0]?.espnId ? 'espn' : 'odds_api'});
 }
