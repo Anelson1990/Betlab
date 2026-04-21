@@ -3307,10 +3307,11 @@ Rules: ${report.rules?.join(' | ')}`,
                 </div>
                 {groqBets.length===0
                   ?<div style={{textAlign:'center',padding:'30px 0',color:'#334155',fontSize:12}}>No Groq picks yet — load games and analyze</div>
-                  :[filterBar(groqFilter,setGroqFilter),
-                    ...groqBets
-                      .filter(b=>groqFilter==='ALL'||groqFilter==='PENDING'&&b.result==='pending'||groqFilter==='WINS'&&b.result==='win'||groqFilter==='LOSSES'&&b.result==='loss'||groqFilter==='PUSH'&&b.result==='push')
-                      .map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={bet.result!=='pending'?analyzeGroqPick:null} onUndoGrade={undoGrade} onTail={tailGroqPick} onDelete={(id)=>deleteBet(id)} teaching={teaching} allowEdit={false} bankroll={state.groqBankroll}/>)]
+                  :<>{filterBar(groqFilter,setGroqFilter)}
+                    {groqBets
+                      .filter(b=>groqFilter==='ALL'||(groqFilter==='PENDING'&&b.result==='pending')||(groqFilter==='WINS'&&b.result==='win')||(groqFilter==='LOSSES'&&b.result==='loss')||(groqFilter==='PUSH'&&b.result==='push'))
+                      .map(bet=><BetCard key={bet.id} bet={bet} onGrade={gradeBet} onTeach={bet.result!=='pending'?analyzeGroqPick:null} onUndoGrade={undoGrade} onTail={tailGroqPick} onDelete={(id)=>deleteBet(id)} teaching={teaching} allowEdit={false} bankroll={state.groqBankroll}/>)}
+                  </>
                 }
               </div>
             </div>
