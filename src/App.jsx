@@ -2053,7 +2053,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
             const r = await fetch('/api/simulate', {
               method:'POST',
               headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({sport:g.sport, homeTeam:g.homeTeam, awayTeam:g.awayTeam, homeOdds:g.homeOdds, awayOdds:g.awayOdds}),
+              body:JSON.stringify({sport:g.sport, homeTeam:g.homeTeam, awayTeam:g.awayTeam, homeOdds:g.homeML||g.homeOdds, awayOdds:g.awayML||g.awayOdds}),
             });
             const sim = await r.json();
             return {...g, sim};
