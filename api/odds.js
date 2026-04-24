@@ -135,8 +135,14 @@ async function handleTennis(req, res) {
       const surfDefault=surfDefaults[surf]||0.635;
       const p1HasData=(p1Serve?.matches||0)>=10;
       const p2HasData=(p2Serve?.matches||0)>=10;
-      const p1SW=Math.min(0.74,Math.max(0.50,p1HasData?p1Serve.serveWinPct:surfDefault+p1EloFactor));
-      const p2SW=Math.min(0.74,Math.max(0.50,p2HasData?p2Serve.serveWinPct:surfDefault+p2EloFactor));
+      // Raw serve win % from data or Elo estimate
+      const p1RawServe = p1HasData ? p1Serve.serveWinPct : surfDefault+p1EloFactor;
+      const p2RawServe = p2HasData ? p2Serve.serveWinPct : surfDefault+p2EloFactor;
+      // Apply Elo quality adjustment on top of serve stats
+      // Better Elo player gets small boost, worse gets penalty
+      const eloGap = (p1Elo - p2Elo) / 1000; // normalize
+      const p1SW=Math.min(0.76,Math.max(0.48, p1RawServe + eloGap * 0.05));
+      const p2SW=Math.min(0.76,Math.max(0.48, p2RawServe - eloGap * 0.05));
       const sim=simulateMatch(p1SW,p2SW,match.bestOf);
 
       // Look up real odds from The Odds API data
