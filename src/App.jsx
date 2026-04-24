@@ -2107,7 +2107,8 @@ Be specific with numbers. This goes directly to the model developer.`}],
         return;
       }
       setGroqGames(gamesData.games);
-      addLog(`📡 ${gamesData.games.length} games loaded`);
+      addLog(`📡 ${gamesData.games.length} games loaded from ${gamesData.source||'unknown'}`);
+      addLog(`📡 Sample odds: ${gamesData.games[0]?.homeTeam} ${gamesData.games[0]?.homeML} vs ${gamesData.games[0]?.awayTeam} ${gamesData.games[0]?.awayML}`);
 
       // Step 2: Fetch stats then run sims on all games
       const simResults = await Promise.all(
