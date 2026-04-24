@@ -261,7 +261,7 @@ Is this a good bet?`}],
       {bet.result!=='pending'&&(
         <div style={{display:'flex',gap:6,marginTop:10}}>
           {!bet.lesson&&isAI&&(
-            <button onClick={()=>onTeach(bet.id)} disabled={teaching} style={{flex:1,padding:'7px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:teaching?'#334155':'#60a5fa',fontSize:11,fontWeight:700,cursor:teaching?'not-allowed':'pointer',letterSpacing:1,textTransform:'uppercase'}}>
+            <button onClick={()=>onTeach(bet)} disabled={teaching} style={{flex:1,padding:'7px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:teaching?'#334155':'#60a5fa',fontSize:11,fontWeight:700,cursor:teaching?'not-allowed':'pointer',letterSpacing:1,textTransform:'uppercase'}}>
               🎓 {teaching?'Analyzing...':'Analyze'}
             </button>
           )}
