@@ -154,11 +154,17 @@ async function handleTennis(req, res) {
         const dk=oddsMatch.bookmakers?.find(b=>b.key==='draftkings')||oddsMatch.bookmakers?.[0];
         const h2h=dk?.markets?.find(m=>m.key==='h2h');
         if(h2h){
-          const p1Team=oddsMatch.home_team;
-          const p2Team=oddsMatch.away_team;
-          const p1Out=h2h.outcomes?.find(o=>o.name===p1Team);
-          const p2Out=h2h.outcomes?.find(o=>o.name===p2Team);
+          // Match by player last name — don't rely on home/away order
+          const p1Last=match.p1.name.split(' ').pop().toLowerCase();
+          const p2Last=match.p2.name.split(' ').pop().toLowerCase();
+          const p1Out=h2h.outcomes?.find(o=>o.name.toLowerCase().includes(p1Last));
+          const p2Out=h2h.outcomes?.find(o=>o.name.toLowerCase().includes(p2Last));
           if(p1Out&&p2Out){p1Odds=p1Out.price;p2Odds=p2Out.price;}
+          else if(h2h.outcomes?.length>=2){
+            // fallback: assign by position
+            p1Odds=h2h.outcomes[0].price;
+            p2Odds=h2h.outcomes[1].price;
+          }
         }
       }
       // If still no odds, skip this match
