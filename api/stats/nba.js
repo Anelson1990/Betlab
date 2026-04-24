@@ -127,7 +127,88 @@ async function fetchNBAInjuries(teamName) {
   } catch { return []; }
 }
 
+const TOURNAMENT_SURFACES = {
+  'Madrid':'Clay','Monte Carlo':'Clay','Rome':'Clay','Roland Garros':'Clay',
+  'French Open':'Clay','Barcelona':'Clay','Hamburg':'Clay','Munich':'Clay',
+  'Wimbledon':'Grass','Halle':'Grass','Queens':'Grass','Stuttgart':'Grass',
+  'Australian Open':'Hard','US Open':'Hard','Indian Wells':'Hard',
+  'Miami':'Hard','Cincinnati':'Hard','Toronto':'Hard','Montreal':'Hard',
+  'Shanghai':'Hard','Paris':'Hard','Beijing':'Hard',
+};
+const TE_HEADERS = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'};
+const SURF_CODE = {'Clay':'2','Hard':'4','Grass':'1'};
+
+function getSurface(name){
+  for(const[k,v]of Object.entries(TOURNAMENT_SURFACES))
+    if(name.toLowerCase().includes(k.toLowerCase()))return v;
+  return 'Hard';
+}
+
+async function fetchTennisPlayerStats(slug, surface) {
+  try {
+    const r = await fetch(`https://www.tennisexplorer.com/player/${slug}/`,{headers:TE_HEADERS});
+    if(!r.ok) return null;
+    const html = await r.text();
+    const sc = SURF_CODE[surface]||'4';
+    const cm = html.match(new RegExp(`surface=${sc}">(\d+)/(\d+)<`));
+    const rm = html.match(new RegExp(`annual=2026&amp;surface=${sc}"[^>]*>(\d+)/(\d+)<`));
+    const om = html.match(/2026"[^>]*class="bold">(\d+)\/(\d+)/);
+    return {
+      slug, surface,
+      careerWins: cm?parseInt(cm[1]):null,
+      careerTotal: cm?parseInt(cm[1])+parseInt(cm[2]):null,
+      careerWinPct: cm?parseInt(cm[1])/(parseInt(cm[1])+parseInt(cm[2])):null,
+      careerRecord: cm?`${cm[1]}W-${cm[2]}L`:null,
+      recentWins: rm?parseInt(rm[1]):null,
+      recentTotal: rm?parseInt(rm[1])+parseInt(rm[2]):null,
+      recentWinPct: rm?parseInt(rm[1])/(parseInt(rm[1])+parseInt(rm[2])):null,
+      recentRecord: rm?`${rm[1]}W-${rm[2]}L`:null,
+      overall2026: om?`${om[1]}W-${om[2]}L`:null,
+    };
+  } catch { return null; }
+}
+
+async function fetchTennisMatches(tour='atp') {
+  try {
+    const now = new Date();
+    const y=now.getUTCFullYear(),m=String(now.getUTCMonth()+1).padStart(2,'0'),d=String(now.getUTCDate()).padStart(2,'0');
+    const r = await fetch(`https://www.tennisexplorer.com/matches/?type=${tour}&year=${y}&month=${m}&day=${d}`,{headers:TE_HEADERS});
+    if(!r.ok) return [];
+    const html = await r.text();
+    const matches=[];
+    const sections=html.split(/<h3/i);
+    for(const sec of sections.slice(1)){
+      const tn=(sec.match(/>(.*?)</)||[])[1]||'Unknown';
+      const surface=getSurface(tn);
+      const players=[];
+      const re=/href="\/player\/([a-z0-9-]+)\/"[^>]*>([A-Z][^<]+)</g;
+      let m2;
+      while((m2=re.exec(sec))!==null) players.push({slug:m2[1],name:m2[2].trim()});
+      for(let i=0;i<players.length-1;i+=2){
+        if(players[i].slug!==players[i+1].slug)
+          matches.push({tournament:tn.replace(/<[^>]+>/g,'').trim(),surface,p1:players[i],p2:players[i+1]});
+      }
+    }
+    return matches;
+  } catch { return []; }
+}
+
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Access-Control-Allow-Methods','GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers','Content-Type');
+  if(req.method==='OPTIONS') return res.status(200).end();
+
+  // Tennis mode
+  if(req.query.sport==='tennis'){
+    const {tour='atp', player, surface='Clay'} = req.query;
+    if(player){
+      const stats = await fetchTennisPlayerStats(player, surface);
+      return res.status(200).json({success:!!stats, stats});
+    }
+    const matches = await fetchTennisMatches(tour);
+    return res.status(200).json({success:true,tour,date:new Date().toISOString().split('T')[0],matches:matches.slice(0,30),total:matches.length});
+  }
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET');
 
