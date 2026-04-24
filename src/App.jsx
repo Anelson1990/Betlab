@@ -1539,25 +1539,24 @@ Warning: ${note.warning||''}`,
       const typeBets = graded.filter(b=>b.betType===entry.betType);
       const typeWins = typeBets.filter(b=>b.result==='win').length;
 
-      const sys = `You are a sharp sports betting coach analyzing a potential bet before it is placed. 
-Be direct and honest. Give a clear BET or PASS recommendation with specific reasoning.
-Consider: the bettor's historical performance with this sport/bet type, the odds value, and any red flags.`;
-
-      const msg = `POTENTIAL BET TO ANALYZE:
-Pick: ${entry.pick}
-Sport: ${entry.sport}
-Bet Type: ${entry.betType}
-Odds: ${entry.odds}
-Stake: $${entry.stake}
-Notes: ${entry.notes||'none'}
-
-BETTOR HISTORY:
-Overall: ${wins}W-${graded.length-wins}L (${roi.toFixed(1)}% ROI) on ${graded.length} bets
-${entry.sport} record: ${sportWins}W-${sportBets.length-sportWins}L on ${sportBets.length} bets
-${entry.betType} record: ${typeWins}W-${typeBets.length-typeWins}L on ${typeBets.length} bets
-Recent lessons: ${state.lessons.slice(0,3).map(l=>l.lesson?.slice(0,100)).filter(Boolean).join(' | ')}
-
-Should this bet be placed? Give BET or PASS with 2-3 sentences of specific reasoning.`;
+      const sys = `You are an elite sports betting coach running a 5-gate pre-bet decision framework. Be direct and data-driven.
+GATE 1 — EDGE: Do sim edge AND model edge both agree on same side >5%?
+GATE 2 — ODDS: Outside -109 to +109 dead zone? HOME ML needs >8% edge.
+GATE 3 — CALIBRATION: Is this confidence tier historically profitable for this bettor?
+GATE 4 — SITUATION: Key injuries? Back-to-back? Extreme weather?
+GATE 5 — BANKROLL: Kelly <5% bankroll? Not chasing? Exposure <15% tonight?
+Return: VERDICT (BET/WARN/PASS) | GATES (✅/❌) | REASONING (2-3 sentences with data) | ACTION (specific next step)`;
+      const pendingTonight = state.bets.filter(b=>b.result==='pending');
+      const totalExposure = pendingTonight.reduce((a,b)=>a+b.stake,0);
+      const recentLosses = graded.slice(0,5).filter(b=>b.result==='loss').length;
+      const tierWR = (() => {
+        const conf = entry.confidence||entry.stake||60;
+        const tier = conf>=75?'high':conf>=65?'mid':'low';
+        const tierBets = graded.filter(b=>{ const c=b.confidence||60; const t=c>=75?'high':c>=65?'mid':'low'; return t===tier; });
+        if (!tierBets.length) return 'no data';
+        return `${(tierBets.filter(b=>b.result==='win').length/tierBets.length*100).toFixed(0)}% (${tierBets.length} bets)`;
+      })();
+      const msg = `PRE-BET GATE ANALYSIS:\n\nPICK: ${entry.pick} (${entry.sport} ${entry.betType})\nODDS: ${entry.odds>0?'+':''}${entry.odds} | CONFIDENCE: ${entry.confidence||'?'}%\nSTAKE: $${entry.stake} | NOTES: ${entry.notes||'none'}\n\nBANKROLL STATUS:\n- Bankroll: $${state.myBankroll}\n- Tonight exposure: $${totalExposure} (${state.myBankroll?(totalExposure/state.myBankroll*100).toFixed(1):0}%)\n- Pending bets: ${pendingTonight.length}\n\nCALIBRATION DATA:\n- Overall: ${wins}W-${graded.length-wins}L (${roi.toFixed(1)}% ROI)\n- ${entry.sport} record: ${sportWins}W-${sportBets.length-sportWins}L\n- ${entry.betType} record: ${typeWins}W-${typeBets.length-typeWins}L\n- This confidence tier WR: ${tierWR}\n- Recent 5: ${graded.slice(0,5).map(b=>b.result==='win'?'W':'L').join('')||'none'}\n- Recent losses streak: ${recentLosses}\n\nLESSONS:\n${state.lessons.slice(0,3).map(l=>l.lesson?.slice(0,100)).filter(Boolean).join(' | ')||'none'}\n\nRUN ALL 5 GATES. Give VERDICT: BET / WARN / PASS with specific reasoning.`;
 
       const opinion = await callClaude([{role:'user',content:msg}], sys, false);
       setPreLog(p=>p.map(e=>e.id===id?{...e,coachOpinion:opinion}:e));
