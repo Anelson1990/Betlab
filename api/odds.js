@@ -108,6 +108,17 @@ async function handleTennis(req, res) {
     for(const surf of['Hard','Clay','Grass']) surfaceElos[surf]=calcSurfaceElo(csvText,surf);
     const surfDefaults={Hard:tour==='wta'?0.575:0.635,Clay:tour==='wta'?0.555:0.615,Grass:tour==='wta'?0.595:0.665};
 
+    // Fetch real tennis odds from The Odds API
+    const oddsApiKey = process.env.ODDS_API_KEY;
+    let oddsData = [];
+    if(oddsApiKey){
+      try{
+        const tournSlug = espnLeague==='wta'?'tennis_wta_madrid_open':'tennis_atp_madrid_open';
+        const or=await fetch(`https://api.the-odds-api.com/v4/sports/${tournSlug}/odds/?apiKey=${oddsApiKey}&regions=us&markets=h2h&oddsFormat=american`);
+        if(or.ok) oddsData=await or.json();
+      }catch{}
+    }
+
     const results=[];
     for(const match of matches.slice(0,15)){
       const surf=match.surface;
@@ -128,20 +139,30 @@ async function handleTennis(req, res) {
       const p2SW=Math.min(0.74,Math.max(0.50,p2HasData?p2Serve.serveWinPct:surfDefault+p2EloFactor));
       const sim=simulateMatch(p1SW,p2SW,match.bestOf);
 
+      // Look up real odds from The Odds API data
       let p1Odds=null,p2Odds=null;
-      try{
-        const or=await fetch(`https://sports.core.api.espn.com/v2/sports/tennis/leagues/${espnLeague}/events/${match.id}/competitions/${match.id}/odds`);
-        const od=await or.json();
-        const item=od.items?.[0];
-        if(item){p1Odds=item.homeTeamOdds?.moneyLine||null;p2Odds=item.awayTeamOdds?.moneyLine||null;}
-      }catch{}
-      // If no ESPN odds, estimate from sim output (more accurate than raw Elo)
-      if(!p1Odds){
-        const sp1 = sim.p1WinProb/100;
-        const sp2 = sim.p2WinProb/100;
-        p1Odds = sp1 > 0.5 ? -Math.round(sp1/(1-sp1)*100) : Math.round(sp2/sp1*100);
-        p2Odds = sp2 > 0.5 ? -Math.round(sp2/(1-sp2)*100) : Math.round(sp1/sp2*100);
+      const oddsMatch = oddsData.find(o=>{
+        const ht=(o.home_team||'').toLowerCase();
+        const at=(o.away_team||'').toLowerCase();
+        const p1n=match.p1.name.toLowerCase();
+        const p2n=match.p2.name.toLowerCase();
+        const p1Last=p1n.split(' ').pop();
+        const p2Last=p2n.split(' ').pop();
+        return (ht.includes(p1Last)||at.includes(p1Last))&&(ht.includes(p2Last)||at.includes(p2Last));
+      });
+      if(oddsMatch){
+        const dk=oddsMatch.bookmakers?.find(b=>b.key==='draftkings')||oddsMatch.bookmakers?.[0];
+        const h2h=dk?.markets?.find(m=>m.key==='h2h');
+        if(h2h){
+          const p1Team=oddsMatch.home_team;
+          const p2Team=oddsMatch.away_team;
+          const p1Out=h2h.outcomes?.find(o=>o.name===p1Team);
+          const p2Out=h2h.outcomes?.find(o=>o.name===p2Team);
+          if(p1Out&&p2Out){p1Odds=p1Out.price;p2Odds=p2Out.price;}
+        }
       }
+      // If still no odds, skip this match
+      if(!p1Odds) continue;
 
       const p1Imp=p1Odds?americanToImplied(p1Odds)*100:50;
       const p2Imp=p2Odds?americanToImplied(p2Odds)*100:50;
