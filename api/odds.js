@@ -168,18 +168,16 @@ async function handleTennis(req, res) {
       const p1SW=Math.min(0.76,Math.max(0.48, p1RawServe + eloGap * 0.025));
       const p2SW=Math.min(0.76,Math.max(0.48, p2RawServe - eloGap * 0.025));
       const sim=simulateMatch(p1SW,p2SW,match.bestOf);
-      // Override sim with Elo-based probability when serve stats are too similar
-      // This prevents first-server bias when both players have identical stats
+      // Use Elo probability as primary signal, blend with sim
+      // Elo is more reliable than serve stats alone for match outcome
+      const eloP1Prob = 1/(1+Math.pow(10,(p2Elo-p1Elo)/400)) * 100;
+      const eloP2Prob = 100 - eloP1Prob;
       const serveDiff = Math.abs(p1SW - p2SW);
-      let finalP1WinProb = sim.p1WinProb;
-      let finalP2WinProb = sim.p2WinProb;
-      if(serveDiff < 0.02) {
-        // Blend sim with Elo prediction when serve stats too similar
-        const eloP1Prob = 1/(1+Math.pow(10,(p2Elo-p1Elo)/400)) * 100;
-        const eloP2Prob = 100 - eloP1Prob;
-        finalP1WinProb = Math.round((sim.p1WinProb * 0.3 + eloP1Prob * 0.7) * 10) / 10;
-        finalP2WinProb = Math.round((sim.p2WinProb * 0.3 + eloP2Prob * 0.7) * 10) / 10;
-      }
+      // Weight Elo more when serve stats are similar, sim more when different
+      const eloWeight = serveDiff < 0.03 ? 0.85 : serveDiff < 0.06 ? 0.6 : 0.35;
+      const simWeight = 1 - eloWeight;
+      const finalP1WinProb = Math.round((sim.p1WinProb * simWeight + eloP1Prob * eloWeight) * 10) / 10;
+      const finalP2WinProb = Math.round(1000 - finalP1WinProb * 10) / 10;
       const adjSim = {p1WinProb: finalP1WinProb, p2WinProb: finalP2WinProb};
 
       // Look up real odds from The Odds API data
