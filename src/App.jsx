@@ -1827,29 +1827,32 @@ Based ONLY on this data, provide a coaching report. Do NOT make up stats or refe
   const parseTrackerOutput = async () => {
     if (!trackerPaste.trim()) { setTrackerError('Paste model output first.'); return; }
     setTrackerParsing(true); setTrackerError('');
-    const sys = `You are parsing NHL/MLB sports model terminal output. Extract ALL Kelly bet recommendations.
+    const sys = `You are parsing sports model terminal output. Extract ALL actionable picks/recommendations.
 
-For NHL output look for sections like:
-  KELLY BETS section with: AWAY | Edge:+12.08% | Kelly:5.34% | STRONG BET
-  GAME: PHI@PIT with WIN%: Home:44.5% Away:55.5%
-  ML odds like Home:-154 Away:+130
-  O/U lines like Best edge: O6.5(62.9%)
-  Confidence: 60% DataQuality:90%
+For NHL output look for:
+  KELLY BETS section: AWAY | Edge:+12.08% | Kelly:5.34% | STRONG BET
+  WIN%: Home:44.5% Away:55.5%, ML odds: Home:-154 Away:+130
+
+For MLB NRFI output look for:
+  STRONG NRFI, LEAN NRFI ratings with probability %
+
+For MLB HR PROP output look for:
+  ACTIONABLE PLAYS section with batter name, CORR%, FAIR odds
+  Format: "Kyle Schwarber vs Edward Cabrera  41.5%  32.4%  +209"
+  Only extract players in ACTIONABLE PLAYS section (not watch list)
 
 Return a JSON array where each object has:
-  pick - string: e.g. "PHI @ PIT — AWAY ML" or "OTT @ CAR — Over 5.5"
+  pick - string: e.g. "PHI @ PIT — AWAY ML" or "Kyle Schwarber HR" or "DET@BOS NRFI"
   sport - string: NHL or MLB
-  modelProb - number: the win% for recommended side e.g. 55.5
-  odds - integer: American odds for the recommended bet e.g. 130
-  rating - string: STRONG BET, VALUE BET, or SKIP
-  edge - string: e.g. "+12.08%"
-  kelly - string: e.g. "5.34%"
-  keyStats - string: key stats in one line (xG, goalie, injuries)
-  recommendation - string: HOME/AWAY/OVER/UNDER
-  confidence - number: model confidence % e.g. 60
-  dataQuality - number: data quality % e.g. 90
+  modelProb - number: probability % e.g. 32.4 (use CORR% for HR props)
+  odds - integer: American odds e.g. +209 (use FAIR odds for HR props)
+  rating - string: STRONG BET, VALUE BET, LEAN, or HR PROP
+  edge - string: edge % if present
+  keyStats - string: key stats (for HR: raw%, corr%, season HR, recent AB)
+  recommendation - string: HOME/AWAY/OVER/UNDER/NRFI/HR
+  confidence - number: confidence % (use corr% for HR props)
 
-Only include games where Kelly Bets section shows a bet (not SKIP). Respond ONLY with a JSON array.`;
+Only extract actionable picks. Respond ONLY with a JSON array.`;
     try {
       const raw = await callClaude([{role:'user',content:`Sport: ${trackerSport}
 
