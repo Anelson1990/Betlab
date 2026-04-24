@@ -1854,6 +1854,44 @@ Return a JSON array where each object has:
 
 Only extract actionable picks. Respond ONLY with a JSON array.`;
     try {
+      // Try direct regex parse for HR prop model first
+      if (trackerSport==='MLB' && trackerPaste.includes('ACTIONABLE PLAYS')) {
+        const hrPicks = [];
+        const lines = trackerPaste.split('\n');
+        let inActionable = false;
+        for (const line of lines) {
+          if (line.includes('ACTIONABLE PLAYS')) { inActionable = true; continue; }
+          if (inActionable && line.includes('WATCH LIST')) break;
+          if (inActionable && line.trim() && !line.includes('---') && !line.includes('BATTER') && !line.includes('===')) {
+            // Parse: "Kyle Schwarber  vs Edward Cabrera  41.5%  32.4%  +209  8HR  2HR/24AB  CHC(1.05)"
+            const match = line.match(/([A-Za-z\s]+?)\s+vs\s+([A-Za-z\s]+?)\s+([\d.]+)%\s+([\d.]+)%\s+(\+[\d]+)/);
+            if (match) {
+              hrPicks.push({
+                id: uid(),
+                date: new Date().toISOString().split('T')[0],
+                sport: 'MLB',
+                pick: `${match[1].trim()} — HR PROP`,
+                modelProb: parseFloat(match[4]),
+                odds: parseInt(match[5]),
+                rating: 'HR PROP',
+                keyStats: `Raw: ${match[3]}% | Corr: ${match[4]}% | vs ${match[2].trim()}`,
+                recommendation: 'HR',
+                result: 'pending',
+                score: '',
+                source: 'model',
+              });
+            }
+          }
+        }
+        if (hrPicks.length > 0) {
+          setState(s=>({...s, trackedPicks:[...hrPicks,...s.trackedPicks]}));
+          setTrackerPaste('');
+          addLog(`📡 Tracked ${hrPicks.length} HR prop picks`);
+          setTrackerParsing(false);
+          return;
+        }
+      }
+
       const raw = await callClaude([{role:'user',content:`Sport: ${trackerSport}
 
 ${trackerPaste.slice(0,10000)}`}],sys,false);
