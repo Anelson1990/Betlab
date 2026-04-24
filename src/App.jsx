@@ -1637,7 +1637,8 @@ Should this bet be placed? Give BET or PASS with 2-3 sentences of specific reaso
     addLog(`↩ Undo grade: back to PENDING`);
   },[]);
 
-  const teachLesson = useCallback(async betId=>{
+  const teachLesson = useCallback(async betOrId=>{
+    const betId = typeof betOrId === 'object' ? betOrId.id : betOrId;
     const bet=state.bets.find(b=>b.id===betId);if(!bet)return;
     setTeaching(true);setLoadingMsg('🎓 Generating lesson...');
     const pl=bet.result==='win'?(americanToDecimal(bet.odds)-1)*bet.stake:-bet.stake;
