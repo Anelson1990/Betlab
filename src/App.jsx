@@ -2178,11 +2178,9 @@ Be specific with numbers. This goes directly to the model developer.`}],
             const simWinProb = (analyzeData.analysis.side===g.homeTeam ? g.sim?.simulation?.homeWinProb : g.sim?.simulation?.awayWinProb)||50;
             const kellyFrac = Math.max(0,((dec-1)*(simWinProb/100)-(1-simWinProb/100))/(dec-1));
             const halfKelly = kellyFrac/2;
-            // Cap at 5% of bankroll max, min $5
-            const stake = Math.max(5, Math.min(
-              Math.round(state.groqBankroll * halfKelly / 5) * 5,
-              Math.round(state.groqBankroll * 0.05)
-            ));
+            // Use half Kelly capped at 10% bankroll, min $5
+            const kellyStake = state.groqBankroll * Math.min(halfKelly, 0.10);
+            const stake = Math.max(5, Math.round(kellyStake/5)*5);
             addGroqPick({
               pick:`${analyzeData.analysis.side} — ${g.awayTeam} @ ${g.homeTeam}`,
               sport:g.sport, betType:'Moneyline', odds, stake,
