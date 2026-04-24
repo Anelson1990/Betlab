@@ -116,9 +116,12 @@ async function handleTennis(req, res) {
       const p2Elo=elos[match.p2.name]||1500;
       const p1Serve=parseServeStats(csvText,match.p1.name,surf);
       const p2Serve=parseServeStats(csvText,match.p2.name,surf);
-      const eloAdj=(p1Elo-p2Elo)/400*0.02;
-      const p1SW=Math.min(0.80,Math.max(0.45,(p1Serve?.serveWinPct||defaultServe)+eloAdj));
-      const p2SW=Math.min(0.80,Math.max(0.45,(p2Serve?.serveWinPct||defaultServe)-eloAdj));
+      // Elo-based win probability (logistic)
+      const eloWinProb = 1/(1+Math.pow(10,(p2Elo-p1Elo)/400));
+      // Adjust serve win % based on relative strength
+      const eloAdj = (eloWinProb - 0.5) * 0.08;
+      const p1SW=Math.min(0.78,Math.max(0.48,(p1Serve?.serveWinPct||defaultServe)+eloAdj));
+      const p2SW=Math.min(0.78,Math.max(0.48,(p2Serve?.serveWinPct||defaultServe)-eloAdj));
       const sim=simulateMatch(p1SW,p2SW,match.bestOf);
 
       let p1Odds=null,p2Odds=null;
@@ -128,6 +131,12 @@ async function handleTennis(req, res) {
         const item=od.items?.[0];
         if(item){p1Odds=item.homeTeamOdds?.moneyLine||null;p2Odds=item.awayTeamOdds?.moneyLine||null;}
       }catch{}
+      // If no ESPN odds, estimate from Elo win probability
+      if(!p1Odds){
+        const impliedP1 = 1/(1+Math.pow(10,(p2Elo-p1Elo)/400));
+        p1Odds = impliedP1 > 0.5 ? -Math.round(impliedP1/(1-impliedP1)*100) : Math.round((1-impliedP1)/impliedP1*100);
+        p2Odds = impliedP1 > 0.5 ? Math.round((1-impliedP1)/impliedP1*100) : -Math.round(impliedP1/(1-impliedP1)*100);
+      }
 
       const p1Imp=p1Odds?americanToImplied(p1Odds)*100:50;
       const p2Imp=p2Odds?americanToImplied(p2Odds)*100:50;
