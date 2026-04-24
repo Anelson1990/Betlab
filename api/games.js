@@ -11,6 +11,27 @@ function americanToImplied(odds) {
   return n > 0 ? 100/(n+100) : Math.abs(n)/(Math.abs(n)+100);
 }
 
+async function fetchCoreOdds(sport, eventId) {
+  try {
+    const leagueMap = {NHL:'hockey/leagues/nhl', MLB:'baseball/leagues/mlb', NBA:'basketball/leagues/nba', NFL:'football/leagues/nfl'};
+    const path = leagueMap[sport];
+    if (!path) return null;
+    const r = await fetch(`https://sports.core.api.espn.com/v2/sports/${path}/events/${eventId}/competitions/${eventId}/odds`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const item = d.items?.[0];
+    if (!item) return null;
+    return {
+      homeML: item.homeTeamOdds?.moneyLine||null,
+      awayML: item.awayTeamOdds?.moneyLine||null,
+      overUnder: item.overUnder||null,
+      overOdds: item.overOdds||null,
+      underOdds: item.underOdds||null,
+      details: item.details||null,
+    };
+  } catch { return null; }
+}
+
 async function getESPNGames(sport) {
   try {
     const path = SPORT_MAP[sport]?.espn;
@@ -25,10 +46,23 @@ async function getESPNGames(sport) {
       const home = comp.competitors?.find(c=>c.homeAway==='home');
       const away = comp.competitors?.find(c=>c.homeAway==='away');
       if (!home||!away) continue;
-      const odds = comp.odds?.[0];
-      const homeML = odds?.homeTeamOdds?.moneyLine||null;
-      const awayML = odds?.awayTeamOdds?.moneyLine||null;
-      const overUnder = odds?.overUnder||null;
+
+      // Try scoreboard odds first, fall back to core API
+      let scoreboardOdds = comp.odds?.[0];
+      let homeML = scoreboardOdds?.homeTeamOdds?.moneyLine||null;
+      let awayML = scoreboardOdds?.awayTeamOdds?.moneyLine||null;
+      let overUnder = scoreboardOdds?.overUnder||null;
+
+      // If no odds in scoreboard, fetch from core API
+      if (!homeML) {
+        const coreOdds = await fetchCoreOdds(sport, event.id);
+        if (coreOdds) {
+          homeML = coreOdds.homeML;
+          awayML = coreOdds.awayML;
+          overUnder = coreOdds.overUnder;
+        }
+      }
+
       games.push({
         id: event.id,
         espnId: event.id,
