@@ -3,39 +3,63 @@
 const ATP_CSV = 'https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master/atp_matches_2024.csv';
 const WTA_CSV = 'https://raw.githubusercontent.com/JeffSackmann/tennis_wta/master/wta_matches_2024.csv';
 
+function simulateGame(serverWin) {
+  // Returns true if server wins the game
+  let s=0,r=0;
+  while(true){
+    if(s>=4&&s-r>=2)return true;
+    if(r>=4&&r-s>=2)return false;
+    if(Math.random()<serverWin)s++;else r++;
+  }
+}
+
+function simulateTiebreak(p1ServeWin, p2ServeWin) {
+  let p1=0,p2=0,serveCount=0;
+  // In tiebreak, serve alternates every 2 points starting with server
+  while(!(p1>=7&&p1-p2>=2)&&!(p2>=7&&p2-p1>=2)){
+    const p1Serving = serveCount===0||(serveCount%2===1);
+    const sp = p1Serving ? p1ServeWin : p2ServeWin;
+    if(Math.random()<sp)p1++;else p2++;
+    serveCount++;
+  }
+  return p1>p2;
+}
+
+function simulateSet(p1ServeWin, p2ServeWin, p1ServesFirst) {
+  let p1g=0,p2g=0,totalGames=0;
+  let p1Serving=p1ServesFirst;
+  while(true){
+    if(p1g>=6&&p1g-p2g>=2)return{p1Wins:true,p1Serving};
+    if(p2g>=6&&p2g-p1g>=2)return{p1Wins:false,p1Serving};
+    if(p1g===6&&p2g===6){
+      const p1WinsTB=simulateTiebreak(p1ServeWin,p2ServeWin);
+      return{p1Wins:p1WinsTB,p1Serving:!p1Serving};
+    }
+    const serverWin=p1Serving?p1ServeWin:p2ServeWin;
+    const serverWinsGame=simulateGame(serverWin);
+    if(serverWinsGame){if(p1Serving)p1g++;else p2g++;}
+    else{if(p1Serving)p2g++;else p1g++;}
+    p1Serving=!p1Serving;
+    totalGames++;
+  }
+}
+
 function simulateMatch(p1ServeWin, p2ServeWin, bestOf=3, simulations=5000) {
-  let p1Wins = 0;
-  for (let s = 0; s < simulations; s++) {
-    let p1Sets = 0, p2Sets = 0;
-    const setsToWin = Math.ceil(bestOf / 2);
-    while (p1Sets < setsToWin && p2Sets < setsToWin) {
-      let p1Games = 0, p2Games = 0;
-      while (true) {
-        if (p1Games >= 6 && p1Games - p2Games >= 2) { p1Sets++; break; }
-        if (p2Games >= 6 && p2Games - p1Games >= 2) { p2Sets++; break; }
-        if (p1Games === 6 && p2Games === 6) {
-          let tb1=0,tb2=0;
-          while(!(tb1>=7&&tb1-tb2>=2)&&!(tb2>=7&&tb2-tb1>=2)){
-            if(Math.random()<p1ServeWin)tb1++;else tb2++;
-          }
-          if(tb1>tb2)p1Sets++;else p2Sets++;
-          break;
-        }
-        const p1Serving=(p1Games+p2Games)%2===0;
-        const sp=p1Serving?p1ServeWin:p2ServeWin;
-        let g1=0,g2=0;
-        while(!(g1>=4&&g1-g2>=2)&&!(g2>=4&&g2-g1>=2)){
-          if(Math.random()<sp)g1++;else g2++;
-        }
-        if(g1>g2){if(p1Serving)p1Games++;else p2Games++;}
-        else{if(p1Serving)p2Games++;else p1Games++;}
-      }
+  let p1Wins=0;
+  const setsToWin=Math.ceil(bestOf/2);
+  for(let s=0;s<simulations;s++){
+    let p1Sets=0,p2Sets=0;
+    let p1ServesFirst=Math.random()<0.5; // random first server
+    while(p1Sets<setsToWin&&p2Sets<setsToWin){
+      const result=simulateSet(p1ServeWin,p2ServeWin,p1ServesFirst);
+      if(result.p1Wins)p1Sets++;else p2Sets++;
+      p1ServesFirst=result.p1Serving; // next set starts with other server
     }
     if(p1Sets>p2Sets)p1Wins++;
   }
   return {
-    p1WinProb: Math.round(p1Wins/simulations*1000)/10,
-    p2WinProb: Math.round((simulations-p1Wins)/simulations*1000)/10,
+    p1WinProb:Math.round(p1Wins/simulations*1000)/10,
+    p2WinProb:Math.round((simulations-p1Wins)/simulations*1000)/10,
   };
 }
 
