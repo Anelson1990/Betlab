@@ -168,6 +168,19 @@ async function handleTennis(req, res) {
       const p1SW=Math.min(0.76,Math.max(0.48, p1RawServe + eloGap * 0.025));
       const p2SW=Math.min(0.76,Math.max(0.48, p2RawServe - eloGap * 0.025));
       const sim=simulateMatch(p1SW,p2SW,match.bestOf);
+      // Override sim with Elo-based probability when serve stats are too similar
+      // This prevents first-server bias when both players have identical stats
+      const serveDiff = Math.abs(p1SW - p2SW);
+      let finalP1WinProb = sim.p1WinProb;
+      let finalP2WinProb = sim.p2WinProb;
+      if(serveDiff < 0.02) {
+        // Blend sim with Elo prediction when serve stats too similar
+        const eloP1Prob = 1/(1+Math.pow(10,(p2Elo-p1Elo)/400)) * 100;
+        const eloP2Prob = 100 - eloP1Prob;
+        finalP1WinProb = Math.round((sim.p1WinProb * 0.3 + eloP1Prob * 0.7) * 10) / 10;
+        finalP2WinProb = Math.round((sim.p2WinProb * 0.3 + eloP2Prob * 0.7) * 10) / 10;
+      }
+      const adjSim = {p1WinProb: finalP1WinProb, p2WinProb: finalP2WinProb};
 
       // Look up real odds from The Odds API data
       let p1Odds=null,p2Odds=null;
@@ -202,19 +215,19 @@ async function handleTennis(req, res) {
 
       const p1Imp=p1Odds?americanToImplied(p1Odds)*100:50;
       const p2Imp=p2Odds?americanToImplied(p2Odds)*100:50;
-      const p1Edge=sim.p1WinProb-p1Imp;
-      const p2Edge=sim.p2WinProb-p2Imp;
+      const p1Edge=adjSim.p1WinProb-p1Imp;
+      const p2Edge=adjSim.p2WinProb-p2Imp;
       let recPlayer=null,recOdds=null,recEdge=0,rating='SKIP';
       if(p1Edge>p2Edge&&p1Edge>=5&&p1Odds){recPlayer=match.p1.name;recOdds=p1Odds;recEdge=p1Edge;rating=p1Edge>=10?'STRONG BET':'VALUE BET';}
       else if(p2Edge>=5&&p2Odds){recPlayer=match.p2.name;recOdds=p2Odds;recEdge=p2Edge;rating=p2Edge>=10?'STRONG BET':'VALUE BET';}
-      const kelly=recOdds?calcKelly(recPlayer===match.p1.name?sim.p1WinProb:sim.p2WinProb,recOdds):0;
+      const kelly=recOdds?calcKelly(recPlayer===match.p1.name?adjSim.p1WinProb:adjSim.p2WinProb,recOdds):0;
 
       results.push({
         tournament:match.tournament,surface:match.surface,court:match.court,date:match.date,
         p1:match.p1.name,p2:match.p2.name,p1Seed:match.p1.seed,p2Seed:match.p2.seed,
         p1Elo:Math.round(p1Elo),p2Elo:Math.round(p2Elo),
         p1ServeWin:Math.round(p1SW*100),p2ServeWin:Math.round(p2SW*100),
-        p1WinProb:sim.p1WinProb,p2WinProb:sim.p2WinProb,
+        p1WinProb:adjSim.p1WinProb,p2WinProb:adjSim.p2WinProb,
         p1Odds,p2Odds,p1Implied:Math.round(p1Imp*10)/10,p2Implied:Math.round(p2Imp*10)/10,
         p1Edge:Math.round(p1Edge*10)/10,p2Edge:Math.round(p2Edge*10)/10,
         recPlayer,recOdds,recEdge:Math.round(recEdge*10)/10,rating,kelly,
