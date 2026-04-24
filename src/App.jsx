@@ -2133,7 +2133,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
         })
       );
 
-      // Step 3: Filter games with edge
+      // Step 3: Use all games with successful sims
       addLog(`📊 Sims complete: ${simResults.filter(g=>g.sim?.success).length}/${simResults.length} successful`);
       
       const withEdge = simResults
@@ -2143,14 +2143,12 @@ Be specific with numbers. This goes directly to the model developer.`}],
           homeEdge: (g.sim.simulation.homeWinProb||50) - (g.sim.homeNoVigProb||50),
           awayEdge: (g.sim.simulation.awayWinProb||50) - (g.sim.awayNoVigProb||50),
         }))
-        .filter(g=>Math.max(g.homeEdge,g.awayEdge)>=3)
-        .sort((a,b)=>Math.max(b.homeEdge,b.awayEdge)-Math.max(a.homeEdge,a.awayEdge))
-        .slice(0,5);
+        .sort((a,b)=>Math.max(b.homeEdge,b.awayEdge)-Math.max(a.homeEdge,a.awayEdge));
 
-      addLog(`📊 Games with edge: ${withEdge.length}`);
+      addLog(`📊 Analyzing all ${withEdge.length} games...`);
 
       if (!withEdge.length) {
-        addLog(`⚠️ No strong edges found in ${groqSport} today — try lowering threshold or check sim results`);
+        addLog(`⚠️ No games with successful sims in ${groqSport} today`);
         setGroqLoading(false);
         return;
       }
