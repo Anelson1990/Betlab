@@ -47,21 +47,11 @@ async function getESPNGames(sport) {
       const away = comp.competitors?.find(c=>c.homeAway==='away');
       if (!home||!away) continue;
 
-      // Try scoreboard odds first, fall back to core API
+      // Use scoreboard odds if available
       let scoreboardOdds = comp.odds?.[0];
       let homeML = scoreboardOdds?.homeTeamOdds?.moneyLine||null;
       let awayML = scoreboardOdds?.awayTeamOdds?.moneyLine||null;
       let overUnder = scoreboardOdds?.overUnder||null;
-
-      // If no odds in scoreboard, fetch from core API
-      if (!homeML) {
-        const coreOdds = await fetchCoreOdds(sport, event.id);
-        if (coreOdds) {
-          homeML = coreOdds.homeML;
-          awayML = coreOdds.awayML;
-          overUnder = coreOdds.overUnder;
-        }
-      }
 
       games.push({
         id: event.id,
@@ -80,6 +70,22 @@ async function getESPNGames(sport) {
         homeImplied: homeML ? americanToImplied(homeML)*100 : 50,
         awayImplied: awayML ? americanToImplied(awayML)*100 : 50,
         status: event.status?.type?.name||'scheduled',
+      });
+    }
+    // Fetch all core API odds in parallel for games missing odds
+    const missingOdds = games.filter(g=>!g.homeML);
+    if (missingOdds.length > 0) {
+      const oddsResults = await Promise.all(
+        missingOdds.map(g => fetchCoreOdds(sport, g.espnId))
+      );
+      missingOdds.forEach((g, i) => {
+        if (oddsResults[i]) {
+          g.homeML = oddsResults[i].homeML;
+          g.awayML = oddsResults[i].awayML;
+          g.overUnder = oddsResults[i].overUnder;
+          g.homeImplied = g.homeML ? americanToImplied(g.homeML)*100 : 50;
+          g.awayImplied = g.awayML ? americanToImplied(g.awayML)*100 : 50;
+        }
       });
     }
     return games;
