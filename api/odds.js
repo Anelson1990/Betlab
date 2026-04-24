@@ -135,11 +135,12 @@ async function handleTennis(req, res) {
         const item=od.items?.[0];
         if(item){p1Odds=item.homeTeamOdds?.moneyLine||null;p2Odds=item.awayTeamOdds?.moneyLine||null;}
       }catch{}
-      // If no ESPN odds, estimate from Elo win probability
+      // If no ESPN odds, estimate from sim output (more accurate than raw Elo)
       if(!p1Odds){
-        const impliedP1 = 1/(1+Math.pow(10,(p2Elo-p1Elo)/400));
-        p1Odds = impliedP1 > 0.5 ? -Math.round(impliedP1/(1-impliedP1)*100) : Math.round((1-impliedP1)/impliedP1*100);
-        p2Odds = impliedP1 > 0.5 ? Math.round((1-impliedP1)/impliedP1*100) : -Math.round(impliedP1/(1-impliedP1)*100);
+        const sp1 = sim.p1WinProb/100;
+        const sp2 = sim.p2WinProb/100;
+        p1Odds = sp1 > 0.5 ? -Math.round(sp1/(1-sp1)*100) : Math.round(sp2/sp1*100);
+        p2Odds = sp2 > 0.5 ? -Math.round(sp2/(1-sp2)*100) : Math.round(sp1/sp2*100);
       }
 
       const p1Imp=p1Odds?americanToImplied(p1Odds)*100:50;
