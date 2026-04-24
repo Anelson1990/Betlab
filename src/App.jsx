@@ -292,46 +292,59 @@ function LessonCard({ lesson }) {
   );
 }
 
-function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartingBankroll }) {
+function ROIComparison({ bets, bankroll, startingBankroll, myBankroll, myStartingBankroll, groqBankroll, groqStartingBankroll }) {
   const aiGraded=bets.filter(b=>b.source==='ai'&&b.result!=='pending');
   const myGraded=bets.filter(b=>b.source==='paste'&&b.result!=='pending');
+  const groqGraded=bets.filter(b=>b.source==='groq'&&b.result!=='pending');
   const aiWins=aiGraded.filter(b=>b.result==='win').length;
   const myWins=myGraded.filter(b=>b.result==='win').length;
+  const groqWins=groqGraded.filter(b=>b.result==='win').length;
   const aiStaked=aiGraded.reduce((a,b)=>a+b.stake,0);
   const myStaked=myGraded.reduce((a,b)=>a+b.stake,0);
+  const groqStaked=groqGraded.reduce((a,b)=>a+b.stake,0);
   const aiPnL=bankroll-startingBankroll;
   const myPnL=myBankroll-myStartingBankroll;
+  const groqPnL=groqBankroll-groqStartingBankroll;
   const aiROI=aiStaked?aiPnL/aiStaked*100:0;
   const myROI=myStaked?myPnL/myStaked*100:0;
+  const groqROI=groqStaked?groqPnL/groqStaked*100:0;
   const roiC=v=>v>5?'#22c55e':v>0?'#86efac':v>-5?'#fbbf24':'#f87171';
+  const leader = aiROI>=groqROI&&aiROI>=myROI?'ai':myROI>=aiROI&&myROI>=groqROI?'my':'groq';
   return (
     <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:18,marginBottom:14}}>
       <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#1d4ed8',letterSpacing:2,marginBottom:14,textTransform:'uppercase'}}>📊 Head to Head</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-        <div style={{borderRight:'1px solid #1e293b',paddingRight:12}}>
-          <div style={{fontSize:10,color:'#60a5fa',letterSpacing:2,marginBottom:6,fontWeight:700}}>🤖 AI PAPER BETS</div>
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:aiPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(aiPnL)}</div>
-          <div style={{fontSize:10,color:'#475569',marginBottom:6}}>true P&L vs ${startingBankroll} start</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+        <div style={{borderRight:'1px solid #1e293b',paddingRight:8}}>
+          <div style={{fontSize:9,color:'#60a5fa',letterSpacing:1,marginBottom:6,fontWeight:700}}>🤖 CLAUDE</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:aiPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(aiPnL)}</div>
+          <div style={{fontSize:9,color:'#475569',marginBottom:4}}>vs ${startingBankroll} start</div>
           {aiGraded.length>0?<>
-            <div style={{fontSize:12,color:roiC(aiROI),fontWeight:700}}>ROI {aiROI>=0?'+':''}{aiROI.toFixed(1)}%</div>
-            <div style={{fontSize:11,color:'#64748b'}}>{aiWins}W-{aiGraded.length-aiWins}L · {aiGraded.length?(aiWins/aiGraded.length*100).toFixed(0):0}% WR</div>
-          </>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
+            <div style={{fontSize:11,color:roiC(aiROI),fontWeight:700}}>ROI {aiROI>=0?'+':''}{aiROI.toFixed(1)}%</div>
+            <div style={{fontSize:10,color:'#64748b'}}>{aiWins}W-{aiGraded.length-aiWins}L</div>
+          </>:<div style={{fontSize:10,color:'#334155'}}>No picks yet</div>}
         </div>
-        <div style={{paddingLeft:12}}>
-          <div style={{fontSize:10,color:'#f97316',letterSpacing:2,marginBottom:6,fontWeight:700}}>📋 MY PICKS</div>
-          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:24,color:myPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(myPnL)}</div>
-          <div style={{fontSize:10,color:'#475569',marginBottom:6}}>true P&L vs ${myStartingBankroll} start</div>
+        <div style={{borderRight:'1px solid #1e293b',paddingLeft:4,paddingRight:4}}>
+          <div style={{fontSize:9,color:'#8b5cf6',letterSpacing:1,marginBottom:6,fontWeight:700}}>🧠 GROQ</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:groqPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(groqPnL)}</div>
+          <div style={{fontSize:9,color:'#475569',marginBottom:4}}>vs ${groqStartingBankroll} start</div>
+          {groqGraded.length>0?<>
+            <div style={{fontSize:11,color:roiC(groqROI),fontWeight:700}}>ROI {groqROI>=0?'+':''}{groqROI.toFixed(1)}%</div>
+            <div style={{fontSize:10,color:'#64748b'}}>{groqWins}W-{groqGraded.length-groqWins}L</div>
+          </>:<div style={{fontSize:10,color:'#334155'}}>No picks yet</div>}
+        </div>
+        <div style={{paddingLeft:8}}>
+          <div style={{fontSize:9,color:'#f97316',letterSpacing:1,marginBottom:6,fontWeight:700}}>📋 MY PICKS</div>
+          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:myPnL>=0?'#22c55e':'#ef4444',fontWeight:700}}>{formatMoney(myPnL)}</div>
+          <div style={{fontSize:9,color:'#475569',marginBottom:4}}>vs ${myStartingBankroll} start</div>
           {myGraded.length>0?<>
-            <div style={{fontSize:12,color:roiC(myROI),fontWeight:700}}>ROI {myROI>=0?'+':''}{myROI.toFixed(1)}%</div>
-            <div style={{fontSize:11,color:'#64748b'}}>{myWins}W-{myGraded.length-myWins}L · {myGraded.length?(myWins/myGraded.length*100).toFixed(0):0}% WR</div>
-          </>:<div style={{fontSize:11,color:'#334155'}}>No graded picks yet</div>}
+            <div style={{fontSize:11,color:roiC(myROI),fontWeight:700}}>ROI {myROI>=0?'+':''}{myROI.toFixed(1)}%</div>
+            <div style={{fontSize:10,color:'#64748b'}}>{myWins}W-{myGraded.length-myWins}L</div>
+          </>:<div style={{fontSize:10,color:'#334155'}}>No picks yet</div>}
         </div>
       </div>
-      {aiGraded.length>0&&myGraded.length>0&&(
-        <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #1e293b',fontSize:12,fontWeight:700,textAlign:'center',color:aiROI>myROI?'#60a5fa':myROI>aiROI?'#f97316':'#64748b'}}>
-          {aiROI>myROI?`🤖 AI leading by ${(aiROI-myROI).toFixed(1)}% ROI`:myROI>aiROI?`📋 Your scripts leading by ${(myROI-aiROI).toFixed(1)}% ROI`:'⚖️ Dead even'}
-        </div>
-      )}
+      <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #1e293b',fontSize:11,fontWeight:700,textAlign:'center',color:leader==='ai'?'#60a5fa':leader==='groq'?'#8b5cf6':'#f97316'}}>
+        {leader==='ai'?`🤖 Claude leading`:leader==='groq'?`🧠 Groq leading`:`📋 Your picks leading`} · Best ROI: {Math.max(aiROI,groqROI,myROI).toFixed(1)}%
+      </div>
     </div>
   );
 }
@@ -2776,7 +2789,7 @@ Rules: ${report.rules?.join(' | ')}`,
                 <StatBox label="My W/L" value={myGraded.length?`${myStats.wins}-${myStats.total-myStats.wins}`:'—'} color="#f97316"/>
                 <StatBox label="My ROI" value={myGraded.length?`${(state.myBankroll-state.myStartingBankroll)>=0?'+':''}${myGraded.length?((state.myBankroll-state.myStartingBankroll)/myGraded.reduce((a,b)=>a+b.stake,1)*100).toFixed(0):0}%`:'—'} color={(state.myBankroll-state.myStartingBankroll)>=0?'#22c55e':'#ef4444'}/>
               </div>
-              <ROIComparison bets={state.bets} bankroll={state.bankroll} startingBankroll={state.startingBankroll} myBankroll={state.myBankroll} myStartingBankroll={state.myStartingBankroll}/>
+              <ROIComparison bets={state.bets} bankroll={state.bankroll} startingBankroll={state.startingBankroll} myBankroll={state.myBankroll} myStartingBankroll={state.myStartingBankroll} groqBankroll={computedGroqBankroll} groqStartingBankroll={state.groqStartingBankroll}/>
 
               {/* Streak Tracker */}
               {(aiStreak.current>0||myStreak.current>0)&&(
