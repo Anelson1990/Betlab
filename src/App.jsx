@@ -809,7 +809,11 @@ function App() {
   const driveThrottle = useRef(null);
   useEffect(()=>{
     const {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks} = state;
-    const toSave = {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks};
+    const toSave = {bankroll,startingBankroll,myBankroll,myStartingBankroll,
+    bets:bets.slice(0,150),
+    lessons:lessons.slice(0,30),
+    sessionLog:sessionLog.slice(0,50),
+    trackedPicks:trackedPicks.slice(0,100)};
     persist(toSave);
     // Auto-save to Drive every 30 seconds max
     if (driveThrottle.current) clearTimeout(driveThrottle.current);
