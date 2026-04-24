@@ -2199,8 +2199,9 @@ Be specific with numbers. This goes directly to the model developer.`}],
             const kellyFrac = Math.max(0,((dec-1)*(simWinProb/100)-(1-simWinProb/100))/(dec-1));
             const halfKelly = kellyFrac/2;
             // Use half Kelly capped at 10% bankroll, min $5
-            const kellyStake = state.groqBankroll * Math.min(halfKelly, 0.10);
-            const stake = Math.max(5, Math.round(kellyStake/5)*5);
+            const currentGroqBankroll = parseFloat(state.groqBankroll)||300;
+            const kellyStake = currentGroqBankroll * Math.min(halfKelly, 0.10);
+            const stake = Math.max(5, Math.min(Math.round(kellyStake/5)*5, Math.round(currentGroqBankroll*0.10)));
 
             addGroqPick({
               pick:`${analyzeData.analysis.side} — ${g.awayTeam} @ ${g.homeTeam}`,
