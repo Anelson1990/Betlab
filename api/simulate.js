@@ -32,12 +32,46 @@ function impliedProbToLambda(impliedProb, sport, isHome) {
   return baseRate * strengthFactor * adjustment;
 }
 
-function runSimulation(sport, homeImpliedProb, awayImpliedProb) {
+function statsToLambda(sport, teamStats, isHome, opponentStats) {
+  // Calculate lambda from actual team stats instead of market odds
+  const baseline = BASELINE_SCORING[sport];
+  const homeAdv = HOME_ADVANTAGE[sport];
+  
+  if (sport === 'NHL') {
+    const gfPg = parseFloat(teamStats?.goalsForPerGame) || (isHome ? baseline.home : baseline.away);
+    const oppGaPg = parseFloat(opponentStats?.goalsAgainstPerGame) || baseline.home;
+    // Blend team offense vs opponent defense
+    const lambda = (gfPg * 0.6 + oppGaPg * 0.4) * (isHome ? homeAdv : 1/homeAdv);
+    return Math.max(0.5, lambda);
+  }
+  if (sport === 'MLB') {
+    const rpg = parseFloat(teamStats?.batting?.runsPerGame) || (isHome ? baseline.home : baseline.away);
+    const oppEra = parseFloat(opponentStats?.pitching?.era) || 4.0;
+    // Higher opponent ERA = more runs scored
+    const eraFactor = oppEra / 4.0;
+    const lambda = rpg * 0.5 * eraFactor * (isHome ? homeAdv : 1/homeAdv);
+    return Math.max(0.5, lambda);
+  }
+  if (sport === 'NBA') {
+    const ppg = parseFloat(teamStats?.pts) || (isHome ? baseline.home : baseline.away);
+    const oppPpg = parseFloat(opponentStats?.pts) || baseline.away;
+    const lambda = (ppg * 0.6 + oppPpg * 0.4) * (isHome ? homeAdv : 1/homeAdv);
+    return Math.max(80, lambda);
+  }
+  // NFL
+  const ppg = parseFloat(teamStats?.pointsPerGame) || (isHome ? baseline.home : baseline.away);
+  return Math.max(10, ppg * (isHome ? homeAdv : 1/homeAdv));
+}
+
+function runSimulation(sport, homeImpliedProb, awayImpliedProb, homeStatLambda=null, awayStatLambda=null) {
   let homeWins = 0, awayWins = 0, ties = 0;
   const homeScores = [], awayScores = [];
+  // Use stats-based lambda if available, otherwise fall back to market-implied
+  const basHomeLambda = homeStatLambda || impliedProbToLambda(homeImpliedProb, sport, true);
+  const basAwayLambda = awayStatLambda || impliedProbToLambda(awayImpliedProb, sport, false);
   for (let i = 0; i < SIMULATIONS; i++) {
-    const homeLambda = impliedProbToLambda(homeImpliedProb, sport, true);
-    const awayLambda = impliedProbToLambda(awayImpliedProb, sport, false);
+    const homeLambda = basHomeLambda;
+    const awayLambda = basAwayLambda;
     let h, a;
     if (USE_POISSON[sport]) {
       h = poissonRandom(homeLambda);
@@ -66,8 +100,9 @@ function runSimulation(sport, homeImpliedProb, awayImpliedProb) {
   // NRFI - first inning simulation for MLB
   let nrfiCount = 0;
   if (sport === 'MLB') {
-    const hLambda = impliedProbToLambda(homeImpliedProb, sport, true);
-    const aLambda = impliedProbToLambda(awayImpliedProb, sport, false);
+    // Use stats lambda for NRFI — more accurate than market-derived
+    const hLambda = homeStatLambda || impliedProbToLambda(homeImpliedProb, sport, true);
+    const aLambda = awayStatLambda || impliedProbToLambda(awayImpliedProb, sport, false);
     for (let n = 0; n < SIMULATIONS; n++) {
       if (poissonRandom(hLambda/9) === 0 && poissonRandom(aLambda/9) === 0) nrfiCount++;
     }
@@ -103,7 +138,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers','Content-Type');
   if (req.method==='OPTIONS') return res.status(200).end();
 
-  const { sport, homeTeam, awayTeam, homeOdds, awayOdds } = req.body||{};
+  const { sport, homeTeam, awayTeam, homeOdds, awayOdds, homeStats, awayStats } = req.body||{};
   if (!sport||!homeOdds||!awayOdds) return res.status(400).json({error:'Missing fields'});
 
   const homeImpl = americanToImplied(homeOdds)*100;
@@ -112,7 +147,15 @@ export default async function handler(req, res) {
   const homeNoVig = homeImpl/total*100;
   const awayNoVig = awayImpl/total*100;
 
-  const sim = runSimulation(sport, homeNoVig/100, awayNoVig/100);
+  // Use stats-based lambdas if available — breaks circular dependency
+  let homeStatLambda = null, awayStatLambda = null;
+  if (homeStats && awayStats) {
+    homeStatLambda = statsToLambda(sport, homeStats, true, awayStats);
+    awayStatLambda = statsToLambda(sport, awayStats, false, homeStats);
+  }
+
+  const sim = runSimulation(sport, homeNoVig/100, awayNoVig/100, homeStatLambda, awayStatLambda);
+  // Edge = sim prob (from stats) vs market implied prob
   const homeEdge = sim.homeWinProb - homeNoVig;
   const awayEdge = sim.awayWinProb - awayNoVig;
   const homeEV = calculateEV(sim.homeWinProb, homeOdds);
