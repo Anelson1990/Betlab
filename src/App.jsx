@@ -2785,11 +2785,25 @@ Rules: ${report.rules?.join(' | ')}`,
 
           {tab==='dashboard'&&(
             <div style={{animation:'slideIn .3s ease'}}>
-              <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
-                <StatBox label="AI W/L" value={aiGraded.length?`${aiStats.wins}-${aiStats.total-aiStats.wins}`:'—'} color="#60a5fa"/>
-                <StatBox label="AI ROI" value={aiGraded.length?`${(state.bankroll-state.startingBankroll)>=0?'+':''}${aiGraded.length?((state.bankroll-state.startingBankroll)/aiGraded.reduce((a,b)=>a+b.stake,1)*100).toFixed(0):0}%`:'—'} color={(state.bankroll-state.startingBankroll)>=0?'#22c55e':'#ef4444'}/>
-                <StatBox label="My W/L" value={myGraded.length?`${myStats.wins}-${myStats.total-myStats.wins}`:'—'} color="#f97316"/>
-                <StatBox label="My ROI" value={myGraded.length?`${(state.myBankroll-state.myStartingBankroll)>=0?'+':''}${myGraded.length?((state.myBankroll-state.myStartingBankroll)/myGraded.reduce((a,b)=>a+b.stake,1)*100).toFixed(0):0}%`:'—'} color={(state.myBankroll-state.myStartingBankroll)>=0?'#22c55e':'#ef4444'}/>
+              {/* 3-way stat grid */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}}>
+                {[
+                  {label:'🤖 CLAUDE', graded:aiGraded, wins:aiStats.wins, pnl:state.bankroll-state.startingBankroll, color:'#60a5fa'},
+                  {label:'🧠 GROQ', graded:groqGraded, wins:groqGraded.filter(b=>b.result==='win').length, pnl:computedGroqBankroll-state.groqStartingBankroll, color:'#8b5cf6'},
+                  {label:'📋 MY PICKS', graded:myGraded, wins:myStats.wins, pnl:state.myBankroll-state.myStartingBankroll, color:'#f97316'},
+                ].map(({label,graded,wins,pnl,color})=>{
+                  const staked = graded.reduce((a,b)=>a+b.stake,0);
+                  const roi = staked ? pnl/staked*100 : 0;
+                  const roiC = roi>5?'#22c55e':roi>0?'#86efac':roi>-5?'#fbbf24':'#ef4444';
+                  return (
+                    <div key={label} style={{background:'rgba(10,18,35,0.9)',border:`1px solid ${color}33`,borderRadius:12,padding:'12px 10px',textAlign:'center'}}>
+                      <div style={{fontSize:9,color,fontWeight:700,letterSpacing:1,marginBottom:6}}>{label}</div>
+                      <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:16,color:pnl>=0?'#22c55e':'#ef4444',fontWeight:700,marginBottom:2}}>{pnl>=0?'+':''}{pnl.toFixed(0)}</div>
+                      <div style={{fontSize:10,color:roiC,fontWeight:700}}>{roi>=0?'+':''}{roi.toFixed(1)}%</div>
+                      <div style={{fontSize:10,color:'#64748b',marginTop:2}}>{graded.length?`${wins}W-${graded.length-wins}L`:'no picks'}</div>
+                    </div>
+                  );
+                })}
               </div>
               <ROIComparison bets={state.bets} bankroll={state.bankroll} startingBankroll={state.startingBankroll} myBankroll={state.myBankroll} myStartingBankroll={state.myStartingBankroll} groqBankroll={computedGroqBankroll} groqStartingBankroll={state.groqStartingBankroll}/>
 
@@ -2808,6 +2822,21 @@ Rules: ${report.rules?.join(' | ')}`,
                       <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:myStreak.type==='win'?'#22c55e':'#ef4444',fontWeight:700}}>{myStreak.current} {myStreak.type==='win'?'W':'L'}</div>
                       <div style={{fontSize:10,color:'#475569',marginTop:2}}>Best win streak: {myStreak.longest_win} · Worst loss: {myStreak.longest_loss}</div>
                     </div>
+                    {(()=>{
+                      const gs=groqGraded;
+                      let cur=0,type='win',lw=0,ll=0,cw=0,cl=0;
+                      gs.slice().reverse().forEach(b=>{if(b.result==='win'){cw++;cl=0;}else{cl++;cw=0;}lw=Math.max(lw,cw);ll=Math.max(ll,cl);});
+                      const last=gs[0];
+                      cur=last?.result==='win'?gs.filter((b,i)=>i<gs.findIndex(x=>x.result!=='win')+1||gs.findIndex(x=>x.result!=='win')===-1).length:gs.filter((b,i)=>i<gs.findIndex(x=>x.result!=='loss')+1||gs.findIndex(x=>x.result!=='loss')===-1).length;
+                      type=last?.result||'win';
+                      return cur>0?(
+                        <div style={{padding:'10px 12px',background:'rgba(5,8,16,0.5)',borderRadius:8,border:`1px solid ${type==='win'?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)'}`}}>
+                          <div style={{fontSize:9,color:'#8b5cf6',fontWeight:700,marginBottom:4}}>🧠 GROQ</div>
+                          <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:20,color:type==='win'?'#22c55e':'#ef4444',fontWeight:700}}>{cur} {type==='win'?'W':'L'}</div>
+                          <div style={{fontSize:10,color:'#475569',marginTop:2}}>Best win: {lw} · Worst loss: {ll}</div>
+                        </div>
+                      ):null;
+                    })()}
                   </div>
                   {aiStreak.type==='loss'&&aiStreak.current>=3&&<div style={{marginTop:8,padding:'6px 10px',background:'rgba(239,68,68,0.05)',borderRadius:6,border:'1px solid rgba(239,68,68,0.2)',fontSize:11,color:'#fca5a5'}}>⚠️ AI on {aiStreak.current}-game loss streak — review recent picks before continuing</div>}
                   {myStreak.type==='loss'&&myStreak.current>=3&&<div style={{marginTop:8,padding:'6px 10px',background:'rgba(239,68,68,0.05)',borderRadius:6,border:'1px solid rgba(239,68,68,0.2)',fontSize:11,color:'#fca5a5'}}>⚠️ Your scripts on {myStreak.current}-game loss streak — check model calibration</div>}
