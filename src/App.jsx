@@ -2175,8 +2175,10 @@ Be specific with numbers. This goes directly to the model developer.`}],
           if (analyzeData.analysis?.verdict==='BET' && analyzeData.analysis?.side) {
             const odds = analyzeData.analysis.side===g.homeTeam ? parseInt(g.homeML||g.homeOdds) : parseInt(g.awayML||g.awayOdds);
             const dec = odds>0?odds/100+1:100/Math.abs(odds)+1;
-            const kelly = Math.max(0,((dec-1)*(analyzeData.analysis.confidence/100)-(1-analyzeData.analysis.confidence/100))/(dec-1)*0.25);
-            const stake = Math.max(5,Math.min(Math.round(state.groqBankroll*kelly/5)*5,Math.round(state.groqBankroll*0.05)));
+            const simWinProb = (analyzeData.analysis.side===g.homeTeam ? g.sim?.simulation?.homeWinProb : g.sim?.simulation?.awayWinProb)||50;
+            const kellyFrac = Math.max(0,((dec-1)*(simWinProb/100)-(1-simWinProb/100))/(dec-1));
+            const halfKelly = kellyFrac/2;
+            const stake = Math.max(5,Math.min(Math.round(state.groqBankroll*halfKelly/5)*5, Math.round(state.groqBankroll*0.1)));
             addGroqPick({
               pick:`${analyzeData.analysis.side} — ${g.awayTeam} @ ${g.homeTeam}`,
               sport:g.sport, betType:'Moneyline', odds, stake,
