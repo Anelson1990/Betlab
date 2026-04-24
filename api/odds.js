@@ -162,11 +162,11 @@ async function handleTennis(req, res) {
       // Raw serve win % from data or Elo estimate
       const p1RawServe = p1HasData ? p1Serve.serveWinPct : surfDefault+p1EloFactor;
       const p2RawServe = p2HasData ? p2Serve.serveWinPct : surfDefault+p2EloFactor;
-      // Apply Elo quality adjustment on top of serve stats
-      // Better Elo player gets small boost, worse gets penalty
-      const eloGap = (p1Elo - p2Elo) / 1000; // normalize
-      const p1SW=Math.min(0.76,Math.max(0.48, p1RawServe + eloGap * 0.05));
-      const p2SW=Math.min(0.76,Math.max(0.48, p2RawServe - eloGap * 0.05));
+      // Apply Elo quality adjustment — larger adjustment to reflect true skill gap
+      // Research shows Elo is the best predictor when serve stats are similar
+      const eloGap = (p1Elo - p2Elo) / 400; // use 400 scale like standard Elo
+      const p1SW=Math.min(0.76,Math.max(0.48, p1RawServe + eloGap * 0.025));
+      const p2SW=Math.min(0.76,Math.max(0.48, p2RawServe - eloGap * 0.025));
       const sim=simulateMatch(p1SW,p2SW,match.bestOf);
 
       // Look up real odds from The Odds API data
