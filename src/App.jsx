@@ -2701,7 +2701,7 @@ Rules: ${report.rules?.join(' | ')}`,
                     return (
                       <div key={label} style={{background:'rgba(5,8,16,0.8)',borderRadius:8,padding:'8px 10px',border:`1px solid ${color}22`}}>
                         <div style={{fontSize:10,color,fontWeight:700,marginBottom:4}}>{label}</div>
-                        <div style={{fontSize:13,color:wr>=55?'#22c55e':wr>0?'#ef4444':'#475569',fontWeight:700}}>{graded.length?`${wins}W-${graded.length-wins}L`:'—'}</div>
+                        <div style={{fontSize:13,color:wr>=55?'#22c55e':wr>0?'#ef4444':'#475569',fontWeight:700}}>{graded.length?`${wins}W-${graded.length-wins}L (${(wins/graded.length*100).toFixed(0)}%)`:'—'}</div>
                         {bankroll&&<div style={{fontFamily:"'Orbitron',sans-serif",fontSize:14,color:bankrollDiff>=0?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${bankroll.toFixed(0)}</div>}
                         <div style={{fontSize:10,color:roi>=0?'#22c55e':'#ef4444'}}>{graded.length?`${roi>=0?'+':''}${roi.toFixed(1)}% ROI`:'No data'}</div>
                         <div style={{fontSize:9,color:'#334155',marginTop:2}}>{bets.filter(b=>b.result==='pending').length} pending</div>
