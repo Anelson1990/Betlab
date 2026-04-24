@@ -2221,7 +2221,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
         const simRes = await fetch('/api/simulate', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({sport:game.sport, homeTeam:game.homeTeam, awayTeam:game.awayTeam, homeOdds:game.homeOdds, awayOdds:game.awayOdds}),
+          body:JSON.stringify({sport:game.sport, homeTeam:game.homeTeam, awayTeam:game.awayTeam, homeOdds:game.homeML||game.homeOdds, awayOdds:game.awayML||game.awayOdds}),
         });
         simData = await simRes.json();
         addLog(`📡 Sim OK: ${simData?.simulation?.homeWinProb}% home`);
