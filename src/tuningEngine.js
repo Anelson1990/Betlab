@@ -221,7 +221,7 @@ export function getCalibrationFilter(gradedBets) {
   });
 
   const BREAKEVEN = 52.4; // break-even at -110
-  const MIN_SAMPLE = 15; // need 15 picks before filtering
+  const MIN_SAMPLE = 40; // need 40 picks per tier before filtering
 
   const filter = {};
   for (const [name, t] of Object.entries(tiers)) {
