@@ -2097,17 +2097,25 @@ Be specific with numbers. This goes directly to the model developer.`}],
       setGroqGames(gamesData.games);
       addLog(`📡 ${gamesData.games.length} games loaded`);
 
-      // Step 2: Run sims on all games
+      // Step 2: Fetch stats then run sims on all games
       const simResults = await Promise.all(
         gamesData.games.map(async g => {
           try {
+            // Fetch team stats first for independent lambda calculation
+            let homeStats = null, awayStats = null;
+            try {
+              const statsR = await fetch(`/api/stats/${g.sport.toLowerCase()}?home=${encodeURIComponent(g.homeTeam)}&away=${encodeURIComponent(g.awayTeam)}`);
+              const statsD = await statsR.json();
+              if (statsD.success) { homeStats = statsD.home?.stats; awayStats = statsD.away?.stats; }
+            } catch {}
+
             const r = await fetch('/api/simulate', {
               method:'POST',
               headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({sport:g.sport, homeTeam:g.homeTeam, awayTeam:g.awayTeam, homeOdds:g.homeML||g.homeOdds, awayOdds:g.awayML||g.awayOdds}),
+              body:JSON.stringify({sport:g.sport, homeTeam:g.homeTeam, awayTeam:g.awayTeam, homeOdds:g.homeML||g.homeOdds, awayOdds:g.awayML||g.awayOdds, homeStats, awayStats}),
             });
             const sim = await r.json();
-            return {...g, sim};
+            return {...g, sim, homeStats, awayStats};
           } catch { return {...g, sim:null}; }
         })
       );
