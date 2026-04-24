@@ -2156,20 +2156,23 @@ Be specific with numbers. This goes directly to the model developer.`}],
             if (ctxData.success) statsContext = ctxData.context;
           } catch {}
 
+          if (!g.sim?.success) { addLog(`⚠️ Skipping ${g.homeTeam} — sim failed`); continue; }
+
           const analyzeRes = await fetch('/api/analyze', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
-              gameData:{...g, homeImpliedProb:g.sim.homeImpliedProb, awayImpliedProb:g.sim.awayImpliedProb},
+              gameData:{...g, homeImpliedProb:g.sim?.homeImpliedProb||50, awayImpliedProb:g.sim?.awayImpliedProb||50},
               simulationData:g.sim,
               statsContext,
               appContext,
               betType:'ML',
-              nrfiProb:g.sim.simulation?.nrfiProb,
-              yrfiProb:g.sim.simulation?.yrfiProb,
+              nrfiProb:g.sim?.simulation?.nrfiProb,
+              yrfiProb:g.sim?.simulation?.yrfiProb,
             }),
           });
           const analyzeData = await analyzeRes.json();
+          addLog(`📊 ${g.homeTeam}: verdict=${analyzeData.analysis?.verdict} side=${analyzeData.analysis?.side}`);
 
           if (analyzeData.analysis?.verdict==='BET' && analyzeData.analysis?.side) {
             const odds = analyzeData.analysis.side===g.homeTeam ? parseInt(g.homeML||g.homeOdds) : parseInt(g.awayML||g.awayOdds);
