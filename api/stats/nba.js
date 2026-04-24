@@ -176,21 +176,46 @@ async function fetchTennisMatches(tour='atp') {
     if(!r.ok) return [];
     const html = await r.text();
     const matches=[];
-    const sections=html.split(/<h3/i);
-    for(const sec of sections.slice(1)){
-      const tn=(sec.match(/>(.*?)</)||[])[1]||'Unknown';
-      const surface=getSurface(tn);
+    
+    // Split by tournament table - each starts with t-name header
+    const tableRegex = /<td class="t-name"[^>]*>.*?<\/table>/gs;
+    const tables = html.match(tableRegex)||[];
+    
+    // Alternative: find tournament names from links
+    const tournRegex = /href="\/([a-z-]+)\/2026\/[^"]*">(?:<span[^>]*>[^<]*<\/span>)*([^<]+)<\/a>/g;
+    const tourns = [];
+    let tm;
+    while((tm=tournRegex.exec(html))!==null) tourns.push({slug:tm[1],name:tm[2].trim()});
+    
+    // Split HTML by tournament table headers
+    const sections = html.split(/class="t-name"/);
+    let currentTourn = 'Unknown';
+    let currentSurface = 'Hard';
+    
+    for(let i=1; i<sections.length; i++){
+      const sec = sections[i];
+      // Extract tournament name
+      const tnMatch = sec.match(/>(?:<span[^>]*>[^<]*<\/span>)*([A-Z][^<]+)</);
+      if(tnMatch) {
+        currentTourn = tnMatch[1].trim();
+        currentSurface = getSurface(currentTourn);
+      }
+      // Extract player pairs from this section
       const players=[];
-      const re=/href="\/player\/([a-z0-9-]+)\/"[^>]*>([A-Z][^<]+)</g;
+      const re=/href="\/player\/([a-z0-9-]+)\/"[^>]*>([A-Z][^<]{1,30})</g;
       let m2;
-      while((m2=re.exec(sec))!==null) players.push({slug:m2[1],name:m2[2].trim()});
-      for(let i=0;i<players.length-1;i+=2){
-        if(players[i].slug!==players[i+1].slug)
-          matches.push({tournament:tn.replace(/<[^>]+>/g,'').trim(),surface,p1:players[i],p2:players[i+1]});
+      while((m2=re.exec(sec))!==null){
+        const name=m2[2].trim();
+        if(name.length>2&&!name.includes('Madrid')&&!name.includes('Open'))
+          players.push({slug:m2[1],name});
+      }
+      for(let j=0;j<players.length-1;j+=2){
+        if(players[j].slug!==players[j+1].slug)
+          matches.push({tournament:currentTourn,surface:currentSurface,p1:players[j],p2:players[j+1]});
       }
     }
     return matches;
-  } catch { return []; }
+  } catch(e) { return []; }
 }
 
 export default async function handler(req, res) {
