@@ -899,7 +899,16 @@ Reasoning: ${bet.reasoning?.slice(0,400)||'none'}
 Key factors cited: ${bet.keyFactors?.join(', ')||'none'}
 Sim confidence: ${bet.simConfidence||'N/A'}%`;
       const raw = await callClaude([{role:'user',content:msg}], sys, false);
-      const lesson = {id:uid(), date:new Date().toISOString().split('T')[0], sport:bet.sport, pick:bet.pick, result:bet.result, lesson:raw, source:'groq'};
+      const tag = raw.match(/\[([A-Z_]+)\]/)?.[1]||'ANALYSIS';
+      const lesson = {
+        id:uid(), date:new Date().toISOString().split('T')[0],
+        sport:bet.sport, pick:bet.pick, result:bet.result,
+        lesson:raw, source:'groq',
+        category:tag,
+        title:`${bet.pick} — ${bet.result?.toUpperCase()}`,
+        body:raw.replace(/\[[A-Z_]+\]/,'').trim(),
+        takeaway:raw.split('.')[0].replace(/\[[A-Z_]+\]/,'').trim(),
+      };
       setState(s=>({...s, lessons:[lesson,...s.lessons], bets:s.bets.map(b=>b.id===bet.id?{...b,lesson:raw}:b)}));
       addLog(`🧠 Groq pick analyzed`);
     } catch(e) { addLog('❌ Analyze failed: '+e.message); }
