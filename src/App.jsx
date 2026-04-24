@@ -2181,7 +2181,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
             // Use half Kelly capped at 10% bankroll, min $5
             const kellyStake = state.groqBankroll * Math.min(halfKelly, 0.10);
             const stake = Math.max(5, Math.round(kellyStake/5)*5);
-            addLog(`💰 Kelly: simWinProb=${simWinProb}% halfKelly=${(halfKelly*100).toFixed(1)}% stake=$${stake}`);
+
             addGroqPick({
               pick:`${analyzeData.analysis.side} — ${g.awayTeam} @ ${g.homeTeam}`,
               sport:g.sport, betType:'Moneyline', odds, stake,
