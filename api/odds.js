@@ -106,7 +106,7 @@ async function handleTennis(req, res) {
 
     const surfaceElos={};
     for(const surf of['Hard','Clay','Grass']) surfaceElos[surf]=calcSurfaceElo(csvText,surf);
-    const defaultServe=tour==='wta'?0.58:0.64;
+    const surfDefaults={Hard:tour==='wta'?0.575:0.635,Clay:tour==='wta'?0.555:0.615,Grass:tour==='wta'?0.595:0.665};
 
     const results=[];
     for(const match of matches.slice(0,15)){
@@ -117,11 +117,15 @@ async function handleTennis(req, res) {
       const p1Serve=parseServeStats(csvText,match.p1.name,surf);
       const p2Serve=parseServeStats(csvText,match.p2.name,surf);
       // Elo-based win probability (logistic)
-      const eloWinProb = 1/(1+Math.pow(10,(p2Elo-p1Elo)/400));
+      const eloWinProb=1/(1+Math.pow(10,(p2Elo-p1Elo)/400));
       // Adjust serve win % based on relative strength
-      const eloAdj = (eloWinProb - 0.5) * 0.08;
-      const p1SW=Math.min(0.78,Math.max(0.48,(p1Serve?.serveWinPct||defaultServe)+eloAdj));
-      const p2SW=Math.min(0.78,Math.max(0.48,(p2Serve?.serveWinPct||defaultServe)-eloAdj));
+      const p1EloFactor=Math.min(0.08,Math.max(-0.08,(p1Elo-1500)/500*0.08));
+      const p2EloFactor=Math.min(0.08,Math.max(-0.08,(p2Elo-1500)/500*0.08));
+      const surfDefault=surfDefaults[surf]||0.635;
+      const p1HasData=(p1Serve?.matches||0)>=10;
+      const p2HasData=(p2Serve?.matches||0)>=10;
+      const p1SW=Math.min(0.74,Math.max(0.50,p1HasData?p1Serve.serveWinPct:surfDefault+p1EloFactor));
+      const p2SW=Math.min(0.74,Math.max(0.50,p2HasData?p2Serve.serveWinPct:surfDefault+p2EloFactor));
       const sim=simulateMatch(p1SW,p2SW,match.bestOf);
 
       let p1Odds=null,p2Odds=null;
