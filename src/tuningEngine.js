@@ -221,7 +221,7 @@ export function getCalibrationFilter(gradedBets) {
   });
 
   const BREAKEVEN = 52.4; // break-even at -110
-  const MIN_SAMPLE = 15; // need 15 picks before filtering
+  const MIN_SAMPLE = 30; // need 30 picks per tier before filtering (raised from 15)
 
   const filter = {};
   for (const [name, t] of Object.entries(tiers)) {
@@ -235,7 +235,8 @@ export function getCalibrationFilter(gradedBets) {
       drift: drift.toFixed(1),
       sampleSize: t.total,
       status: actualWR===null ? 'insufficient_data' :
-              actualWR < BREAKEVEN ? 'block' :      // below break-even
+              actualWR < BREAKEVEN && t.total >= 50 ? 'block' : // only block with 50+ sample
+              actualWR < BREAKEVEN ? 'warn' :        // warn with smaller sample
               actualWR < expectedWR - 10 ? 'warn' : // significantly underperforming
               'pass',
       adjustment: actualWR !== null ? Math.max(-15, Math.min(15, drift)) : 0,
