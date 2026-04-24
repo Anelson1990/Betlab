@@ -2173,7 +2173,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
           const analyzeData = await analyzeRes.json();
 
           if (analyzeData.analysis?.verdict==='BET' && analyzeData.analysis?.side) {
-            const odds = analyzeData.analysis.side===g.homeTeam ? parseInt(g.homeOdds) : parseInt(g.awayOdds);
+            const odds = analyzeData.analysis.side===g.homeTeam ? parseInt(g.homeML||g.homeOdds) : parseInt(g.awayML||g.awayOdds);
             const dec = odds>0?odds/100+1:100/Math.abs(odds)+1;
             const kelly = Math.max(0,((dec-1)*(analyzeData.analysis.confidence/100)-(1-analyzeData.analysis.confidence/100))/(dec-1)*0.25);
             const stake = Math.max(5,Math.min(Math.round(state.groqBankroll*kelly/5)*5,Math.round(state.groqBankroll*0.05)));
