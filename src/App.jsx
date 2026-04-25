@@ -548,12 +548,13 @@ Rules:
         [{role:'user',content:`Sport: ${activeSport}\n\nModel output:\n${text.slice(0,10000)}`}],
         systemPrompt, false
       );
+      console.log('RAW:', raw?.slice(0,300));
       let picks=[];
       const clean=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
       const start=clean.indexOf('['),end=clean.lastIndexOf(']');
       if (start!==-1&&end!==-1) picks=JSON.parse(clean.slice(start,end+1));
       if (!Array.isArray(picks)||picks.length===0) {
-        setError('No picks parsed. Make sure you pasted the full model output.');
+        setError('No picks: '+JSON.stringify(raw?.slice(0,150)));
       } else {
         const top = picks.slice(0,5);
         setPreview({sport:activeSport,picks:top});
