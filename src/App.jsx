@@ -534,11 +534,12 @@ Each object must have exactly:
   rating     - string: model rating label e.g. "STRONG NRFI", "T1_STRONG", "LEAN"
   edge       - string: edge percentage if present e.g. "+6.2%" or "STRONG BET"
 Rules:
-- Return TOP 3 ranked by model confidence/edge, or fewer if fewer exist
-- Only include bets model explicitly recommends — NO SKIPs, NO NO EDGE
-- Prioritize TOP PLAYS section if present
+- Return TOP 5 ranked by model win probability, include ALL picks even if no edge/SKIP
+- For Tennis: extract every match with Win% shown, use Win% as modelProb
+- For Tennis: use serve win % difference as edge indicator
+- Prioritize TOP PLAYS section if present, but include all matches
 - Be specific in reasoning — use exact stats and numbers from the output
-- Return [] if no actionable picks
+- Return [] only if output has zero picks/matches
 - Respond ONLY with a JSON array, no markdown`;
     try {
       const raw = await claudeFn(
@@ -550,9 +551,9 @@ Rules:
       const start=clean.indexOf('['),end=clean.lastIndexOf(']');
       if (start!==-1&&end!==-1) picks=JSON.parse(clean.slice(start,end+1));
       if (!Array.isArray(picks)||picks.length===0) {
-        setError('No actionable picks found. Paste the full output including TOP PLAYS section.');
+        setError('No picks parsed. Make sure you pasted the full model output.');
       } else {
-        const top = picks.slice(0,3);
+        const top = picks.slice(0,5);
         setPreview({sport:activeSport,picks:top});
         setSelected(top.map((_,i)=>i));
       }
