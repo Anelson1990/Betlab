@@ -507,7 +507,7 @@ function MyPickModal({ existing, onSave, onClose }) {
 
 function PasteTab({ onConfirmPicks, callClaude: claudeFn }) {
   const [activeSport, setActiveSport] = useState('NHL');
-  const [pastes, setPastes] = useState({ NHL:'', MLB:'', NBA:'', NFL:'' });
+  const [pastes, setPastes] = useState({ NHL:'', MLB:'', NBA:'', NFL:'', Tennis:'' });
   const [parsing, setParsing] = useState(false);
   const [preview, setPreview] = useState(null);
   const [selected, setSelected] = useState([]);
@@ -621,7 +621,7 @@ After your research, return ONLY this JSON:
   return (
     <div style={{animation:'slideIn .3s ease'}}>
       <div style={{display:'flex',gap:4,marginBottom:14,background:'rgba(10,18,35,0.8)',padding:4,borderRadius:10,border:'1px solid #1e293b'}}>
-        {['NHL','MLB','NBA','NFL'].map(s=>{
+        {['NHL','MLB','NBA','NFL','Tennis'].map(s=>{
           const c=SPORT_COLORS[s];
           return <button key={s} onClick={()=>{setActiveSport(s);setPreview(null);setError('');}} style={{flex:1,padding:'8px 0',borderRadius:7,border:'none',cursor:'pointer',background:activeSport===s?c.dim:'transparent',color:activeSport===s?c.accent:'#64748b',fontSize:12,fontWeight:700,letterSpacing:1,transition:'all .2s',boxShadow:activeSport===s?`inset 0 0 0 1px ${c.border}`:'none'}}>{s}</button>;
         })}
@@ -744,7 +744,7 @@ After your research, return ONLY this JSON:
           {[
             ['1','Run your Python script','python mlb_nrfi_v7.py  or  python nhl_v11.py'],
             ['2','Copy full terminal output','Long-press → Select All → Copy'],
-            ['3','Pick sport tab above','NHL · MLB · NBA · NFL'],
+            ['3','Pick sport tab above','NHL · MLB · NBA · NFL · Tennis'],
             ['4','Paste and hit Parse','AI extracts TOP 3 with full breakdowns'],
             ['5','Review each pick','Odds · Model% · Reasoning · 5 key factors'],
             ['6','Confirm → My Picks','Grade as results come in'],
@@ -3108,7 +3108,7 @@ Rules: ${report.rules?.join(' | ')}`,
                 <div style={{display:'flex',gap:6,marginBottom:6}}>
                   <input value={preLogInput.pick} onChange={e=>setPreLogInput(p=>({...p,pick:e.target.value}))} placeholder="Pick (e.g. Boston Red Sox ML)" style={{flex:2,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px 10px',fontSize:12}}/>
                   <select value={preLogInput.sport} onChange={e=>setPreLogInput(p=>({...p,sport:e.target.value}))} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px',fontSize:12}}>
-                    {['NHL','MLB','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
+                    {['NHL','MLB','NBA','NFL','Tennis'].map(s=><option key={s}>{s}</option>)}
                   </select>
                 </div>
                 <div style={{display:'flex',gap:6,marginBottom:6}}>
@@ -3178,7 +3178,7 @@ Rules: ${report.rules?.join(' | ')}`,
             <div style={{animation:'slideIn .3s ease'}}>
               {/* Sport selector */}
               <div style={{display:'flex',gap:4,marginBottom:14,background:'rgba(10,18,35,0.8)',padding:4,borderRadius:10,border:'1px solid #1e293b'}}>
-                {['NHL','MLB','NBA','NFL'].map(s=>{
+                {['NHL','MLB','NBA','NFL','Tennis'].map(s=>{
                   const c={NHL:'#38bdf8',MLB:'#f97316',NBA:'#a78bfa',NFL:'#22c55e'}[s];
                   return <button key={s} onClick={()=>setTrackerSport(s)} style={{flex:1,padding:'8px 0',borderRadius:7,border:'none',cursor:'pointer',background:trackerSport===s?`rgba(${s==='NHL'?'56,189,248':s==='MLB'?'249,115,22':s==='NBA'?'167,139,250':'34,197,94'},0.15)`:'transparent',color:trackerSport===s?c:'#64748b',fontSize:12,fontWeight:700,letterSpacing:1,transition:'all .2s'}}>{s}</button>;
                 })}
@@ -3388,7 +3388,7 @@ Rules: ${report.rules?.join(' | ')}`,
                 <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:11,color:'#8b5cf6',letterSpacing:2,marginBottom:12}}>🧠 GROQ AI + MONTE CARLO</div>
                 <div style={{fontSize:11,color:'#475569',marginBottom:10}}>Llama 3.3 70B + 10,000 Monte Carlo sims — independent second opinion</div>
                 <select value={groqSport} onChange={e=>setGroqSport(e.target.value)} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'10px 12px',fontSize:13,marginBottom:8,cursor:'pointer'}}>
-                  {['NHL','MLB','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
+                  {['NHL','MLB','NBA','NFL','Tennis'].map(s=><option key={s}>{s}</option>)}
                 </select>
                 <div style={{display:'flex',gap:8,marginBottom:8}}>
                   <button onClick={generateGroqPicks} disabled={groqLoading} style={{flex:2,padding:'12px 0',borderRadius:8,border:'none',cursor:groqLoading?'not-allowed':'pointer',background:groqLoading?'#1e293b':'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:groqLoading?'#475569':'#fff',fontFamily:"'Orbitron',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1}}>
