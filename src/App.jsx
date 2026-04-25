@@ -531,15 +531,17 @@ Each object must have exactly:
   confidence - integer 55-85: strength of signal
   reasoning  - string: 2-3 sentences with specific stats, edge size, pitcher names, xG values, Kelly% from the output
   keyFactors - array of exactly 5 short strings: most important data points (K%, xG, edge tier, NRFI%, rest days, park factor, GSAx etc.)
-  rating     - string: model rating label e.g. "STRONG NRFI", "T1_STRONG", "LEAN"
+  rating     - string: model rating label e.g. "STRONG NRFI", "T1_STRONG", "LEAN", "VALUE BET"
   edge       - string: edge percentage if present e.g. "+6.2%" or "STRONG BET"
 Rules:
 - Return TOP 5 ranked by model win probability, include ALL picks even if no edge/SKIP
-- For Tennis: extract every match with Win% shown, use Win% as modelProb
-- For Tennis: use serve win % difference as edge indicator
-- Prioritize TOP PLAYS section if present, but include all matches
-- Be specific in reasoning — use exact stats and numbers from the output
-- Return [] only if output has zero picks/matches
+- For Tennis output format: look for "Win% -> Player1: X% | Player2: Y%" and extract BOTH players as separate picks
+- For Tennis: pick field should be "PlayerName ML", modelProb = their win%, confidence = win% rounded
+- For Tennis: rating = "VALUE BET" if win%>65, else "LEAN"
+- For Tennis: keyFactors = [surface, serve%, career record, 2026 record, tournament]
+- Prioritize highest win% players first
+- Be specific in reasoning — use exact stats from output
+- Return [] only if output has zero matches
 - Respond ONLY with a JSON array, no markdown`;
     try {
       const raw = await claudeFn(
