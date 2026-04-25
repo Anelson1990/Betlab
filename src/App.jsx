@@ -813,7 +813,7 @@ function App() {
     const {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks} = state;
     const toSave = {bankroll,startingBankroll,myBankroll,myStartingBankroll,
     bets:bets.slice(0,150),
-    lessons:lessons.slice(0,30),
+    lessons:lessons.slice(0,80).map(l=>({...l,lesson:l.lesson?.slice(0,300),body:l.body?.slice(0,200)})),
     sessionLog:sessionLog.slice(0,50),
     trackedPicks:trackedPicks.slice(0,100)};
     persist(toSave);
