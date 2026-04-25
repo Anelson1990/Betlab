@@ -1267,16 +1267,19 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
 
 
     if (autoGraded > 0) {
-      let aiDelta = 0, myDelta = 0;
+      let aiDelta = 0, myDelta = 0, groqDelta = 0;
       newBets.forEach(b => {
         if (!b.autoGraded) return;
-        const payout = b.result==='win'?americanToDecimal(b.odds)*b.stake:b.result==='push'?b.stake:0;
-        if (b.source==='ai') aiDelta += payout;
-        else myDelta += payout;
+        const dec = americanToDecimal(b.odds);
+        const payout = b.result==='win' ? dec*b.stake : b.result==='push' ? b.stake : 0;
+        const loss = b.result==='loss' ? -b.stake : 0;
+        const net = b.result==='win' ? (dec-1)*b.stake : b.result==='loss' ? -b.stake : 0;
+        if (b.source==='ai') aiDelta += net;
+        else if (b.source==='groq') groqDelta += net;
+        else myDelta += net;
       });
-      // Use functional update to avoid stale closure
+      addLog(`💰 Auto-grade deltas: AI ${aiDelta>=0?'+':''}$${aiDelta.toFixed(2)} | Groq ${groqDelta>=0?'+':''}$${groqDelta.toFixed(2)} | My ${myDelta>=0?'+':''}$${myDelta.toFixed(2)}`);
       setState(s=>{
-        // Reapply grades to fresh state
         const freshBets = s.bets.map(b=>{
           const graded = newBets.find(nb=>nb.id===b.id&&nb.autoGraded);
           return graded ? {...b, result:graded.result, score:graded.score, autoGraded:true} : b;
@@ -1289,6 +1292,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
           ...s,
           bankroll: parseFloat((s.bankroll+aiDelta).toFixed(2)),
           myBankroll: parseFloat((s.myBankroll+myDelta).toFixed(2)),
+          groqBankroll: parseFloat((s.groqBankroll+groqDelta).toFixed(2)),
           bets: freshBets,
           trackedPicks: freshTracked,
         };
