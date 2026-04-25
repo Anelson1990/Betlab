@@ -788,6 +788,8 @@ function App() {
   const [editingBankroll, setEditingBankroll] = useState(false);
   const [bankrollInput, setBankrollInput] = useState('');
   const [editingMyBankroll, setEditingMyBankroll] = useState(false);
+  const [editingGroqBankroll, setEditingGroqBankroll] = useState(false);
+  const [groqBankrollInput, setGroqBankrollInput] = useState('');
   const [myBankrollInput, setMyBankrollInput] = useState('');
   const [editingStartBankroll, setEditingStartBankroll] = useState(false);
   const [startBankrollInput, setStartBankrollInput] = useState('');
@@ -2732,7 +2734,8 @@ Rules: ${report.rules?.join(' | ')}`,
               <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:state.myBankroll>=state.myStartingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.myBankroll.toFixed(0)}</div>
               <div style={{fontSize:10,color:'#475569',marginTop:2}}>start ${state.myStartingBankroll.toFixed(0)}</div>
               <div style={{fontSize:10,color:'#475569'}}>{myBets.filter(b=>b.result==='pending').length} pending</div>
-              <button onClick={()=>{setMyBankrollInput('');setMyStartBankrollInput('');setEditingMyBankroll(true);setEditingBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #f9731644',background:'rgba(249,115,22,.1)',color:'#f97316',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
+              <button onClick={()=>{setMyBankrollInput('');setMyStartBankrollInput('');setEditingMyBankroll(true);setEditingBankroll(false);setEditingGroqBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #f9731644',background:'rgba(249,115,22,.1)',color:'#f97316',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
+              <button onClick={()=>{setEditingGroqBankroll(true);setEditingBankroll(false);setEditingMyBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #8b5cf644',background:'rgba(139,92,246,.1)',color:'#8b5cf6',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT GROQ</button>
             </div>
           </div>
           {editingBankroll&&(
