@@ -15,13 +15,15 @@ const SPORT_COLORS = {
   NHL:{ accent:'#38bdf8', dim:'rgba(56,189,248,0.1)',  border:'rgba(56,189,248,0.25)' },
   MLB:{ accent:'#f97316', dim:'rgba(249,115,22,0.1)',  border:'rgba(249,115,22,0.25)' },
   NBA:{ accent:'#a78bfa', dim:'rgba(167,139,250,0.1)', border:'rgba(167,139,250,0.25)' },
-  NFL:{ accent:'#22c55e', dim:'rgba(34,197,94,0.1)',   border:'rgba(34,197,94,0.25)'  },
+  NFL:    { accent:'#22c55e', dim:'rgba(34,197,94,0.1)',   border:'rgba(34,197,94,0.25)'  },
+  Tennis: { accent:'#facc15', dim:'rgba(250,204,21,0.1)',  border:'rgba(250,204,21,0.25)' },
 };
 const SPORT_HINTS = {
   NHL:'Paste your nhl_v11.py terminal output here',
   MLB:'Paste your mlb_nrfi_v7.py terminal output here',
   NBA:'Paste any NBA model output here',
   NFL:'Paste any NFL model output here',
+  Tennis:'Paste your tennis.py terminal output here',
 };
 
 function StatBox({ label, value, color='#e2e8f0' }) {
@@ -390,7 +392,7 @@ function MyPickModal({ existing, onSave, onClose }) {
           <div>
             <label style={lbl}>SPORT</label>
             <select style={inp()} value={form.sport} onChange={e=>setForm(f=>({...f,sport:e.target.value}))}>
-              {['MLB','NHL','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
+              {['MLB','NHL','NBA','NFL','Tennis'].map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
@@ -3203,7 +3205,7 @@ Rules: ${report.rules?.join(' | ')}`,
                     <div>
                       <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,textTransform:'uppercase',marginBottom:4}}>SPORT</div>
                       <select style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:8,color:'#e2e8f0',padding:'8px 12px',fontSize:13}} value={manualTrack.sport} onChange={e=>setManualTrack(p=>({...p,sport:e.target.value}))}>
-                        {['MLB','NHL','NBA','NFL'].map(s=><option key={s}>{s}</option>)}
+                        {['MLB','NHL','NBA','NFL','Tennis'].map(s=><option key={s}>{s}</option>)}
                       </select>
                     </div>
                     <div>
