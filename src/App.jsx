@@ -1023,7 +1023,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     } catch { return null; }
   };
 
-  const autoGrade = useCallback(async (dryRun=false) => {
+  const autoGrade = useCallback(async () => {
     const pending = state.bets.filter(b=>b.result==='pending');
     const trackedPending = state.trackedPicks.filter(p=>p.result==='pending');
     addLog(`${dryRun?'👁 DRY RUN':'🔍'} Auto-grade check: ${pending.length} pending bets, ${trackedPending.length} tracked`);
@@ -1246,7 +1246,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
       if (!result) { addLog(`⚠️ Could not determine result for: ${b.pick} (${game.away} ${game.away_score}-${game.home_score} ${game.home})`); return b; }
       autoGraded++;
       addLog(`🤖 Auto-graded: ${b.pick} → ${result.toUpperCase()} (${game.away} ${game.away_score}-${game.home_score} ${game.home})`);
-      if (dryRun) addLog(`👁 PREVIEW: ${b.pick.slice(0,30)} → ${result.toUpperCase()} (${game.away} ${game.away_score}-${game.home_score} ${game.home})`);
+
       return {...b, result, score:`${game.away} ${game.away_score}-${game.home_score} ${game.home}`, autoGraded:true};
     });
 
@@ -1261,14 +1261,11 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
       if (!result) { addLog(`⚠️ Tracker: No result for: ${p.pick} (${game.away} ${game.away_score}-${game.home_score} ${game.home})`); return p; }
       autoGraded++;
       addLog(`🤖 Tracker graded: ${p.pick} → ${result.toUpperCase()}`);
-      if (dryRun) addLog(`👁 PREVIEW TRACKER: ${p.pick.slice(0,30)} → ${result.toUpperCase()} (${game.away_score}-${game.home_score})`);
+
       return {...p, result, score:`${game.away_score}-${game.home_score}`, autoGraded:true};
     });
 
-    if (dryRun) {
-      addLog(`👁 DRY RUN complete — would grade ${autoGraded} picks (no changes made)`);
-      return;
-    }
+
     if (autoGraded > 0) {
       let aiDelta = 0, myDelta = 0;
       newBets.forEach(b => {
@@ -2900,11 +2897,8 @@ Rules: ${report.rules?.join(' | ')}`,
                 📊 AI PERFORMANCE REVIEW {aiGraded.length<3?`(${3-aiGraded.length} more needed)`:''}
               </button>
 
-              <button onClick={()=>autoGrade(false)} style={{width:'100%',padding:'10px 0',borderRadius:10,border:'1px solid #38bdf844',background:'rgba(56,189,248,0.1)',color:'#38bdf8',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:4}}>
+              <button onClick={()=>autoGrade(false)} style={{width:'100%',padding:'10px 0',borderRadius:10,border:'1px solid #38bdf844',background:'rgba(56,189,248,0.1)',color:'#38bdf8',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:8}}>
                 🔄 CHECK & AUTO-GRADE RESULTS
-              </button>
-              <button onClick={()=>autoGrade(true)} style={{width:'100%',padding:'8px 0',borderRadius:10,border:'1px solid #f59e0b44',background:'rgba(245,158,11,0.1)',color:'#f59e0b',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:8}}>
-                👁 DRY RUN (preview only)
               </button>
 
               <button onClick={runCoach} disabled={coachLoading||state.bets.filter(b=>b.result!=='pending').length<10} style={{width:'100%',padding:'12px 0',borderRadius:10,border:'1px solid #a78bfa44',background:'rgba(167,139,250,.1)',color:state.bets.filter(b=>b.result!=='pending').length>=10?'#a78bfa':'#475569',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Orbitron',sans-serif",letterSpacing:1,marginBottom:14}}>
