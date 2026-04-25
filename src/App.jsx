@@ -521,6 +521,51 @@ function PasteTab({ onConfirmPicks, callClaude: claudeFn }) {
     const text = pastes[activeSport].trim();
     if (!text) { setError('Paste your model output first.'); return; }
     setParsing(true); setError(''); setPreview(null);
+    
+    // Tennis direct parser - no Claude needed
+    if (activeSport === 'Tennis') {
+      const tennispoints = [];
+      const blocks = text.split(/
+\s*
+/);
+      for (const block of blocks) {
+        const vsMatch = block.match(/([A-Z][A-Z\s\.]+)\s+vs\s+([A-Z][A-Z\s\.]+)/);
+        const winMatch = block.match(/Win%.*?([A-Z][^:]+):\s*([\d.]+)%.*?\|\s*([A-Z][^:]+):\s*([\d.]+)%/);
+        const serveMatch = block.match(/Serve.*?([\d]+)%.*?([\d]+)%/);
+        const surfMatch = block.match(/\|\s*(Clay|Hard|Grass)/);
+        const tournMatch = block.match(/^([A-Za-z\s]+)\s*\|/m);
+        if (!vsMatch || !winMatch) continue;
+        const p1name = winMatch[1].trim();
+        const p1prob = parseFloat(winMatch[2]);
+        const p2name = winMatch[3].trim();
+        const p2prob = parseFloat(winMatch[4]);
+        const surface = surfMatch?.[1] || 'Hard';
+        const tourn = tournMatch?.[1]?.trim() || 'Unknown';
+        const serve1 = serveMatch?.[1] || '?';
+        const serve2 = serveMatch?.[2] || '?';
+        // Track the favored player
+        const fav = p1prob > p2prob ? {name:p1name, prob:p1prob, serve:serve1} : {name:p2name, prob:p2prob, serve:serve2};
+        const dog = p1prob > p2prob ? {name:p2name, prob:p2prob, serve:serve2} : {name:p1name, prob:p1prob, serve:serve1};
+        tennispoints.push({
+          pick: `${fav.name} ML`,
+          sport: 'Tennis',
+          modelProb: fav.prob,
+          confidence: Math.round(fav.prob),
+          reasoning: `${fav.name} ${fav.prob}% win prob on ${surface} (serve ${fav.serve}%) vs ${dog.name} ${dog.prob}% (serve ${dog.serve}%). ${tourn}.`,
+          keyFactors: [surface, `${fav.name} serve ${fav.serve}%`, `${dog.name} serve ${dog.serve}%`, tourn, `Model: ${fav.prob}% vs ${dog.prob}%`],
+          rating: fav.prob >= 75 ? 'VALUE BET' : 'LEAN',
+          edge: `${fav.prob >= 75 ? '+' : ''}${(fav.prob - 50).toFixed(1)}%`,
+        });
+      }
+      // tennispoints already declared above
+      if (tennispoints.length > 0) {
+        const top = tennispoints.sort((a,b)=>b.modelProb-a.modelProb).slice(0,8);
+        setPreview({sport:'Tennis', picks:top});
+        setSelected(top.map((_,i)=>i));
+        setParsing(false);
+        return;
+      }
+    }
     const systemPrompt = `You are parsing raw terminal output from a sports prediction model.
 Extract the TOP 3 best bet recommendations and return them as a JSON array.
 Each object must have exactly:
