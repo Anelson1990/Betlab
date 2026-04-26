@@ -40,8 +40,24 @@ function statsToLambda(sport, teamStats, isHome, opponentStats) {
   if (sport === 'NHL') {
     const gfPg = parseFloat(teamStats?.goalsForPerGame) || (isHome ? baseline.home : baseline.away);
     const oppGaPg = parseFloat(opponentStats?.goalsAgainstPerGame) || baseline.home;
-    // Blend team offense vs opponent defense
-    const lambda = (gfPg * 0.6 + oppGaPg * 0.4) * (isHome ? homeAdv : 1/homeAdv);
+    
+    // Use MoneyPuck xG data if available - more predictive than raw goals
+    const xGF = parseFloat(teamStats?.moneyPuck?.xGoalsFor) || null;
+    const oppXGA = parseFloat(opponentStats?.moneyPuck?.xGoalsAgainst) || null;
+    const xGFPct = parseFloat(teamStats?.moneyPuck?.xGoalsForPct) || null;
+    
+    // Goalie quality adjustment using xGoals
+    const teamXGF = xGF ? xGF / 82 : gfPg; // per game
+    const oppXGA_pg = oppXGA ? oppXGA / 82 : oppGaPg;
+    
+    // xGF% > 50 means team generates more quality chances than they allow
+    const xgStrengthFactor = xGFPct ? (xGFPct / 50) : 1.0;
+    
+    // Blend xG with raw goals (60% xG, 40% raw) when available
+    const offenseBase = xGF ? (teamXGF * 0.6 + gfPg * 0.4) : gfPg;
+    const defenseBase = oppXGA ? (oppXGA_pg * 0.6 + oppGaPg * 0.4) : oppGaPg;
+    
+    const lambda = (offenseBase * 0.6 + defenseBase * 0.4) * xgStrengthFactor * (isHome ? homeAdv : 1/homeAdv);
     return Math.max(0.5, lambda);
   }
   if (sport === 'MLB') {
