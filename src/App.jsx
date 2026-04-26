@@ -2815,9 +2815,9 @@ Rules: ${report.rules?.join(' | ')}`,
           {editingGroqBankroll&&(
             <div style={{background:"rgba(139,92,246,0.05)",border:"1px solid #8b5cf644",borderRadius:14,padding:14,marginBottom:14}}>
               <div style={{fontSize:10,color:"#8b5cf6",fontWeight:700,marginBottom:10}}>🧠 EDIT GROQ BANKROLL</div>
-              <input type="number" value={groqBankrollInput} onChange={e=>setGroqBankrollInput(e.target.value)} placeholder={`Current: $${state.groqBankroll}`} style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:6,color:"#e2e8f0",padding:"6px 10px",fontSize:13,marginBottom:8}}/>
+              <input id="groqBankrollField" type="number" defaultValue={state.groqBankroll} placeholder={`Current: $${state.groqBankroll}`} style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:6,color:"#e2e8f0",padding:"6px 10px",fontSize:13,marginBottom:8}}/>
               <div style={{display:"flex",gap:6}}>
-                <button onClick={()=>{if(groqBankrollInput&&!isNaN(parseFloat(groqBankrollInput))){setState(s=>({...s,groqBankroll:parseFloat(groqBankrollInput)}));setGroqBankrollInput('');}setEditingGroqBankroll(false);}} style={{flex:1,background:"#8b5cf6",border:"none",borderRadius:6,color:"#fff",padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>SET</button>
+                <button onClick={()=>{const v=parseFloat(document.getElementById('groqBankrollField')?.value);if(v&&!isNaN(v)){setState(s=>({...s,groqBankroll:v}));}setEditingGroqBankroll(false);}} style={{flex:1,background:"#8b5cf6",border:"none",borderRadius:6,color:"#fff",padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>SET</button>
                 <button onClick={()=>setEditingGroqBankroll(false)} style={{background:"#334155",border:"none",borderRadius:6,color:"#94a3b8",padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>CANCEL</button>
               </div>
             </div>
