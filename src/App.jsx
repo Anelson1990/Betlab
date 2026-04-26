@@ -49,21 +49,34 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, onTail,
   const getAISuggestion = async () => {
     setLoadingAI(true);
     try {
+      // Fetch fresh stats for this game
+      let statsContext = '';
+      try {
+        const sport = bet.sport;
+        const pickText = bet.pick || '';
+        // Extract team names from pick
+        const parts = pickText.split('@');
+        const homeTeam = parts[1]?.trim().split('—')[0]?.trim() || '';
+        const awayTeam = parts[0]?.split('—').pop()?.trim() || '';
+        if (homeTeam && awayTeam && sport) {
+          const ctxRes = await fetch('/api/context', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({sport, homeTeam, awayTeam}),
+          });
+          const ctxData = await ctxRes.json();
+          if (ctxData.success) statsContext = ctxData.context;
+        }
+      } catch {}
+
       const res = await fetch('/api/claude', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           model:'claude-sonnet-4-5',
-          max_tokens:300,
-          system:'You are a sharp sports betting analyst. Give a brief 2-3 sentence opinion on this bet — does the reasoning hold up, is there real edge, and would you take it? Be direct and specific. Consider the bettor\'s history when giving advice.',
-          messages:[{role:'user',content:`Bet: ${bet.pick}
-Sport: ${bet.sport}
-Odds: ${bet.odds}
-Reasoning: ${bet.reasoning}
-Key factors: ${bet.keyFactors?.join(', ')}
-Model prob: ${bet.modelProb}%
-
-Is this a good bet?`}],
+          max_tokens:400,
+          system:'You are a sharp sports betting analyst with access to current team stats. Give a 3-4 sentence opinion on this bet using the CURRENT STATS provided. Verify the reasoning against actual stats — flag any errors. Be direct and specific.',
+          messages:[{role:'user',content:`Bet: ${bet.pick}\nSport: ${bet.sport}\nOdds: ${bet.odds}\nModel prob: ${bet.modelProb}%\nReasoning: ${bet.reasoning}\nKey factors: ${bet.keyFactors?.join(', ')}\n\nCURRENT STATS:\n${statsContext||'Stats unavailable'}\n\nDoes the reasoning hold up against current stats? Is there real edge?`}],
         }),
       });
       const data = await res.json();
@@ -72,7 +85,6 @@ Is this a good bet?`}],
     } catch(e) { setAiSuggestion('Error: '+e.message); }
     setLoadingAI(false);
   };
-  // Recalculate parlay odds from legs if available
   const effectiveOdds = (()=>{
     if (bet.betCategory==='parlay'&&bet.legs?.length>=2) {
       const hasOdds = bet.legs.filter(l=>l.odds);
