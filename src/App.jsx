@@ -2879,6 +2879,26 @@ Rules: ${report.rules?.join(' | ')}`,
 
           {tab==='dashboard'&&(
             <div style={{animation:'slideIn .3s ease'}}>
+              {/* Model agreement tracker */}
+              {(()=>{
+                const today = new Date().toISOString().split('T')[0];
+                const todayAI = aiBets.filter(b=>b.date?.startsWith(today));
+                const todayGroq = groqBets.filter(b=>b.date?.startsWith(today));
+                const agreements = todayAI.filter(ai=>{
+                  const aiTeam = ai.pick?.split('—')[0]?.trim().toLowerCase();
+                  return todayGroq.some(g=>g.pick?.toLowerCase().includes(aiTeam?.split(' ').pop()||''));
+                });
+                if (!agreements.length) return null;
+                return (
+                  <div style={{background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.3)',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
+                    <div style={{fontSize:10,color:'#22c55e',fontWeight:700,letterSpacing:1,marginBottom:6}}>🤝 MODEL AGREEMENT TODAY ({agreements.length})</div>
+                    {agreements.map((b,i)=>(
+                      <div key={i} style={{fontSize:11,color:'#86efac',marginBottom:2}}>✅ {b.pick?.split('—')[0]?.trim()} — both models agree</div>
+                    ))}
+                    <div style={{fontSize:9,color:'#475569',marginTop:4}}>Agreement picks have higher expected win rate</div>
+                  </div>
+                );
+              })()}
               {/* 3-way stat grid */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}}>
                 {[
@@ -2899,7 +2919,7 @@ Rules: ${report.rules?.join(' | ')}`,
                   );
                 })}
               </div>
-              <ROIComparison bets={state.bets} bankroll={state.bankroll} startingBankroll={state.startingBankroll} myBankroll={state.myBankroll} myStartingBankroll={state.myStartingBankroll} groqBankroll={computedGroqBankroll} groqStartingBankroll={state.groqStartingBankroll}/>
+
 
               {/* Streak Tracker */}
               {(aiStreak.current>0||myStreak.current>0)&&(
