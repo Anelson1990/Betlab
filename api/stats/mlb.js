@@ -74,19 +74,24 @@ async function fetchPitcherStats(pitcherName) {
     const data = await r.json();
     const pitcher = data.people?.[0];
     if (!pitcher) return null;
-    const statsR = await fetch(`${MLB_API}/people/${pitcher.id}/stats?stats=season&group=pitching&season=2025`);
-    if (!statsR.ok) return null;
-    const statsData = await statsR.json();
-    const stats = statsData.stats?.[0]?.splits?.[0]?.stat;
+    const [statsR, detailR] = await Promise.all([
+      fetch(`${MLB_API}/people/${pitcher.id}/stats?stats=season&group=pitching&season=2025`),
+      fetch(`${MLB_API}/people/${pitcher.id}`),
+    ]);
+    const statsData = statsR.ok ? await statsR.json() : null;
+    const detailData = detailR.ok ? await detailR.json() : null;
+    const stats = statsData?.stats?.[0]?.splits?.[0]?.stat;
+    const throws = detailData?.people?.[0]?.pitchHand?.code || null;
     return stats ? {
       name: pitcherName,
+      throws: throws, // L or R
       era: stats.era,
       whip: stats.whip,
       inningsPitched: stats.inningsPitched,
       strikeouts: stats.strikeOuts,
       walks: stats.baseOnBalls,
       homeRunsAllowed: stats.homeRuns,
-    } : { name: pitcherName };
+    } : { name: pitcherName, throws };
   } catch { return { name: pitcherName }; }
 }
 
