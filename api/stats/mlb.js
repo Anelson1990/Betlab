@@ -90,6 +90,44 @@ async function fetchPitcherStats(pitcherName) {
   } catch { return { name: pitcherName }; }
 }
 
+async function fetchBullpenAvailability(teamId) {
+  try {
+    // Get yesterday's game to check pitcher usage
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate()-1);
+    const yDate = yesterday.toISOString().split('T')[0];
+    
+    const r = await fetch(`${MLB_API}/schedule?sportId=1&startDate=${yDate}&endDate=${yDate}&hydrate=decisions,pitchingLines&teamId=${teamId}`);
+    if (!r.ok) return null;
+    const data = await r.json();
+    const game = data.dates?.[0]?.games?.[0];
+    if (!game) return {status:'Fresh',note:'No game yesterday'};
+    
+    // Check if team played yesterday
+    const decisions = game.decisions;
+    const isHome = game.teams?.home?.team?.id===teamId;
+    
+    // Get pitching lines for this team
+    const teamPitching = game.pitchingLines?.filter(p=>p.team?.id===teamId)||[];
+    
+    // Find closer/high leverage pitchers (pitched in 7th+ inning)
+    const relieverUsage = teamPitching
+      .filter(p=>p.inningsPitched && parseFloat(p.inningsPitched) < 2)
+      .map(p=>({name:p.fullName, pitches:p.pitchesThrown||0, innings:p.inningsPitched}));
+    
+    const heavyUsage = relieverUsage.filter(p=>p.pitches>=20);
+    const closerUsed = decisions?.save && teamPitching.some(p=>p.fullName===decisions.save?.fullName);
+    
+    return {
+      playedYesterday: true,
+      closerUsed: closerUsed||false,
+      heavyUsagePitchers: heavyUsage.length,
+      relieverUsage: relieverUsage.slice(0,3),
+      status: heavyUsage.length>=2 ? 'Taxed' : heavyUsage.length>=1 ? 'Slightly Taxed' : 'Fresh',
+    };
+  } catch { return null; }
+}
+
 async function fetchESPNOdds(espnGameId) {
   if (!espnGameId) return null;
   try {
@@ -220,10 +258,11 @@ export default async function handler(req, res) {
       espnGameId ? fetchESPNWinProb(espnGameId) : Promise.resolve(null),
     ]);
 
+    const [homeBullpen, awayBullpen] = await Promise.all([homeId?fetchBullpenAvailability(homeId):null, awayId?fetchBullpenAvailability(awayId):null]);
     return res.status(200).json({
       success:true,
-      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries },
-      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, last5:awayForm?.last5, last3:awayForm?.last3, avgRS_L5:awayForm?.avgRS_L5, avgRA_L5:awayForm?.avgRA_L5, probablePitcher:awayPitcher, injuries:awayInjuries },
+      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries, bullpen:homeBullpen },
+      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, last5:awayForm?.last5, last3:awayForm?.last3, avgRS_L5:awayForm?.avgRS_L5, avgRA_L5:awayForm?.avgRA_L5, probablePitcher:awayPitcher, injuries:awayInjuries, bullpen:awayBullpen },
       espnOdds, espnWinProb,
       fetchedAt: new Date().toISOString(),
     });
