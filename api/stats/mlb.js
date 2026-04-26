@@ -82,17 +82,77 @@ async function fetchPitcherStats(pitcherName) {
     const detailData = detailR.ok ? await detailR.json() : null;
     const stats = statsData?.stats?.[0]?.splits?.[0]?.stat;
     const throws = detailData?.people?.[0]?.pitchHand?.code || null;
+    
+    // Fetch Statcast velocity data
+    const statcast = await fetchPitcherStatcast(pitcher.id);
+    
     return stats ? {
       name: pitcherName,
-      throws: throws, // L or R
+      throws: throws,
       era: stats.era,
       whip: stats.whip,
       inningsPitched: stats.inningsPitched,
       strikeouts: stats.strikeOuts,
       walks: stats.baseOnBalls,
       homeRunsAllowed: stats.homeRuns,
-    } : { name: pitcherName, throws };
+      statcast: statcast,
+    } : { name: pitcherName, throws, statcast };
   } catch { return { name: pitcherName }; }
+}
+
+async function fetchPitcherStatcast(pitcherId) {
+  if (!pitcherId) return null;
+  try {
+    // Get last 5 starts velocity and spin data
+    const url = `https://baseballsavant.mlb.com/statcast_search/csv?player_type=pitcher&pitchers_lookup[]=${pitcherId}&group_by=name_date&sort_col=game_date&sort_order=desc&min_pitches=0&min_results=0&type=details&hfSea=2025|&hfGT=R|&pitch_type=FF,SI,FC`;
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const text = await r.text();
+    const lines = text.trim().split('
+').slice(1).filter(l=>l.trim());
+    if (!lines.length) return null;
+    
+    // Parse CSV - get release_speed (col 2) and release_spin_rate (col 53) by game_date (col 1)
+    const gameVelocities = {};
+    for (const line of lines.slice(0, 200)) {
+      const cols = line.split(',');
+      const date = cols[1]?.replace(/"/g,'');
+      const speed = parseFloat(cols[2]?.replace(/"/g,''));
+      const spin = parseFloat(cols[53]?.replace(/"/g,''));
+      if (date && speed > 60) {
+        if (!gameVelocities[date]) gameVelocities[date] = {speeds:[], spins:[]};
+        gameVelocities[date].speeds.push(speed);
+        if (spin > 0) gameVelocities[date].spins.push(spin);
+      }
+    }
+    
+    const dates = Object.keys(gameVelocities).sort().reverse().slice(0, 5);
+    if (!dates.length) return null;
+    
+    const recentStarts = dates.map(date => {
+      const g = gameVelocities[date];
+      const avgVelo = g.speeds.reduce((a,b)=>a+b,0)/g.speeds.length;
+      const avgSpin = g.spins.length ? g.spins.reduce((a,b)=>a+b,0)/g.spins.length : null;
+      return { date, avgVelo: Math.round(avgVelo*10)/10, avgSpin: avgSpin ? Math.round(avgSpin) : null };
+    });
+    
+    // Detect velocity trend
+    if (recentStarts.length >= 3) {
+      const latest = recentStarts[0].avgVelo;
+      const avg3 = recentStarts.slice(0,3).reduce((a,b)=>a+b.avgVelo,0)/3;
+      const avg5 = recentStarts.reduce((a,b)=>a+b.avgVelo,0)/recentStarts.length;
+      const trend = latest - avg5;
+      return {
+        latestVelo: latest,
+        avg3Velo: Math.round(avg3*10)/10,
+        avg5Velo: Math.round(avg5*10)/10,
+        veloTrend: Math.round(trend*10)/10,
+        trending: trend <= -1.5 ? 'DOWN⚠️' : trend >= 1.0 ? 'UP✅' : 'STABLE',
+        recentStarts: recentStarts.slice(0,3),
+      };
+    }
+    return { latestVelo: recentStarts[0]?.avgVelo, recentStarts };
+  } catch { return null; }
 }
 
 async function fetchBullpenAvailability(teamId) {
