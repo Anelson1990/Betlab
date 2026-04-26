@@ -2817,13 +2817,25 @@ Rules: ${report.rules?.join(' | ')}`,
             </div>
           )}
           {editingGroqBankroll&&(
-            <div style={{background:"rgba(139,92,246,0.05)",border:"1px solid #8b5cf644",borderRadius:14,padding:14,marginBottom:14}}>
-              <div style={{fontSize:10,color:"#8b5cf6",fontWeight:700,marginBottom:10}}>🧠 EDIT GROQ BANKROLL</div>
-              <input id="groqBankrollField" type="number" defaultValue={state.groqBankroll} placeholder={`Current: $${state.groqBankroll}`} style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:6,color:"#e2e8f0",padding:"6px 10px",fontSize:13,marginBottom:8}}/>
-              <div style={{display:"flex",gap:6}}>
-                <button onClick={()=>{const v=parseFloat(document.getElementById('groqBankrollField')?.value);if(v&&!isNaN(v)){setState(s=>({...s,groqBankroll:v}));}setEditingGroqBankroll(false);}} style={{flex:1,background:"#8b5cf6",border:"none",borderRadius:6,color:"#fff",padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>SET</button>
-                <button onClick={()=>setEditingGroqBankroll(false)} style={{background:"#334155",border:"none",borderRadius:6,color:"#94a3b8",padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>CANCEL</button>
+            <div style={{background:'rgba(139,92,246,0.05)',border:'1px solid #8b5cf644',borderRadius:14,padding:14,marginBottom:14}}>
+              <div style={{fontSize:10,color:'#8b5cf6',fontWeight:700,marginBottom:10}}>🧠 EDIT GROQ BANKROLL</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                <div>
+                  <div style={{fontSize:9,color:'#475569',marginBottom:3}}>CURRENT $</div>
+                  <div style={{display:'flex',gap:3}}>
+                    <input autoFocus type="number" value={groqBankrollInput} onChange={e=>setGroqBankrollInput(e.target.value)} placeholder={state.groqBankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #8b5cf6',borderRadius:6,color:'#f1f5f9',padding:'6px 8px',fontSize:13,width:0}}/>
+                    <button onClick={()=>{if(groqBankrollInput){setState(s=>({...s,groqBankroll:parseFloat(groqBankrollInput)||s.groqBankroll}));setEditingGroqBankroll(false);setGroqBankrollInput('');} }} style={{background:'#8b5cf6',border:'none',borderRadius:6,color:'#fff',padding:'6px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>SET</button>
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:9,color:'#475569',marginBottom:3}}>START $</div>
+                  <div style={{display:'flex',gap:3}}>
+                    <input type="number" value={groqBankrollInput} onChange={e=>setGroqBankrollInput(e.target.value)} placeholder={state.groqStartingBankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'6px 8px',fontSize:13,width:0}}/>
+                    <button onClick={()=>{setState(s=>({...s,groqStartingBankroll:parseFloat(groqBankrollInput)||s.groqStartingBankroll}));setEditingGroqBankroll(false);}} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'6px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>SET</button>
+                  </div>
+                </div>
               </div>
+              <button onClick={()=>setEditingGroqBankroll(false)} style={{marginTop:8,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#475569',fontSize:10,cursor:'pointer'}}>DONE</button>
             </div>
           )}
           {editingMyBankroll&&(
