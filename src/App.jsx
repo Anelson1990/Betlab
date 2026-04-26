@@ -2829,7 +2829,7 @@ Rules: ${report.rules?.join(' | ')}`,
                   <div style={{fontSize:9,color:'#475569',marginBottom:3}}>CURRENT $</div>
                   <div style={{display:'flex',gap:3}}>
                     <input autoFocus type="number" value={groqBankrollInput} onChange={e=>setGroqBankrollInput(e.target.value)} placeholder={state.groqBankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #8b5cf6',borderRadius:6,color:'#f1f5f9',padding:'6px 8px',fontSize:13,width:0}}/>
-                    <button onClick={()=>{if(groqBankrollInput){setState(s=>({...s,groqBankroll:parseFloat(groqBankrollInput)||s.groqBankroll}));setEditingGroqBankroll(false);setGroqBankrollInput('');} }} style={{background:'#8b5cf6',border:'none',borderRadius:6,color:'#fff',padding:'6px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>SET</button>
+                    <button onClick={()=>{setState(s=>({...s,groqBankroll:parseFloat(groqBankrollInput)||300}));setEditingGroqBankroll(false);setGroqBankrollInput('');}} style={{background:'#8b5cf6',border:'none',borderRadius:6,color:'#fff',padding:'6px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>SET</button>
                   </div>
                 </div>
                 <div>
