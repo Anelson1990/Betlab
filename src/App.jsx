@@ -2771,21 +2771,27 @@ Rules: ${report.rules?.join(' | ')}`,
             );
           })()}
 
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom: editingBankroll||editingMyBankroll?4:14}}>
-            <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
-              <div style={{fontSize:9,color:'#60a5fa',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>🤖 AI Bankroll</div>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:state.bankroll>=state.startingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.bankroll.toFixed(0)}</div>
-              <div style={{fontSize:10,color:'#475569',marginTop:2}}>start ${state.startingBankroll.toFixed(0)}</div>
-              <div style={{fontSize:10,color:'#475569'}}>{aiBets.filter(b=>b.result==='pending').length} pending</div>
-              <button onClick={()=>{setBankrollInput('');setStartBankrollInput('');setEditingBankroll(true);setEditingMyBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #1d4ed844',background:'rgba(29,78,216,.1)',color:'#60a5fa',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}}>
+            <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:12,padding:'12px 10px'}}>
+              <div style={{fontSize:9,color:'#60a5fa',letterSpacing:1,textTransform:'uppercase',fontWeight:700}}>🤖 AI Bankroll</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:state.bankroll>=state.startingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.bankroll.toFixed(0)}</div>
+              <div style={{fontSize:9,color:'#475569',marginTop:2}}>start ${state.startingBankroll.toFixed(0)}</div>
+              <div style={{fontSize:9,color:'#475569'}}>{aiBets.filter(b=>b.result==='pending').length} pending</div>
+              <button onClick={()=>{setBankrollInput('');setStartBankrollInput('');setEditingBankroll(true);setEditingMyBankroll(false);setEditingGroqBankroll(false);}} style={{marginTop:6,width:'100%',padding:'4px 0',borderRadius:6,border:'1px solid #1d4ed844',background:'rgba(29,78,216,.1)',color:'#60a5fa',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
             </div>
-            <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:14,padding:'14px 16px'}}>
-              <div style={{fontSize:9,color:'#f97316',letterSpacing:2,textTransform:'uppercase',fontWeight:700}}>📋 My Picks</div>
-              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:22,color:state.myBankroll>=state.myStartingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.myBankroll.toFixed(0)}</div>
-              <div style={{fontSize:10,color:'#475569',marginTop:2}}>start ${state.myStartingBankroll.toFixed(0)}</div>
-              <div style={{fontSize:10,color:'#475569'}}>{myBets.filter(b=>b.result==='pending').length} pending</div>
-              <button onClick={()=>{setMyBankrollInput('');setMyStartBankrollInput('');setEditingMyBankroll(true);setEditingBankroll(false);setEditingGroqBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #f9731644',background:'rgba(249,115,22,.1)',color:'#f97316',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
-              <button onClick={()=>{setEditingGroqBankroll(true);setEditingBankroll(false);setEditingMyBankroll(false);}} style={{marginTop:6,width:'100%',padding:'5px 0',borderRadius:6,border:'1px solid #8b5cf644',background:'rgba(139,92,246,.1)',color:'#8b5cf6',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT GROQ</button>
+            <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:12,padding:'12px 10px'}}>
+              <div style={{fontSize:9,color:'#8b5cf6',letterSpacing:1,textTransform:'uppercase',fontWeight:700}}>🧠 Groq</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:computedGroqBankroll>=state.groqStartingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${computedGroqBankroll.toFixed(0)}</div>
+              <div style={{fontSize:9,color:'#475569',marginTop:2}}>start ${state.groqStartingBankroll.toFixed(0)}</div>
+              <div style={{fontSize:9,color:'#475569'}}>{groqBets.filter(b=>b.result==='pending').length} pending</div>
+              <button onClick={()=>{setEditingGroqBankroll(true);setEditingBankroll(false);setEditingMyBankroll(false);}} style={{marginTop:6,width:'100%',padding:'4px 0',borderRadius:6,border:'1px solid #8b5cf644',background:'rgba(139,92,246,.1)',color:'#8b5cf6',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
+            </div>
+            <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid #1e293b',borderRadius:12,padding:'12px 10px'}}>
+              <div style={{fontSize:9,color:'#f97316',letterSpacing:1,textTransform:'uppercase',fontWeight:700}}>📋 My Picks</div>
+              <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:18,color:state.myBankroll>=state.myStartingBankroll?'#22c55e':'#ef4444',fontWeight:700,marginTop:2}}>${state.myBankroll.toFixed(0)}</div>
+              <div style={{fontSize:9,color:'#475569',marginTop:2}}>start ${state.myStartingBankroll.toFixed(0)}</div>
+              <div style={{fontSize:9,color:'#475569'}}>{myBets.filter(b=>b.result==='pending').length} pending</div>
+              <button onClick={()=>{setMyBankrollInput('');setMyStartBankrollInput('');setEditingMyBankroll(true);setEditingBankroll(false);setEditingGroqBankroll(false);}} style={{marginTop:6,width:'100%',padding:'4px 0',borderRadius:6,border:'1px solid #f9731644',background:'rgba(249,115,22,.1)',color:'#f97316',fontSize:10,fontWeight:700,cursor:'pointer'}}>EDIT</button>
             </div>
           </div>
           {editingBankroll&&(
