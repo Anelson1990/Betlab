@@ -990,7 +990,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
         body:raw.replace(/\[[A-Z_]+\]/,'').trim(),
         takeaway:raw.split('.')[0].replace(/\[[A-Z_]+\]/,'').trim(),
       };
-      setState(s=>({...s, lessons:[lesson,...s.lessons], bets:s.bets.map(b=>b.id===bet.id?{...b,lesson:raw}:b)}));
+      setState(s=>({...s, lessons:[lesson,...s.lessons].slice(0,80).slice(0,80), bets:s.bets.map(b=>b.id===bet.id?{...b,lesson:raw}:b)}));
       addLog(`🧠 Groq pick analyzed`);
     } catch(e) { addLog('❌ Analyze failed: '+e.message); }
     setTeaching(null);
@@ -1732,7 +1732,7 @@ Return: VERDICT (BET/WARN/PASS) | GATES (✅/❌) | REASONING (2-3 sentences wit
     try {
       const lesson=await callClaude([{role:'user',content:`Analyze this ${bet.result} bet:\nPick: ${bet.pick} (${bet.sport}, ${bet.betType})\nOdds: ${formatOdds(bet.odds)} implied ${impliedProb(bet.odds).toFixed(1)}%\nReasoning: ${bet.reasoning}\nResult: ${bet.result} (${formatMoney(pl)})\n\nWas the reasoning sound? What should a sharper bettor do differently? 3-4 sentences.`}],'Sharp betting coach. Direct and specific. Plain text only.',false);
       const card={id:uid(),date:new Date().toISOString(),title:`${bet.result==='win'?'✅':'❌'} ${bet.pick}`,category:bet.sport,body:lesson,takeaway:null,betId};
-      setState(s=>({...s,bets:s.bets.map(b=>b.id===betId?{...b,lesson}:b),lessons:[card,...s.lessons]}));
+      setState(s=>({...s,bets:s.bets.map(b=>b.id===betId?{...b,lesson}:b),lessons:[card,...s.lessons].slice(0,80)}));
       addLog(`📘 Lesson: ${bet.pick}`);
     } catch(err){setError('Lesson failed: '+err.message);}
     setTeaching(false);setLoadingMsg('');
@@ -1746,7 +1746,7 @@ Return: VERDICT (BET/WARN/PASS) | GATES (✅/❌) | REASONING (2-3 sentences wit
       const raw=await callClaude([{role:'user',content:`Review ${aiGraded.length} AI bets:\n${JSON.stringify(summary)}\nWR ${aiStats.wr.toFixed(1)}%, ROI ${aiStats.roi.toFixed(1)}%\nReturn ONLY: {"title":"...","category":"AI Review","body":"3-4 sentences","takeaway":"key improvement"}`}],'Professional betting analyst. JSON only, no markdown.',false);
       let review={};
       try{const c=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();const si=c.indexOf('{'),ei=c.lastIndexOf('}');if(si!==-1&&ei!==-1)review=JSON.parse(c.slice(si,ei+1));}catch{}
-      setState(s=>({...s,lessons:[{id:uid(),date:new Date().toISOString(),title:review.title||'AI Review',category:'AI Review',body:review.body||raw,takeaway:review.takeaway||null},...s.lessons]}));
+      setState(s=>({...s,lessons:[{id:uid(),date:new Date().toISOString(),title:review.title||'AI Review',category:'AI Review',body:review.body||raw,takeaway:review.takeaway||null},...s.lessons].slice(0,80)}));
       addLog('📊 Review done');setTab('lessons');
     } catch(err){setError('Review failed: '+err.message);}
     setLoading(false);setLoadingMsg('');
@@ -2148,7 +2148,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
       'You are a quantitative sports model analyst. Give specific, actionable parameter recommendations with numbers. Plain text, no JSON.',false);
       setTrackerAnalysis(analysis);
       // Feed into lessons for AI coach
-      setState(s=>({...s,lessons:[{id:uid(),date:new Date().toISOString(),title:`📡 Model Analysis (${graded.length} picks)`,category:'Model Tracker',body:analysis,takeaway:analysis.split('.')[0]},...s.lessons]}));
+      setState(s=>({...s,lessons:[{id:uid(),date:new Date().toISOString(),title:`📡 Model Analysis (${graded.length} picks)`,category:'Model Tracker',body:analysis,takeaway:analysis.split('.')[0]},...s.lessons].slice(0,80)}));
       addLog('📡 Model analysis complete');
     } catch(e){setTrackerError('Analysis failed: '+e.message);}
     setTrackerAnalyzing(false);
@@ -2482,7 +2482,7 @@ Rules: ${report.rules?.join(' | ')}`,
         source: 'backtest',
         report,
       };
-      setState(s=>({...s, lessons:[lesson,...s.lessons]}));
+      setState(s=>({...s, lessons:[lesson,...s.lessons].slice(0,80).slice(0,80)}));
       addLog(`✅ ${source} backtest complete — grade: ${report.overall_grade}`);
 
     } catch(e) { addLog(`❌ Backtest failed: ${e.message}`); }
