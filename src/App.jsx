@@ -839,6 +839,7 @@ function App() {
   const [editingMyBankroll, setEditingMyBankroll] = useState(false);
   const [editingGroqBankroll, setEditingGroqBankroll] = useState(false);
   const [groqBankrollInput, setGroqBankrollInput] = useState('');
+  const [groqStartBankrollInput, setGroqStartBankrollInput] = useState('');
   const [myBankrollInput, setMyBankrollInput] = useState('');
   const [editingStartBankroll, setEditingStartBankroll] = useState(false);
   const [startBankrollInput, setStartBankrollInput] = useState('');
@@ -2830,8 +2831,8 @@ Rules: ${report.rules?.join(' | ')}`,
                 <div>
                   <div style={{fontSize:9,color:'#475569',marginBottom:3}}>START $</div>
                   <div style={{display:'flex',gap:3}}>
-                    <input type="number" value={groqBankrollInput} onChange={e=>setGroqBankrollInput(e.target.value)} placeholder={state.groqStartingBankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'6px 8px',fontSize:13,width:0}}/>
-                    <button onClick={()=>{setState(s=>({...s,groqStartingBankroll:parseFloat(groqBankrollInput)||s.groqStartingBankroll}));setEditingGroqBankroll(false);}} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'6px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>SET</button>
+                    <input type="number" value={groqStartBankrollInput} onChange={e=>setGroqStartBankrollInput(e.target.value)} placeholder={state.groqStartingBankroll.toFixed(0)} style={{flex:1,background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#f1f5f9',padding:'6px 8px',fontSize:13,width:0}}/>
+                    <button onClick={()=>{setState(s=>({...s,groqStartingBankroll:parseFloat(groqStartBankrollInput)||s.groqStartingBankroll}));setGroqStartBankrollInput('');}} style={{background:'#334155',border:'none',borderRadius:6,color:'#94a3b8',padding:'6px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>SET</button>
                   </div>
                 </div>
               </div>
