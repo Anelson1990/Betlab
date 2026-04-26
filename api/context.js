@@ -151,9 +151,10 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
       lines.push(`  Pitching: ERA ${home.stats.pitching.era} | WHIP ${home.stats.pitching.whip} | K/G ${home.stats.pitching.strikeoutsPerGame}`);
     }
     if (home.probablePitcher?.name) {
-      lines.push(`  Probable Pitcher: ${home.probablePitcher.name}`);
+      lines.push(`  Probable Pitcher: ${home.probablePitcher.name}${home.probablePitcher.throws?` (${home.probablePitcher.throws}HP)`:''}`);
       if (home.probablePitcher.era) lines.push(`    ERA: ${home.probablePitcher.era} | WHIP: ${home.probablePitcher.whip} | IP: ${home.probablePitcher.inningsPitched}`);
     }
+    if (home.bullpen) lines.push(`  Bullpen: ${home.bullpen.status}${home.bullpen.closerUsed?' — closer used':''}`); 
     if (home.recentForm) lines.push(`  Last 10: ${home.recentForm}`);
     if (home.homeRecord) lines.push(`  Home: ${home.homeRecord} | Away: ${home.awayRecord}`);
     if (home.streak) lines.push(`  Streak: ${home.streak}`);
@@ -170,6 +171,7 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
       lines.push(`  Probable Pitcher: ${away.probablePitcher.name}`);
       if (away.probablePitcher.era) lines.push(`    ERA: ${away.probablePitcher.era} | WHIP: ${away.probablePitcher.whip} | IP: ${away.probablePitcher.inningsPitched}`);
     }
+    if (away.bullpen) lines.push(`  Bullpen: ${away.bullpen.status}${away.bullpen.closerUsed?' — closer used':''}`); 
     if (away.recentForm) lines.push(`  Last 10: ${away.recentForm}`);
     if (away.homeRecord) lines.push(`  Home: ${away.homeRecord} | Away: ${away.awayRecord}`);
     if (away.streak) lines.push(`  Streak: ${away.streak}`);
