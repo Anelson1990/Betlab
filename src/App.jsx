@@ -2259,10 +2259,14 @@ Be specific with numbers. This goes directly to the model developer.`}],
             const simWinProb = (analyzeData.analysis.side===g.homeTeam ? g.sim?.simulation?.homeWinProb : g.sim?.simulation?.awayWinProb)||50;
             const kellyFrac = Math.max(0,((dec-1)*(simWinProb/100)-(1-simWinProb/100))/(dec-1));
             const halfKelly = kellyFrac/2;
-            // Use half Kelly capped at 10% bankroll, min $5
-            const currentGroqBankroll = parseFloat(computedGroqBankroll||state.groqBankroll)||252;
-            const kellyStake = currentGroqBankroll * Math.min(halfKelly, 0.10);
-            const stake = Math.max(5, Math.min(Math.round(kellyStake/5)*5, Math.round(currentGroqBankroll*0.10)));
+            // Use half Kelly capped at 5% bankroll, min $5
+            const currentGroqBankroll = parseFloat(computedGroqBankroll||state.groqBankroll)||146;
+            const kellyStake = currentGroqBankroll * Math.min(halfKelly, 0.05);
+            const stake = Math.max(5, Math.round(kellyStake/5)*5);
+            
+            // Skip if low confidence or tiny Kelly
+            if (analyzeData.analysis.confidence < 58) { addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} conf too low (${analyzeData.analysis.confidence}%)`); continue; }
+            if (halfKelly < 0.01) { addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} Kelly too small`); continue; }
 
             addGroqPick({
               pick:`${analyzeData.analysis.side} — ${g.awayTeam} @ ${g.homeTeam}`,
