@@ -103,6 +103,7 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     if (home.stats?.homeRecord) lines.push(`  Home Record: ${home.stats.homeRecord} | Away: ${home.stats.awayRecord}`);
     if (home.stats?.streak) lines.push(`  Current Streak: ${home.stats.streak}`);
     if (home.moneyPuck) lines.push(`  xG For: ${home.moneyPuck.xGoalsFor} | xG Against: ${home.moneyPuck.xGoalsAgainst} | xGF%: ${home.moneyPuck.xGoalsForPct} | Corsi: ${home.moneyPuck.corsiForPct} | HD Goals For: ${home.moneyPuck.highDangerGoalsFor}`);
+    if (home.stats?.powerPlayPct) lines.push(`  PP%: ${home.stats.powerPlayPct} | PK%: ${home.stats.penaltyKillPct}`);
     if (home.injuries?.length) lines.push(`  Injuries: ${home.injuries.map(i=>`${i.player}(${i.status})`).join(', ')}`);
     // Opponent defensive weakness - how well does home team score vs away team's GA rate
     if (home.stats?.goalsForPerGame && away.stats?.goalsAgainstPerGame) {
@@ -178,6 +179,29 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
       lines.push(`  DraftKings: Home ML ${o.homeMl>0?'+':''}${o.homeMl} | Away ML ${o.awayMl>0?'+':''}${o.awayMl} | O/U ${o.overUnder} (O:${o.overOdds} U:${o.underOdds})`);
     }
     if (stats.espnWinProb) lines.push(`  ESPN Win Prob: Home ${(stats.espnWinProb.homeWinPct*100).toFixed(1)}% | Away ${(stats.espnWinProb.awayWinPct*100).toFixed(1)}%`);
+    
+    // Park factors
+    const PARK_FACTORS = {
+      'Colorado Rockies': '⚠️ COORS FIELD - runs +20%, HR +25%',
+      'Cincinnati Reds': 'Great American - slight hitter park',
+      'Boston Red Sox': 'Fenway - LF wall benefits RHH',
+      'Chicago Cubs': 'Wrigley - wind dependent, check direction',
+      'New York Yankees': 'Yankee Stadium - HR friendly',
+      'Houston Astros': 'Minute Maid - retractable roof',
+      'Texas Rangers': 'Globe Life - extreme heat affects late innings',
+    };
+    const homePark = PARK_FACTORS[homeTeam];
+    if (homePark) lines.push(`  Park Factor: ${homePark}`);
+    
+    // Pitcher ERA comparison
+    if (home.probablePitcher?.era && away.probablePitcher?.era) {
+      const eraGap = (parseFloat(away.probablePitcher.era) - parseFloat(home.probablePitcher.era)).toFixed(2);
+      lines.push(`  ERA Gap: Home SP ${home.probablePitcher.era} vs Away SP ${away.probablePitcher.era} (${eraGap>0?'+':''}${eraGap} favor home)`);
+    }
+    
+    // L3/L5 rolling form
+    if (home.stats?.batting?.l5Avg) lines.push(`  Home L5 AVG: ${home.stats.batting.l5Avg} | L3: ${home.stats.batting.l3Avg||'?'}`);
+    if (away.stats?.batting?.l5Avg) lines.push(`  Away L5 AVG: ${away.stats.batting.l5Avg} | L3: ${away.stats.batting.l3Avg||'?'}`);
   }
 
   if (sport==='NBA') {
