@@ -525,9 +525,7 @@ function PasteTab({ onConfirmPicks, callClaude: claudeFn }) {
     // Tennis direct parser - no Claude needed
     if (activeSport === 'Tennis') {
       const tennispoints = [];
-      const blocks = text.split(/
-\s*
-/);
+      const blocks = text.split(/\n\s*\n/);
       for (const block of blocks) {
         const vsMatch = block.match(/([A-Z][A-Z\s\.]+)\s+vs\s+([A-Z][A-Z\s\.]+)/);
         const winMatch = block.match(/Win%.*?([A-Z][^:]+):\s*([\d.]+)%.*?\|\s*([A-Z][^:]+):\s*([\d.]+)%/);
