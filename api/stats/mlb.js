@@ -83,8 +83,12 @@ async function fetchPitcherStats(pitcherName) {
     const stats = statsData?.stats?.[0]?.splits?.[0]?.stat;
     const throws = detailData?.people?.[0]?.pitchHand?.code || null;
     
-    // Fetch Statcast velocity data
-    const statcast = await fetchPitcherStatcast(pitcher.id);
+    // Fetch Statcast velocity data and xERA in parallel
+    const [statcast, xeraMap] = await Promise.all([
+      fetchPitcherStatcast(pitcher.id),
+      fetchXERALeaderboard(),
+    ]);
+    const xstats = xeraMap[String(pitcher.id)] || null;
     
     return stats ? {
       name: pitcherName,
@@ -95,9 +99,38 @@ async function fetchPitcherStats(pitcherName) {
       strikeouts: stats.strikeOuts,
       walks: stats.baseOnBalls,
       homeRunsAllowed: stats.homeRuns,
+      xera: xstats?.xera || null,
+      xwoba: xstats?.xwoba || null,
       statcast: statcast,
-    } : { name: pitcherName, throws, statcast };
+    } : { name: pitcherName, throws, statcast, xera: xstats?.xera||null };
   } catch { return { name: pitcherName }; }
+}
+
+// Cache xERA leaderboard (fetch once per request)
+let _xeraCache = null;
+let _xeraCacheTime = 0;
+
+async function fetchXERALeaderboard() {
+  const now = Date.now();
+  if (_xeraCache && now - _xeraCacheTime < 3600000) return _xeraCache; // 1hr cache
+  try {
+    const url = 'https://baseballsavant.mlb.com/leaderboard/custom?year=2025&type=pitcher&filter=&sort=4&sortDir=desc&min=10&selections=xfip,xera,xba,xslg,xwoba&csv=true';
+    const r = await fetch(url);
+    if (!r.ok) return {};
+    const text = await r.text();
+    const lines = text.trim().split('\n').slice(1);
+    const map = {};
+    for (const line of lines) {
+      const cols = line.split(',');
+      const id = cols[1]?.replace(/"/g,'').trim();
+      const xera = parseFloat(cols[4]?.replace(/"/g,''));
+      const xwoba = parseFloat(cols[7]?.replace(/"/g,''));
+      if (id && !isNaN(xera)) map[id] = { xera, xwoba };
+    }
+    _xeraCache = map;
+    _xeraCacheTime = now;
+    return map;
+  } catch { return {}; }
 }
 
 async function fetchPitcherStatcast(pitcherId) {

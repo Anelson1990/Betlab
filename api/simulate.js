@@ -46,9 +46,15 @@ function statsToLambda(sport, teamStats, isHome, opponentStats) {
   }
   if (sport === 'MLB') {
     const rpg = parseFloat(teamStats?.batting?.runsPerGame) || (isHome ? baseline.home : baseline.away);
-    const oppEra = parseFloat(opponentStats?.pitching?.era) || 4.0;
+    // Use xERA if available (Statcast expected ERA) - more predictive than actual ERA
+    const oppXera = parseFloat(opponentStats?.probablePitcher?.xera) || null;
+    const oppEra = parseFloat(opponentStats?.probablePitcher?.era) || parseFloat(opponentStats?.pitching?.era) || 4.0;
+    const effectiveEra = oppXera ? (oppXera * 0.6 + oppEra * 0.4) : oppEra; // blend xERA with ERA
+    // Velocity degradation penalty - if SP velocity trending down, ERA likely to worsen
+    const veloTrend = parseFloat(opponentStats?.probablePitcher?.statcast?.veloTrend) || 0;
+    const veloFactor = veloTrend <= -1.5 ? 1.1 : veloTrend >= 1.0 ? 0.95 : 1.0;
     // Higher opponent ERA = more runs scored
-    const eraFactor = oppEra / 4.0;
+    const eraFactor = (effectiveEra / 4.0) * veloFactor;
     const lambda = rpg * 0.5 * eraFactor * (isHome ? homeAdv : 1/homeAdv);
     return Math.max(0.5, lambda);
   }
