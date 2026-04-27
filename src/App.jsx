@@ -1516,7 +1516,7 @@ Analyze EVERY game in the odds list. Return a JSON array for ALL games. Each obj
 Set shouldBet=true only if edge>=4% AND sufficient stats confirmed. Set shouldBet=false with skipReason for all others. Return ALL games.
 No markdown.${pickContext?`\nFocus: ${pickContext}`:''}\`;
     try {
-      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,false);
+      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Analyze EVERY ${pickSport} game listed in the odds. For each game set shouldBet=true if edge>=4% with confirmed stats, otherwise shouldBet=false with a skipReason. Return ALL games as JSON array.`}],sys,false);
       let picks=[];
       const s=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
       const start=s.indexOf('[');
