@@ -85,8 +85,8 @@ async function fetchPitcherStats(pitcherName) {
     
     // Fetch Statcast velocity data and xERA in parallel
     const [statcast, xeraMap] = await Promise.all([
-      fetchPitcherStatcast(pitcher.id),
-      fetchXERALeaderboard(),
+      Promise.race([fetchPitcherStatcast(pitcher.id), new Promise(r=>setTimeout(()=>r(null),3000))]),
+      Promise.race([fetchXERALeaderboard(), new Promise(r=>setTimeout(()=>r({}),3000))]),
     ]);
     const xstats = xeraMap[String(pitcher.id)] || null;
     
