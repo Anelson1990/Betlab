@@ -835,6 +835,7 @@ function App() {
   const [groqSport, setGroqSport] = useState('NHL');
   const [preLog, setPreLog] = useState([]);
   const [preLogInput, setPreLogInput] = useState({pick:'',sport:'NHL',betType:'Moneyline',odds:'',stake:'10',notes:''});
+  const [scanningBet, setScanningBet] = useState(false);
   const [preLogLoading, setPreLogLoading] = useState(null);
   const [tuningLog, setTuningLog] = useState([]);
   const [lastTuneCount, setLastTuneCount] = useState(0);
@@ -3207,6 +3208,58 @@ Rules: ${report.rules?.join(' | ')}`,
           {tab==='mine'&&(
             <div style={{animation:'slideIn .3s ease'}}>
               {/* Pre-Log Section */}
+              {/* Screenshot upload */}
+              <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid rgba(251,191,36,0.15)',borderRadius:14,padding:14,marginBottom:10}}>
+                <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:10,color:'#fbbf24',letterSpacing:2,marginBottom:8}}>📸 SCAN BET SCREENSHOT</div>
+                <label style={{display:'block',padding:'12px',borderRadius:8,border:'2px dashed #fbbf2444',background:'rgba(251,191,36,0.05)',textAlign:'center',cursor:'pointer',color:'#fbbf24',fontSize:11,fontWeight:700}}>
+                  {scanningBet?'🤖 Reading screenshot...':'📷 TAP TO UPLOAD SCREENSHOT'}
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={async(e)=>{
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setScanningBet(true);
+                    try {
+                      const b64 = await new Promise((res,rej)=>{
+                        const r = new FileReader();
+                        r.onload=()=>res(r.result.split(',')[1]);
+                        r.onerror=rej;
+                        r.readAsDataURL(file);
+                      });
+                      const resp = await fetch('/api/claude', {
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({
+                          model:'claude-sonnet-4-5',
+                          max_tokens:500,
+                          system:'Extract bet details from this DraftKings/sportsbook screenshot. Return ONLY a JSON object with: pick (team/player name + bet type), sport (NHL/MLB/NBA/NFL), betType (Moneyline/Spread/Total/Parlay/NRFI), odds (american format number), stake (number), notes (any relevant info). For parlays include all legs in pick field separated by " + ".',
+                          messages:[{role:'user',content:[
+                            {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
+                            {type:'text',text:'Extract the bet details from this screenshot as JSON.'}
+                          ]}],
+                        }),
+                      });
+                      const data = await resp.json();
+                      const raw = data.content?.filter(b=>b.type==='text').map(b=>b.text).join('');
+                      const clean = raw?.replace(/```json|```/g,'').trim();
+                      const s = clean?.indexOf('{'), en = clean?.lastIndexOf('}');
+                      if (s!==-1&&en!==-1) {
+                        const bet = JSON.parse(clean.slice(s,en+1));
+                        setPreLogInput(p=>({...p,
+                          pick: bet.pick||p.pick,
+                          sport: bet.sport||p.sport,
+                          betType: bet.betType||p.betType,
+                          odds: bet.odds?.toString()||p.odds,
+                          stake: bet.stake?.toString()||p.stake,
+                          notes: bet.notes||p.notes,
+                        }));
+                        addLog('📸 Screenshot scanned: '+bet.pick);
+                      }
+                    } catch(e) { addLog('❌ Scan error: '+e.message); }
+                    setScanningBet(false);
+                    e.target.value='';
+                  }}/>
+                </label>
+              </div>
+
               <div style={{background:'rgba(10,18,35,0.95)',border:'1px solid rgba(251,191,36,0.3)',borderRadius:14,padding:16,marginBottom:14}}>
                 <div style={{fontFamily:"'Orbitron',sans-serif",fontSize:10,color:'#fbbf24',letterSpacing:2,marginBottom:10}}>📋 PRE-LOG — ASK COACH BEFORE PLACING</div>
                 <div style={{display:'flex',gap:6,marginBottom:6}}>
