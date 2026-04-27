@@ -3230,15 +3230,18 @@ Rules: ${report.rules?.join(' | ')}`,
                         body:JSON.stringify({
                           model:'claude-sonnet-4-5',
                           max_tokens:500,
-                          system:'Extract bet details from this DraftKings/sportsbook screenshot. Return ONLY a JSON object with: pick (team/player name + bet type), sport (NHL/MLB/NBA/NFL), betType (Moneyline/Spread/Total/Parlay/NRFI), odds (american format number), stake (number), notes (any relevant info). For parlays include all legs in pick field separated by " + ".',
+                          system:'Extract bet details from this DraftKings/sportsbook screenshot. Return ONLY a JSON object with: pick (team/player name + bet type), sport (NHL/MLB/NBA/NFL), betType (Moneyline/Spread/Total/Parlay/NRFI), odds (american format number like -136 or 113), stake (number), notes (any relevant info). For parlays include all legs in pick field separated by + .',
                           messages:[{role:'user',content:[
-                            {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
+                            {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
                             {type:'text',text:'Extract the bet details from this screenshot as JSON.'}
                           ]}],
                         }),
                       });
+                      if (!resp.ok) { addLog('❌ Scan API error: '+resp.status); setScanningBet(false); return; }
                       const data = await resp.json();
+                      addLog('📸 Raw scan: '+JSON.stringify(data).slice(0,200));
                       const raw = data.content?.filter(b=>b.type==='text').map(b=>b.text).join('');
+                      if (!raw) { addLog('❌ No text in response'); setScanningBet(false); return; }
                       const clean = raw?.replace(/```json|```/g,'').trim();
                       const s = clean?.indexOf('{'), en = clean?.lastIndexOf('}');
                       if (s!==-1&&en!==-1) {
@@ -3252,6 +3255,8 @@ Rules: ${report.rules?.join(' | ')}`,
                           notes: bet.notes||p.notes,
                         }));
                         addLog('📸 Screenshot scanned: '+bet.pick);
+                      } else {
+                        addLog('❌ Could not parse: '+clean?.slice(0,100));
                       }
                     } catch(e) { addLog('❌ Scan error: '+e.message); }
                     setScanningBet(false);
