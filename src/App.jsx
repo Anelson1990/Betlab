@@ -3246,15 +3246,29 @@ Rules: ${report.rules?.join(' | ')}`,
                       const s = clean?.indexOf('{'), en = clean?.lastIndexOf('}');
                       if (s!==-1&&en!==-1) {
                         const bet = JSON.parse(clean.slice(s,en+1));
-                        setPreLogInput(p=>({...p,
-                          pick: bet.pick||p.pick,
-                          sport: bet.sport||p.sport,
-                          betType: bet.betType||p.betType,
-                          odds: bet.odds?.toString()||p.odds,
-                          stake: bet.stake?.toString()||p.stake,
-                          notes: bet.notes||p.notes,
+                        // Log directly as pending My Picks bet
+                        const newBet = {
+                          id: uid(),
+                          pick: bet.pick||'Unknown',
+                          sport: bet.sport||'MLB',
+                          betType: bet.betType||'Moneyline',
+                          betCategory: (bet.betType||'').toLowerCase().includes('parlay') ? 'parlay' : 'straight',
+                          odds: parseInt(bet.odds)||(-110),
+                          stake: parseFloat(bet.stake)||10,
+                          result: 'pending',
+                          date: new Date().toISOString(),
+                          reasoning: bet.notes||'Logged via screenshot',
+                          keyFactors: [],
+                          confidence: 60,
+                          source: 'paste',
+                          tracked: true,
+                          lesson: null,
+                        };
+                        setState(s=>({...s,
+                          myBankroll: parseFloat((s.myBankroll - newBet.stake).toFixed(2)),
+                          bets: [newBet, ...s.bets],
                         }));
-                        addLog('📸 Screenshot scanned: '+bet.pick);
+                        addLog('📸 Bet logged: '+newBet.pick+' | '+newBet.odds+' | $'+newBet.stake);
                       } else {
                         addLog('❌ Could not parse: '+clean?.slice(0,100));
                       }
