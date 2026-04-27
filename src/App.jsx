@@ -1529,7 +1529,23 @@ No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
         if(end!==-1)picks=JSON.parse(s.slice(start,end+1));
       }
       if(!Array.isArray(picks)||picks.length===0){addLog('No strong value found.');setError(`No value found in today's ${pickSport} lines. Try a different sport or add focus context.`);setLoadingMsg('');setLoading(false);return;}
+      
+      // Show all game analysis in log
       picks.forEach(p=>{
+        const shouldBet = p.shouldBet !== false;
+        if (!shouldBet) {
+          addLog(`📊 ${p.pick} — SKIP (${p.skipReason||'insufficient edge'}) | Claude: ${p.confidence}% vs market ${p.odds}`);
+        }
+      });
+
+      const betsToPlace = picks.filter(p=>p.shouldBet !== false);
+      if (betsToPlace.length === 0) {
+        addLog('📊 All games analyzed — no bets met threshold today.');
+        setError(`Analyzed ${picks.length} games — no value bets today. Check log for full analysis.`);
+        setLoadingMsg('');setLoading(false);return;
+      }
+
+      betsToPlace.forEach(p=>{
         const odds=parseInt(p.odds)||-110;
         const dec=odds>0?odds/100+1:100/Math.abs(odds)+1;
         const imp=1/dec;
@@ -1540,7 +1556,6 @@ No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
           const kelly=((dec-1)*conf-(1-conf))/(dec-1)*0.25;
           stake=Math.max(5,Math.min(Math.round(state.bankroll*kelly/5)*5,Math.round(state.bankroll*0.05)));
         } else { stake=10; }
-        // Run Monte Carlo simulation for this pick
         const simResult = runSim(pickSport, p.homeOdds||p.odds, p.awayOdds||p.odds, p.totalLine||null, 5000);
         const simConf = simResult ? getSimConfidence(simResult, p.betType||'', p.pick||'', p.odds) : null;
         addAIPick({...p,sport:pickSport,stake,simConfidence:simConf,simResult:simResult?{
@@ -1551,7 +1566,7 @@ No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
           nrfiProb:simResult.nrfiProb?Math.round(simResult.nrfiProb*100):null,
         }:null});
       });
-      addLog(`✅ AI placed ${picks.length} pick(s) with Monte Carlo sim`);setTab('ai');
+      addLog(`✅ AI placed ${betsToPlace.length} bet(s) | ${picks.length-betsToPlace.length} games skipped — see log`);setTab('ai');
     } catch(err){setError('Failed: '+err.message);addLog('❌ '+err.message);}
     setLoadingMsg('');setLoading(false);
   },[pickSport,pickContext,state.bankroll,addAIPick]);
