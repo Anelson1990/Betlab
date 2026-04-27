@@ -873,11 +873,11 @@ function App() {
   const driveThrottle = useRef(null);
   useEffect(()=>{
     const {bankroll,startingBankroll,myBankroll,myStartingBankroll,bets,lessons,sessionLog,trackedPicks} = state;
-    const toSave = {bankroll,startingBankroll,myBankroll,myStartingBankroll,groqBankroll,groqStartingBankroll,
-    bets:bets.slice(0,80).map(b=>({...b,reasoning:b.reasoning?.slice(0,150),keyFactors:b.keyFactors?.slice(0,3)})),
-    lessons:lessons.slice(0,40).map(l=>({id:l.id,date:l.date,sport:l.sport,pick:l.pick,result:l.result,lesson:l.lesson?.slice(0,200),takeaway:l.takeaway?.slice(0,100)})),
-    sessionLog:sessionLog.slice(0,20),
-    trackedPicks:trackedPicks.slice(0,60).map(p=>({...p,reasoning:p.reasoning?.slice(0,100)}))};
+    const toSave = {bankroll,startingBankroll,myBankroll,myStartingBankroll,
+    bets:bets.slice(0,150),
+    lessons:lessons.slice(0,80).map(l=>({...l,lesson:l.lesson?.slice(0,300),body:l.body?.slice(0,200)})),
+    sessionLog:sessionLog.slice(0,50),
+    trackedPicks:trackedPicks.slice(0,100)};
     persist(toSave);
     // Auto-save to Drive every 30 seconds max
     if (driveThrottle.current) clearTimeout(driveThrottle.current);
