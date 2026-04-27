@@ -884,9 +884,11 @@ function App() {
     driveThrottle.current = setTimeout(()=>saveToDrive(toSave), 30000);
   },[state]);
 
-  // Load from Drive on first open
+  // Load from Drive on first open - only if local state is empty
   useEffect(()=>{
-    loadFromDrive();
+    if (!state.bets?.length && !state.lessons?.length) {
+      loadFromDrive();
+    }
   },[]);
   useEffect(()=>{ logEndRef.current?.scrollIntoView({behavior:'smooth'}); },[state.sessionLog]);
 
