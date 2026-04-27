@@ -1516,7 +1516,7 @@ Return ONLY a valid JSON array of your TOP 5 games ranked by edge. Each item mus
 Set shouldBet=true only if edge>=4% AND confirmed stats. Set shouldBet=false for interesting games worth showing but not betting.
 Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
     try {
-      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Analyze ALL ${pickSport} games. Return JSON: {bets:[...],analysis:[...]}.`}],sys,false);
+      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds. Return top 5 games as JSON array with shouldBet flag.`}],sys,false);
       let betsToPlace=[];
       let gameAnalysis=[];
       try {
@@ -1533,16 +1533,15 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
           gameAnalysis=(parsed.analysis||[]);
         }
       } catch(e){ addLog('Parse error: '+e.message); }
-        const icon = g.verdict==='BET'?'🟢':g.verdict==='SKIP'?'🟡':'🔴';
-        addLog(`${icon} ${g.game} — Claude: ${g.claudeProb}% vs mkt ${g.marketImplied}% | ${g.verdict}: ${g.reason}`);
+      gameAnalysis.forEach(g=>{
+        addLog('📊 '+(g.pick||g.game||'')+' — shouldBet:'+g.shouldBet+' | '+( g.reasoning||g.reason||'').slice(0,60));
       });
-
       if(!Array.isArray(betsToPlace)||betsToPlace.length===0){
-        addLog(`📊 ${gameAnalysis.length} games analyzed — no value bets today.`);
-        setError(`Analyzed ${gameAnalysis.length} games — no value bets today. Check log for full analysis.`);
+        addLog('📊 '+gameAnalysis.length+' games analyzed — no value bets today.');
+        setError('Analyzed '+gameAnalysis.length+' games — no value bets today. Check log.');
         setLoadingMsg('');setLoading(false);return;
       }
-      addLog(`📊 ${gameAnalysis.length} games analyzed | ${betsToPlace.length} bets | ${gameAnalysis.filter(g=>g.verdict==='SKIP').length} skipped`);
+      addLog('📊 '+(betsToPlace.length+gameAnalysis.length)+' games analyzed | '+betsToPlace.length+' bets | '+gameAnalysis.length+' skipped');
 
       betsToPlace.forEach(p=>{
         const odds=parseInt(p.odds)||-110;
