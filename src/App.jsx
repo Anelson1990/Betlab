@@ -1511,10 +1511,10 @@ ${sportAdjStr?'\nCALIBRATION ADJUSTMENTS (confidence is being auto-adjusted):\n'
 ${topPatterns?'\nREASONING PATTERNS FROM YOUR HISTORY:\nWinning patterns: '+topPatterns:''}
 ${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
 
-Return ONLY a JSON array of your best 1-3 picks. Each object must have:
-{"pick","sport","betType","odds"(integer),"homeOdds"(integer),"awayOdds"(integer),"totalLine"(number),"reasoning","keyFactors"(3-5 strings),"confidence"(55-80),"edge"}
-No markdown.${pickContext?`\nFocus: ${pickContext}`:''}`;
-    setLoadingMsg('🧠 Finding value...');
+Analyze EVERY game in the odds list. Return a JSON array for ALL games. Each object must have:
+{"pick","sport","betType","odds"(integer),"homeOdds"(integer),"awayOdds"(integer),"totalLine"(number),"reasoning","keyFactors"(3-5 strings),"confidence"(50-80),"edge","shouldBet"(true/false),"skipReason"(string if shouldBet=false)}
+Set shouldBet=true only if edge>=4% AND sufficient stats confirmed. Set shouldBet=false with skipReason for all others. Return ALL games.
+No markdown.${pickContext?`\nFocus: ${pickContext}`:''}\`;
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds, search injuries/news, return best value bets as JSON.`}],sys,false);
       let picks=[];
