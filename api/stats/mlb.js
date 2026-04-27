@@ -189,6 +189,7 @@ async function fetchPitcherStatcast(pitcherId) {
 }
 
 async function fetchBullpenAvailability(teamId) {
+  return null; // disabled
   try {
     // Get yesterday's game to check pitcher usage
     const yesterday = new Date();
@@ -305,10 +306,7 @@ async function fetchStatcast(pitcherId) {
 }
 
 async function fetchPitcherStatcast(pitcherName, mlbId) {
-  if (!mlbId) return null;
-  try {
-    return await fetchStatcast(mlbId);
-  } catch { return null; }
+  return null; // disabled
 }
 
 async function fetchMLBInjuries(teamName) {
