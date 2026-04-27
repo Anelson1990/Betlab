@@ -1531,8 +1531,8 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
           const parsed=JSON.parse(clean.slice(objStart,clean.lastIndexOf('}')+1));
           betsToPlace=(parsed.bets||[]);
           gameAnalysis=(parsed.analysis||[]);
+        }
       } catch(e){ addLog('Parse error: '+e.message); }
-      gameAnalysis.forEach(g=>{
         const icon = g.verdict==='BET'?'🟢':g.verdict==='SKIP'?'🟡':'🔴';
         addLog(`${icon} ${g.game} — Claude: ${g.claudeProb}% vs mkt ${g.marketImplied}% | ${g.verdict}: ${g.reason}`);
       });
