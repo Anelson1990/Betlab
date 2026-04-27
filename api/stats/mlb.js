@@ -110,6 +110,7 @@ let _xeraCache = null;
 let _xeraCacheTime = 0;
 
 async function fetchXERALeaderboard() {
+  return {}; // disabled - Baseball Savant blocked on Vercel
   const now = Date.now();
   if (_xeraCache && now - _xeraCacheTime < 3600000) return _xeraCache; // 1hr cache
   try {
@@ -133,6 +134,7 @@ async function fetchXERALeaderboard() {
 }
 
 async function fetchPitcherStatcast(pitcherId) {
+  return null; // disabled - Baseball Savant blocked on Vercel
   if (!pitcherId) return null;
   try {
     // Get last 5 starts velocity and spin data
@@ -140,8 +142,7 @@ async function fetchPitcherStatcast(pitcherId) {
     const r = await fetch(url);
     if (!r.ok) return null;
     const text = await r.text();
-    const lines = text.trim().split('
-').slice(1).filter(l=>l.trim());
+    const lines = text.trim().split('\n').slice(1).filter(l=>l.trim());
     if (!lines.length) return null;
     
     // Parse CSV - get release_speed (col 2) and release_spin_rate (col 53) by game_date (col 1)
@@ -283,6 +284,7 @@ async function fetchRecentForm(teamId) {
 }
 
 async function fetchStatcast(pitcherId) {
+  return null; // disabled
   try {
     // Baseball Savant Statcast - free, no key needed
     const url = `https://baseballsavant.mlb.com/statcast_search/csv?hfPT=&hfAB=&hfGT=R%7C&hfPR=&hfZ=&hfStadium=&hfBBL=&hfNewZones=&hfPull=&hfC=&hfSea=2025%7C&hfSit=&player_type=pitcher&hfOuts=&hfOpponent=&pitcher_throws=&batter_stands=&hfSA=&game_date_gt=&game_date_lt=&hfMo=&hfTeam=&home_road=&hfRO=&position=&hfInfield=&hfOutfield=&hfInn=&hfBBT=&batters_lookup%5B%5D=&pitchers_lookup%5B%5D=${pitcherId}&team=&position=&hfLandmark=&hfInn=&hfBBT=&metric_1=&hfInn=&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&player_event_sort=api_p_release_speed&sort_order=desc&min_abs=0&type=details`;
