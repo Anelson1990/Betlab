@@ -1511,10 +1511,9 @@ ${sportAdjStr?'\nCALIBRATION ADJUSTMENTS (confidence is being auto-adjusted):\n'
 ${topPatterns?'\nREASONING PATTERNS FROM YOUR HISTORY:\nWinning patterns: '+topPatterns:''}
 ${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
 
-Return a JSON object: {bets:[picks to place],analysis:[all games reviewed]}.
-Each bets item: {pick,sport,betType,odds,homeOdds,awayOdds,reasoning,keyFactors,confidence,edge}
-Each analysis item: {game,claudeProb,marketImplied,edge,verdict,reason}
-Include ALL games in analysis. Only value picks in bets. No markdown.`;
+Return ONLY a JSON object with this exact structure:
+{"bets":[{"pick":"...","sport":"...","betType":"...","odds":0,"homeOdds":0,"awayOdds":0,"reasoning":"...","keyFactors":["..."],"confidence":0,"edge":"..."}],"analysis":[{"game":"...","claudeProb":0,"marketImplied":0,"edge":0,"verdict":"BET or SKIP or PASS","reason":"..."}]}
+Keep analysis reason under 20 words each. Include every game in analysis. Only real value picks in bets. No markdown.`;
     setLoadingMsg('\U0001F9E0 Finding value...');
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Analyze ALL ${pickSport} games. Return JSON: {bets:[...],analysis:[...]}.`}],sys,false);
