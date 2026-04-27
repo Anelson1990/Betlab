@@ -84,11 +84,8 @@ async function fetchPitcherStats(pitcherName) {
     const throws = detailData?.people?.[0]?.pitchHand?.code || null;
     
     // Fetch Statcast velocity data and xERA in parallel
-    const [statcast, xeraMap] = await Promise.all([
-      Promise.race([fetchPitcherStatcast(pitcher.id), new Promise(r=>setTimeout(()=>r(null),3000))]),
-      Promise.race([fetchXERALeaderboard(), new Promise(r=>setTimeout(()=>r({}),3000))]),
-    ]);
-    const xstats = xeraMap[String(pitcher.id)] || null;
+    const statcast = await Promise.race([fetchPitcherStatcast(pitcher.id), new Promise(r=>setTimeout(()=>r(null),2000))]);
+    const xstats = null; // xERA disabled - Baseball Savant timeout
     
     return stats ? {
       name: pitcherName,
