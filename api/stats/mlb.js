@@ -356,7 +356,7 @@ export default async function handler(req, res) {
       espnGameId ? fetchESPNWinProb(espnGameId) : Promise.resolve(null),
     ]);
 
-    const [homeBullpen, awayBullpen] = await Promise.all([homeId?fetchBullpenAvailability(homeId):null, awayId?fetchBullpenAvailability(awayId):null]);
+    const [homeBullpen, awayBullpen] = await Promise.all([homeId?Promise.race([fetchBullpenAvailability(homeId),new Promise(r=>setTimeout(()=>r(null),3000))]):null, awayId?Promise.race([fetchBullpenAvailability(awayId),new Promise(r=>setTimeout(()=>r(null),3000))]):null]);
     return res.status(200).json({
       success:true,
       home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries, bullpen:homeBullpen },
