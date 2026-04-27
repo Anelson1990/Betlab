@@ -306,9 +306,6 @@ async function fetchStatcast(pitcherId) {
   } catch { return null; }
 }
 
-async function fetchPitcherStatcast(pitcherName, mlbId) {
-  return null; // disabled
-}
 
 async function fetchMLBInjuries(teamName) {
   try {
