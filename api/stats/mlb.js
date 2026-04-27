@@ -88,7 +88,6 @@ async function fetchPitcherStats(pitcherName) {
     const xeraMap = {};
     const xstats = null;
 
-    const xstats = xeraMap[String(pitcher.id)] || null;
     
     return stats ? {
       name: pitcherName,
