@@ -1518,8 +1518,6 @@ Include ALL games from the odds in analysis. Only include value picks in bets.
 No markdown.${pickContext?`\nFocus: ${pickContext}`:''}\`;
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Analyze EVERY ${pickSport} game listed in the odds. For each game set shouldBet=true if edge>=4% with confirmed stats, otherwise shouldBet=false with a skipReason. Return ALL games as JSON array.`}],sys,false);
       let picks=[];
-      const s=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-      const start=s.indexOf('[');
       if (start!==-1){
         let depth=0,inStr=false,esc=false,end=-1;
         for(let i=start;i<s.length;i++){
