@@ -1531,7 +1531,7 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
           const parsed=JSON.parse(clean.slice(objStart,clean.lastIndexOf('}')+1));
           betsToPlace=(parsed.bets||[]);
           gameAnalysis=(parsed.analysis||[]);
-        }
+      } catch(e){ addLog('Parse error: '+e.message); }
       gameAnalysis.forEach(g=>{
         const icon = g.verdict==='BET'?'🟢':g.verdict==='SKIP'?'🟡':'🔴';
         addLog(`${icon} ${g.game} — Claude: ${g.claudeProb}% vs mkt ${g.marketImplied}% | ${g.verdict}: ${g.reason}`);
@@ -1565,7 +1565,7 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
           nrfiProb:simResult.nrfiProb?Math.round(simResult.nrfiProb*100):null,
         }:null});
       });
-      addLog(`✅ AI placed ${betsToPlace.length} bet(s) | ${picks.length-betsToPlace.length} games skipped — see log`);setTab('ai');
+      addLog(`✅ AI placed ${betsToPlace.length} bet(s) | ${gameAnalysis.length} games skipped — see log`);setTab('ai');
     } catch(err){setError('Failed: '+err.message);addLog('❌ '+err.message);}
     setLoadingMsg('');setLoading(false);
   },[pickSport,pickContext,state.bankroll,addAIPick]);
