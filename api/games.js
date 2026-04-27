@@ -73,7 +73,7 @@ async function getESPNGames(sport) {
       });
     }
     // Fetch all core API odds in parallel for games missing odds
-    const missingOdds = games.filter(g=>!g.homeML);
+    const missingOdds = games.filter(g=>!g.homeML||!g.awayML);
     if (missingOdds.length > 0) {
       const oddsResults = await Promise.all(
         missingOdds.map(g => fetchCoreOdds(sport, g.espnId))
