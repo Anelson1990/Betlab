@@ -1510,30 +1510,28 @@ ${backtestLessons?'\nBACKTEST FINDINGS (follow these rules):\n'+backtestLessons:
 ${sportAdjStr?'\nCALIBRATION ADJUSTMENTS (confidence is being auto-adjusted):\n'+sportAdjStr:''}
 ${topPatterns?'\nREASONING PATTERNS FROM YOUR HISTORY:\nWinning patterns: '+topPatterns:''}
 ${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
-${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
 
-Return a JSON object with two arrays: {"bets":[picks to place],"analysis":[all games reviewed]}.
+Return a JSON object: {bets:[picks to place],analysis:[all games reviewed]}.
 Each bets item: {pick,sport,betType,odds,homeOdds,awayOdds,reasoning,keyFactors,confidence,edge}
 Each analysis item: {game,claudeProb,marketImplied,edge,verdict,reason}
-Include ALL games in analysis. Only value picks in bets. No markdown.${pickContext?`\nFocus: ${pickContext}`:''}\`;
-
-      let picks=[];
-      if (start!==-1){
-        let depth=0,inStr=false,esc=false,end=-1;
-        for(let i=start;i<s.length;i++){
-          const c=s[i];if(esc){esc=false;continue;}if(c==='\\'&&inStr){esc=true;continue;}if(c==='"'){inStr=!inStr;continue;}if(inStr)continue;
-          if(c==='[')depth++;else if(c===']'){depth--;if(depth===0){end=i;break;}}
+Include ALL games in analysis. Only value picks in bets. No markdown.`;
+    setLoadingMsg('\U0001F9E0 Finding value...');
+    try {
+      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Analyze ALL ${pickSport} games. Return JSON: {bets:[...],analysis:[...]}.`}],sys,false);
+      let betsToPlace=[];
+      let gameAnalysis=[];
+      try {
+        const clean=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+        const objStart=clean.indexOf('{');
+        const arrStart=clean.indexOf('[');
+        if(objStart!==-1&&(arrStart===-1||objStart<arrStart)){
+          const parsed=JSON.parse(clean.slice(objStart,clean.lastIndexOf('}')+1));
+          betsToPlace=parsed.bets||[];
+          gameAnalysis=parsed.analysis||[];
+        } else if(arrStart!==-1){
+          betsToPlace=JSON.parse(clean.slice(arrStart,clean.lastIndexOf(']')+1));
         }
-        if(end!==-1)picks=JSON.parse(s.slice(start,end+1));
-      }
-      // Handle both old array format and new {bets,analysis} format
-      let betsToPlace = picks;
-      let gameAnalysis = [];
-      if (!Array.isArray(picks) && picks.bets) {
-        betsToPlace = picks.bets || [];
-        gameAnalysis = picks.analysis || [];
-      }
-      
+      } catch(e){ addLog('Parse error: '+e.message); }
       // Log full game analysis
       gameAnalysis.forEach(g=>{
         const icon = g.verdict==='BET'?'🟢':g.verdict==='SKIP'?'🟡':'🔴';
