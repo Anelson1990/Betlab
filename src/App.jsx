@@ -1511,11 +1511,11 @@ ${sportAdjStr?'\nCALIBRATION ADJUSTMENTS (confidence is being auto-adjusted):\n'
 ${topPatterns?'\nREASONING PATTERNS FROM YOUR HISTORY:\nWinning patterns: '+topPatterns:''}
 ${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
 
-Analyze EVERY game in the odds list. Return a JSON array for ALL games. Each object must have:
-{"pick","sport","betType","odds"(integer),"homeOdds"(integer),"awayOdds"(integer),"totalLine"(number),"reasoning","keyFactors"(3-5 strings),"confidence"(50-80),"edge","shouldBet"(true/false),"skipReason"(string if shouldBet=false)}
-Set shouldBet=true only if edge>=4% AND sufficient stats confirmed. Set shouldBet=false with skipReason for all others. Return ALL games.
+Return a JSON object with two arrays: {"bets":[...picks to place...],"analysis":[...all games reviewed...]}.
+Each "bets" item: {"pick","sport","betType","odds","homeOdds","awayOdds","reasoning","keyFactors","confidence","edge"}
+Each "analysis" item: {"game":"Away @ Home","claudeProb":65,"marketImplied":57,"edge":8,"verdict":"BET"|"SKIP"|"NO VALUE","reason":"one sentence"}
+Include ALL games from the odds in analysis. Only include value picks in bets.
 No markdown.${pickContext?`\nFocus: ${pickContext}`:''}\`;
-    try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Analyze EVERY ${pickSport} game listed in the odds. For each game set shouldBet=true if edge>=4% with confirmed stats, otherwise shouldBet=false with a skipReason. Return ALL games as JSON array.`}],sys,false);
       let picks=[];
       const s=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
@@ -1528,22 +1528,26 @@ No markdown.${pickContext?`\nFocus: ${pickContext}`:''}\`;
         }
         if(end!==-1)picks=JSON.parse(s.slice(start,end+1));
       }
-      if(!Array.isArray(picks)||picks.length===0){addLog('No strong value found.');setError(`No value found in today's ${pickSport} lines. Try a different sport or add focus context.`);setLoadingMsg('');setLoading(false);return;}
+      // Handle both old array format and new {bets,analysis} format
+      let betsToPlace = picks;
+      let gameAnalysis = [];
+      if (!Array.isArray(picks) && picks.bets) {
+        betsToPlace = picks.bets || [];
+        gameAnalysis = picks.analysis || [];
+      }
       
-      // Show all game analysis in log
-      picks.forEach(p=>{
-        const shouldBet = p.shouldBet !== false;
-        if (!shouldBet) {
-          addLog(`📊 ${p.pick} — SKIP (${p.skipReason||'insufficient edge'}) | Claude: ${p.confidence}% vs market ${p.odds}`);
-        }
+      // Log full game analysis
+      gameAnalysis.forEach(g=>{
+        const icon = g.verdict==='BET'?'🟢':g.verdict==='SKIP'?'🟡':'🔴';
+        addLog(`${icon} ${g.game} — Claude: ${g.claudeProb}% vs mkt ${g.marketImplied}% | ${g.verdict}: ${g.reason}`);
       });
 
-      const betsToPlace = picks.filter(p=>p.shouldBet !== false);
-      if (betsToPlace.length === 0) {
-        addLog('📊 All games analyzed — no bets met threshold today.');
-        setError(`Analyzed ${picks.length} games — no value bets today. Check log for full analysis.`);
+      if(!Array.isArray(betsToPlace)||betsToPlace.length===0){
+        addLog(`📊 ${gameAnalysis.length} games analyzed — no value bets today.`);
+        setError(`Analyzed ${gameAnalysis.length} games — no value bets today. Check log for full analysis.`);
         setLoadingMsg('');setLoading(false);return;
       }
+      addLog(`📊 ${gameAnalysis.length} games analyzed | ${betsToPlace.length} bets | ${gameAnalysis.filter(g=>g.verdict==='SKIP').length} skipped`);
 
       betsToPlace.forEach(p=>{
         const odds=parseInt(p.odds)||-110;
