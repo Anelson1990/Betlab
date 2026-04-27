@@ -83,11 +83,11 @@ async function fetchPitcherStats(pitcherName) {
     const stats = statsData?.stats?.[0]?.splits?.[0]?.stat;
     const throws = detailData?.people?.[0]?.pitchHand?.code || null;
     
-    // Fetch Statcast velocity data and xERA in parallel
-    const [statcast, xeraMap] = await Promise.all([
-      fetchPitcherStatcast(pitcher.id),
-      fetchXERALeaderboard(),
-    ]);
+    // Statcast disabled - use basic stats only
+    const statcast = null;
+    const xeraMap = {};
+    const xstats = null;
+
     const xstats = xeraMap[String(pitcher.id)] || null;
     
     return stats ? {
