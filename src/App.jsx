@@ -1511,27 +1511,27 @@ ${sportAdjStr?'\nCALIBRATION ADJUSTMENTS (confidence is being auto-adjusted):\n'
 ${topPatterns?'\nREASONING PATTERNS FROM YOUR HISTORY:\nWinning patterns: '+topPatterns:''}
 ${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
 
-Return ONLY a JSON object with this exact structure:
-{"bets":[{"pick":"...","sport":"...","betType":"...","odds":0,"homeOdds":0,"awayOdds":0,"reasoning":"...","keyFactors":["..."],"confidence":0,"edge":"..."}],"analysis":[{"game":"...","claudeProb":0,"marketImplied":0,"edge":0,"verdict":"BET or SKIP or PASS","reason":"..."}]}
-Keep analysis reason under 20 words each. Include every game in analysis. Only real value picks in bets. No markdown.`;
-    setLoadingMsg('\U0001F9E0 Finding value...');
+Return ONLY a valid JSON array of your TOP 5 games ranked by edge. Each item must have:
+{"pick":"","sport":"","betType":"","odds":0,"homeOdds":0,"awayOdds":0,"reasoning":"2-3 sentences","keyFactors":[""],"confidence":0,"edge":"","shouldBet":true}
+Set shouldBet=true only if edge>=4% AND confirmed stats. Set shouldBet=false for interesting games worth showing but not betting.
+Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Analyze ALL ${pickSport} games. Return JSON: {bets:[...],analysis:[...]}.`}],sys,false);
       let betsToPlace=[];
       let gameAnalysis=[];
       try {
         const clean=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-        const objStart=clean.indexOf('{');
         const arrStart=clean.indexOf('[');
-        if(objStart!==-1&&(arrStart===-1||objStart<arrStart)){
+        const objStart=clean.indexOf('{');
+        if(arrStart!==-1&&(objStart===-1||arrStart<objStart)){
+          const parsed=JSON.parse(clean.slice(arrStart,clean.lastIndexOf(']')+1));
+          betsToPlace=parsed.filter(p=>p.shouldBet!==false);
+          gameAnalysis=parsed.filter(p=>p.shouldBet===false);
+        } else if(objStart!==-1){
           const parsed=JSON.parse(clean.slice(objStart,clean.lastIndexOf('}')+1));
-          betsToPlace=parsed.bets||[];
-          gameAnalysis=parsed.analysis||[];
-        } else if(arrStart!==-1){
-          betsToPlace=JSON.parse(clean.slice(arrStart,clean.lastIndexOf(']')+1));
+          betsToPlace=(parsed.bets||[]);
+          gameAnalysis=(parsed.analysis||[]);
         }
-      } catch(e){ addLog('Parse error: '+e.message); }
-      // Log full game analysis
       gameAnalysis.forEach(g=>{
         const icon = g.verdict==='BET'?'🟢':g.verdict==='SKIP'?'🟡':'🔴';
         addLog(`${icon} ${g.game} — Claude: ${g.claudeProb}% vs mkt ${g.marketImplied}% | ${g.verdict}: ${g.reason}`);
