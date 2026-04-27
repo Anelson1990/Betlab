@@ -1510,13 +1510,13 @@ ${backtestLessons?'\nBACKTEST FINDINGS (follow these rules):\n'+backtestLessons:
 ${sportAdjStr?'\nCALIBRATION ADJUSTMENTS (confidence is being auto-adjusted):\n'+sportAdjStr:''}
 ${topPatterns?'\nREASONING PATTERNS FROM YOUR HISTORY:\nWinning patterns: '+topPatterns:''}
 ${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
+${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
 
-Return a JSON object with two arrays: {"bets":[...picks to place...],"analysis":[...all games reviewed...]}.
-Each "bets" item: {"pick","sport","betType","odds","homeOdds","awayOdds","reasoning","keyFactors","confidence","edge"}
-Each "analysis" item: {"game":"Away @ Home","claudeProb":65,"marketImplied":57,"edge":8,"verdict":"BET"|"SKIP"|"NO VALUE","reason":"one sentence"}
-Include ALL games from the odds in analysis. Only include value picks in bets.
-No markdown.${pickContext?`\nFocus: ${pickContext}`:''}\`;
-      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Analyze EVERY ${pickSport} game listed in the odds. For each game set shouldBet=true if edge>=4% with confirmed stats, otherwise shouldBet=false with a skipReason. Return ALL games as JSON array.`}],sys,false);
+Return a JSON object with two arrays: {"bets":[picks to place],"analysis":[all games reviewed]}.
+Each bets item: {pick,sport,betType,odds,homeOdds,awayOdds,reasoning,keyFactors,confidence,edge}
+Each analysis item: {game,claudeProb,marketImplied,edge,verdict,reason}
+Include ALL games in analysis. Only value picks in bets. No markdown.${pickContext?`\nFocus: ${pickContext}`:''}\`;
+
       let picks=[];
       if (start!==-1){
         let depth=0,inStr=false,esc=false,end=-1;
