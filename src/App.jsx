@@ -990,7 +990,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
       const lesson = {
         id:uid(), date:new Date().toISOString().split('T')[0],
         sport:bet.sport, pick:bet.pick, result:bet.result,
-        lesson:raw, source:'groq',
+        lesson:raw, source:'groq', modelSource:'groq',
         category:tag,
         title:`${bet.pick} — ${bet.result?.toUpperCase()}`,
         body:raw.replace(/\[[A-Z_]+\]/,'').trim(),
@@ -1449,13 +1449,21 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     const reasoningPatterns = analyzeReasoningPatterns(gradedAI);
     const topPatterns = reasoningPatterns.slice(0,5).map(p=>`"${p.keyword}": ${p.winRate}% WR (${p.edge>0?'+':''}${p.edge}% edge vs baseline)`).join(', ');
     const avoidPatterns = reasoningPatterns.filter(p=>parseFloat(p.edge)<-5).map(p=>p.keyword).join(', ');
-    // Add backtest results to context
+    // Add backtest results to context - Claude only sees its own lessons
     const backtestLessons = state.lessons
-      .filter(l=>l.source==='backtest')
+      .filter(l=>l.source==='backtest' && (l.modelSource==='claude' || l.pick?.includes('AI BACKTEST')))
       .slice(0,3)
       .map(l=>l.lesson?.slice(0,800))
       .filter(Boolean)
       .join('\n---\n');
+    
+    // Claude-specific recent lessons
+    const claudeLessons = state.lessons
+      .filter(l=>l.source==='ai'||l.modelSource==='claude')
+      .slice(0,5)
+      .map(l=>(l.takeaway||l.body||l.lesson)?.slice(0,150))
+      .filter(Boolean)
+      .join(' | ');
 
     // Fetch today's games with stats for Claude context
     let gamesWithStats = '';
@@ -2351,7 +2359,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
 
       // Step 3: Build app context (betting history + tuning)
       const appContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
-      const groqBacktest = state.lessons.filter(l=>l.source==='backtest').slice(0,2).map(l=>l.lesson?.slice(0,200)).filter(Boolean).join('\n');
+      const groqBacktest = state.lessons.filter(l=>l.source==='backtest'&&(l.modelSource==='groq'||l.pick?.includes('GROQ BACKTEST'))).slice(0,2).map(l=>l.lesson?.slice(0,200)).filter(Boolean).join('\n');
 
       // Step 4: Run Groq AI analysis with full context
       const analyzeRes = await fetch('/api/analyze', {
@@ -2507,6 +2515,7 @@ Best spots: ${report.best_spots?.join(', ')}
 Avoid: ${report.avoid?.join(', ')}
 Rules: ${report.rules?.join(' | ')}`,
         source: 'backtest',
+        modelSource: source === 'ai' ? 'claude' : source,
         report,
       };
       setState(s=>({...s, lessons:[lesson,...s.lessons].slice(0,80).slice(0,80)}));
