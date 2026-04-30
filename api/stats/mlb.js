@@ -307,6 +307,25 @@ async function fetchStatcast(pitcherId) {
 }
 
 
+async function fetchMLBLineup(teamId, isHome) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const r = await fetch(`${MLB_API}/schedule?sportId=1&date=${today}&hydrate=lineups&teamId=${teamId}`);
+    if (!r.ok) return null;
+    const data = await r.json();
+    const game = data.dates?.[0]?.games?.[0];
+    if (!game?.lineups) return null;
+    const players = isHome ? game.lineups.homePlayers : game.lineups.awayPlayers;
+    if (!players?.length) return null;
+    // Return top 3 batters with position
+    return players.slice(0, 6).map((p, idx) => ({
+      order: idx + 1,
+      name: p.fullName,
+      position: p.primaryPosition?.abbreviation,
+    }));
+  } catch { return null; }
+}
+
 async function fetchMLBInjuries(teamName) {
   try {
     const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/injuries');
@@ -353,10 +372,14 @@ export default async function handler(req, res) {
     ]);
 
     const homeBullpen = null; const awayBullpen = null;
+    const [homeLineup, awayLineup] = await Promise.all([
+      homeId ? fetchMLBLineup(homeId, true) : null,
+      awayId ? fetchMLBLineup(awayId, false) : null,
+    ]);
     return res.status(200).json({
       success:true,
-      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries, bullpen:homeBullpen },
-      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, last5:awayForm?.last5, last3:awayForm?.last3, avgRS_L5:awayForm?.avgRS_L5, avgRA_L5:awayForm?.avgRA_L5, probablePitcher:awayPitcher, injuries:awayInjuries, bullpen:awayBullpen },
+      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries, bullpen:homeBullpen, lineup:homeLineup },
+      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, last5:awayForm?.last5, last3:awayForm?.last3, avgRS_L5:awayForm?.avgRS_L5, avgRA_L5:awayForm?.avgRA_L5, probablePitcher:awayPitcher, injuries:awayInjuries, bullpen:awayBullpen, lineup:awayLineup },
       espnOdds, espnWinProb,
       fetchedAt: new Date().toISOString(),
     });

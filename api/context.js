@@ -155,6 +155,7 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
       if (home.probablePitcher.era) lines.push(`    ERA: ${home.probablePitcher.era} | WHIP: ${home.probablePitcher.whip} | IP: ${home.probablePitcher.inningsPitched}`);
     }
     if (home.bullpen) lines.push(`  Bullpen: ${home.bullpen.status}${home.bullpen.closerUsed?' — closer used':''}`); 
+    if (home.lineup?.length) lines.push(`  Today's Lineup (1-6): ${home.lineup.map(p=>`${p.order}.${p.name}(${p.position})`).join(', ')}`);
     if (home.recentForm) lines.push(`  Last 10: ${home.recentForm}`);
     if (home.homeRecord) lines.push(`  Home: ${home.homeRecord} | Away: ${home.awayRecord}`);
     if (home.streak) lines.push(`  Streak: ${home.streak}`);
@@ -172,6 +173,7 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
       if (away.probablePitcher.era) lines.push(`    ERA: ${away.probablePitcher.era} | WHIP: ${away.probablePitcher.whip} | IP: ${away.probablePitcher.inningsPitched}`);
     }
     if (away.bullpen) lines.push(`  Bullpen: ${away.bullpen.status}${away.bullpen.closerUsed?' — closer used':''}`); 
+    if (away.lineup?.length) lines.push(`  Today's Lineup (1-6): ${away.lineup.map(p=>`${p.order}.${p.name}(${p.position})`).join(', ')}`);
     if (away.recentForm) lines.push(`  Last 10: ${away.recentForm}`);
     if (away.homeRecord) lines.push(`  Home: ${away.homeRecord} | Away: ${away.awayRecord}`);
     if (away.streak) lines.push(`  Streak: ${away.streak}`);
