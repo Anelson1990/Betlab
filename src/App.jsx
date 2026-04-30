@@ -996,7 +996,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
         body:raw.replace(/\[[A-Z_]+\]/,'').trim(),
         takeaway:raw.split('.')[0].replace(/\[[A-Z_]+\]/,'').trim(),
       };
-      setState(s=>({...s, lessons:[lesson,...s.lessons].slice(0,80).slice(0,80), bets:s.bets.map(b=>b.id===bet.id?{...b,lesson:raw}:b)}));
+      setState(s=>({...s, lessons:[{...lesson,modelSource:"claude"},...s.lessons].slice(0,80), bets:s.bets.map(b=>b.id===bet.id?{...b,lesson:raw}:b)}));
       addLog(`🧠 Groq pick analyzed`);
     } catch(e) { addLog('❌ Analyze failed: '+e.message); }
     setTeaching(null);
@@ -2518,7 +2518,7 @@ Rules: ${report.rules?.join(' | ')}`,
         modelSource: source === 'ai' ? 'claude' : source,
         report,
       };
-      setState(s=>({...s, lessons:[lesson,...s.lessons].slice(0,80).slice(0,80)}));
+      setState(s=>({...s, lessons:[{...lesson,modelSource:"claude"},...s.lessons].slice(0,80)}));
       addLog(`✅ ${source} backtest complete — grade: ${report.overall_grade}`);
 
     } catch(e) { addLog(`❌ Backtest failed: ${e.message}`); }
