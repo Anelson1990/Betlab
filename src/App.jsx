@@ -2390,6 +2390,14 @@ Be specific with numbers. This goes directly to the model developer.`}],
           modelProb:analyzeData.analysis.side===game.homeTeam?simData.simulation?.homeWinProb:simData.simulation?.awayWinProb,
           edge:`${analyzeData.analysis.confidence}% conf`,
           simConfidence:analyzeData.analysis.confidence,
+          simResult:{
+            homeWinProb:simData.simulation?.homeWinProb,
+            awayWinProb:simData.simulation?.awayWinProb,
+            log5Home:simData.log5?.homeWinProb||null,
+            consensusHome:simData.consensusProb?.home||null,
+            methodsAgree:simData.methodsAgree,
+            nrfiProb:simData.simulation?.nrfiProb||null,
+          },
         });
         addLog(`🤖 Groq AI: ${analyzeData.analysis.side} (${analyzeData.analysis.confidence}% conf)`);
       }
