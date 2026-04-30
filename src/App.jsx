@@ -147,8 +147,11 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, onTail,
           )}
           {bet.simResult&&(
             <div style={{marginTop:2,display:'flex',gap:4,flexWrap:'wrap'}}>
-              {bet.simResult.homeWinProb!=null&&<span style={{fontSize:9,color:'#475569'}}>Home {bet.simResult.homeWinProb}%</span>}
-              {bet.simResult.awayWinProb!=null&&<span style={{fontSize:9,color:'#475569'}}>Away {bet.simResult.awayWinProb}%</span>}
+              {bet.simResult.homeWinProb!=null&&<span style={{fontSize:9,color:'#475569'}}>MC Home {bet.simResult.homeWinProb}%</span>}
+              {bet.simResult.awayWinProb!=null&&<span style={{fontSize:9,color:'#475569'}}>MC Away {bet.simResult.awayWinProb}%</span>}
+              {bet.simResult.log5Home!=null&&<span style={{fontSize:9,color:'#22c55e'}}>Log5 {bet.simResult.log5Home}%</span>}
+              {bet.simResult.consensusHome!=null&&<span style={{fontSize:9,color:'#fbbf24',fontWeight:700}}>Consensus {bet.simResult.consensusHome}%</span>}
+              {bet.simResult.methodsAgree===false&&<span style={{fontSize:9,color:'#ef4444'}}>⚠️ Methods Disagree</span>}
               {bet.simResult.overProb!=null&&<span style={{fontSize:9,color:'#475569'}}>O {bet.simResult.overProb}%</span>}
               {bet.simResult.underProb!=null&&<span style={{fontSize:9,color:'#475569'}}>U {bet.simResult.underProb}%</span>}
               {bet.simResult.nrfiProb!=null&&<span style={{fontSize:9,color:'#475569'}}>NRFI {bet.simResult.nrfiProb}%</span>}
