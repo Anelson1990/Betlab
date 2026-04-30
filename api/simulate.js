@@ -85,6 +85,37 @@ function statsToLambda(sport, teamStats, isHome, opponentStats) {
   return Math.max(10, ppg * (isHome ? homeAdv : 1/homeAdv));
 }
 
+// Log5 + Pythagorean MLB win probability calculator
+function mlbLog5WinProb(homeStats, awayStats) {
+  try {
+    // Pythagorean win% from runs scored/allowed
+    const homeRS = parseFloat(homeStats?.batting?.runsPerGame) || 4.5;
+    const homeRA = parseFloat(homeStats?.pitching?.era) || 4.0;
+    const awayRS = parseFloat(awayStats?.batting?.runsPerGame) || 4.2;
+    const awayRA = parseFloat(awayStats?.pitching?.era) || 4.0;
+
+    // Pythagorean expectation (exponent 1.83 is optimal for MLB per research)
+    const exp = 1.83;
+    const homePythag = Math.pow(homeRS, exp) / (Math.pow(homeRS, exp) + Math.pow(homeRA, exp));
+    const awayPythag = Math.pow(awayRS, exp) / (Math.pow(awayRS, exp) + Math.pow(awayRA, exp));
+
+    // Pitcher adjustment - shift win% based on today's SP vs league avg (4.00 ERA)
+    const leagueAvgERA = 4.00;
+    const homeSPEra = parseFloat(homeStats?.probablePitcher?.era) || leagueAvgERA;
+    const awaySPEra = parseFloat(awayStats?.probablePitcher?.era) || leagueAvgERA;
+    const homePitcherAdj = (leagueAvgERA - homeSPEra) * 0.02; // each 1 ERA pt = 2% shift
+    const awayPitcherAdj = (leagueAvgERA - awaySPEra) * 0.02;
+
+    const homeAdj = Math.max(0.20, Math.min(0.80, homePythag + homePitcherAdj + 0.02)); // +2% home field
+    const awayAdj = Math.max(0.20, Math.min(0.80, awayPythag + awayPitcherAdj));
+
+    // Log5 formula: P(A beats B) = (A - A*B) / (A + B - 2*A*B)
+    const log5Home = (homeAdj - homeAdj * awayAdj) / (homeAdj + awayAdj - 2 * homeAdj * awayAdj);
+    
+    return Math.max(0.25, Math.min(0.75, log5Home));
+  } catch { return null; }
+}
+
 function runSimulation(sport, homeImpliedProb, awayImpliedProb, homeStatLambda=null, awayStatLambda=null) {
   let homeWins = 0, awayWins = 0, ties = 0;
   const homeScores = [], awayScores = [];
@@ -177,29 +208,53 @@ export default async function handler(req, res) {
   }
 
   const sim = runSimulation(sport, homeNoVig/100, awayNoVig/100, homeStatLambda, awayStatLambda);
-  // Edge = sim prob (from stats) vs market implied prob
-  const homeEdge = sim.homeWinProb - homeNoVig;
-  const awayEdge = sim.awayWinProb - awayNoVig;
-  const homeEV = calculateEV(sim.homeWinProb, homeOdds);
-  const awayEV = calculateEV(sim.awayWinProb, awayOdds);
-  const homeKelly = calculateKelly(sim.homeWinProb, homeOdds);
-  const awayKelly = calculateKelly(sim.awayWinProb, awayOdds);
+  
+  // Log5 + Pythagorean for MLB (independent method)
+  let log5 = null;
+  if (sport === 'MLB' && homeStats && awayStats) {
+    const log5HomeProb = mlbLog5WinProb(homeStats, awayStats);
+    if (log5HomeProb) {
+      log5 = {
+        homeWinProb: Math.round(log5HomeProb * 1000) / 10,
+        awayWinProb: Math.round((1 - log5HomeProb) * 1000) / 10,
+      };
+    }
+  }
 
-  const MIN_EDGE = 3;
+  // Consensus: blend MC sim and Log5 when both available
+  const mcHomeProb = sim.homeWinProb;
+  const consensusHomeProb = log5 ? (mcHomeProb * 0.5 + log5.homeWinProb * 0.5) : mcHomeProb;
+  const consensusAwayProb = 100 - consensusHomeProb;
+
+  // Edge = consensus prob vs market implied prob
+  const homeEdge = consensusHomeProb - homeNoVig;
+  const awayEdge = consensusAwayProb - awayNoVig;
+  const homeEV = calculateEV(consensusHomeProb, homeOdds);
+  const awayEV = calculateEV(consensusAwayProb, awayOdds);
+  const homeKelly = calculateKelly(consensusHomeProb, homeOdds);
+  const awayKelly = calculateKelly(consensusAwayProb, awayOdds);
+
+  // Check if both methods agree (within 5%)
+  const methodsAgree = log5 ? Math.abs(mcHomeProb - log5.homeWinProb) <= 5 : true;
+
+  const MIN_EDGE = 7; // raised from 3% to 7% per backtest research
   let recommendation = 'PASS', recommendedSide = null, confidence = 0, recommendedUnits = 0;
   if (homeEdge > awayEdge && homeEdge >= MIN_EDGE && homeEV >= MIN_EDGE) {
     recommendation='BET HOME'; recommendedSide=homeTeam;
     confidence=Math.min(99,Math.round(50+homeEdge*3));
+    if (log5 && !methodsAgree) confidence = Math.round(confidence * 0.85); // reduce if methods disagree
     recommendedUnits=homeKelly.halfKelly;
   } else if (awayEdge >= MIN_EDGE && awayEV >= MIN_EDGE) {
     recommendation='BET AWAY'; recommendedSide=awayTeam;
     confidence=Math.min(99,Math.round(50+awayEdge*3));
+    if (log5 && !methodsAgree) confidence = Math.round(confidence * 0.85);
     recommendedUnits=awayKelly.halfKelly;
   }
 
   res.status(200).json({ success:true, sport, homeTeam, awayTeam, homeOdds, awayOdds,
     homeImpliedProb:Math.round(homeImpl*10)/10, awayImpliedProb:Math.round(awayImpl*10)/10,
     homeNoVigProb:Math.round(homeNoVig*10)/10, awayNoVigProb:Math.round(awayNoVig*10)/10,
-    simulation:sim, analysis:{homeEdge:Math.round(homeEdge*10)/10, awayEdge:Math.round(awayEdge*10)/10, homeEV, awayEV, homeKelly, awayKelly},
+    simulation:sim, log5, consensusProb:{home:Math.round(consensusHomeProb*10)/10, away:Math.round(consensusAwayProb*10)/10}, methodsAgree,
+    analysis:{homeEdge:Math.round(homeEdge*10)/10, awayEdge:Math.round(awayEdge*10)/10, homeEV, awayEV, homeKelly, awayKelly},
     recommendation, recommendedSide, confidence, recommendedUnits });
 }
