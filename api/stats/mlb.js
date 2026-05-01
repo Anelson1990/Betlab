@@ -74,10 +74,12 @@ async function fetchPitcherStats(pitcherName) {
     const data = await r.json();
     const pitcher = data.people?.[0];
     if (!pitcher) return null;
+    const timeout = (ms) => new Promise((_,r) => setTimeout(() => r(new Error('timeout')), ms));
+    const safeFetch = (url) => Promise.race([fetch(url), timeout(4000)]);
     const [statsR, detailR, gameLogR] = await Promise.all([
-      fetch(`${MLB_API}/people/${pitcher.id}/stats?stats=season&group=pitching&season=2026`),
-      fetch(`${MLB_API}/people/${pitcher.id}`),
-      fetch(`${MLB_API}/people/${pitcher.id}/stats?stats=gameLog&group=pitching&season=2026`),
+      safeFetch(`${MLB_API}/people/${pitcher.id}/stats?stats=season&group=pitching&season=2026`),
+      safeFetch(`${MLB_API}/people/${pitcher.id}`),
+      safeFetch(`${MLB_API}/people/${pitcher.id}/stats?stats=gameLog&group=pitching&season=2026`),
     ]);
     const statsData = statsR.ok ? await statsR.json() : null;
     const detailData = detailR.ok ? await detailR.json() : null;
