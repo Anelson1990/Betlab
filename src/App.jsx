@@ -1487,14 +1487,23 @@ CRITICAL RULES:
 - Only bet games CONFIRMED for TODAY in the stats data
 - For each game, pick ONE SIDE ONLY — never bet both teams in the same game
 - Process each game in order:
-  1. Calculate TRUE win probability using stats (pitcher ERA, team form, injuries, home/away splits, rest days)
+  1. Calculate TRUE win probability using WHIP first, ERA second, then L10 form
   2. Compare to MARKET implied probability from the odds
-  3. Only recommend if your true probability EXCEEDS market by 4%+ 
+  3. Only recommend if your true probability EXCEEDS market by 7%+
   4. Pick the side with the HIGHEST edge — never recommend both sides
 - For MLB: use CONFIRMED pitcher from stats, never guess
 - For NHL: use CONFIRMED goalie from stats
 - Never fabricate stats — only use what is provided
-- Maximum 3 picks total — quality over quantity
+- Pass on at least 50% of games — be highly selective
+- Maximum 2 picks total — quality over quantity
+
+CALIBRATION RULES (from 455-game historical backtest):
+- ONLY bet 75%+ confidence — below 75% loses money historically
+- WHIP gap is 4x more predictive than ERA gap — weight WHIP heavily
+- Pitching reasoning wins 8% more than offense reasoning — de-emphasize offensive stats
+- Away picks hit only 44% — require strong evidence before picking away team
+- L3 starts trend matters — DECLINING pitchers are unreliable regardless of season ERA
+- Pass when reasoning relies primarily on offensive stats or vague advantage language
 
 PLAYOFF CONTEXT (NHL/NBA):
 - Playoff games are fundamentally different from regular season

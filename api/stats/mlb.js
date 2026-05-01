@@ -74,22 +74,47 @@ async function fetchPitcherStats(pitcherName) {
     const data = await r.json();
     const pitcher = data.people?.[0];
     if (!pitcher) return null;
-    const [statsR, detailR] = await Promise.all([
-      fetch(`${MLB_API}/people/${pitcher.id}/stats?stats=season&group=pitching&season=2025`),
+    const [statsR, detailR, gameLogR] = await Promise.all([
+      fetch(`${MLB_API}/people/${pitcher.id}/stats?stats=season&group=pitching&season=2026`),
       fetch(`${MLB_API}/people/${pitcher.id}`),
+      fetch(`${MLB_API}/people/${pitcher.id}/stats?stats=gameLog&group=pitching&season=2026`),
     ]);
     const statsData = statsR.ok ? await statsR.json() : null;
     const detailData = detailR.ok ? await detailR.json() : null;
+    const gameLogData = gameLogR.ok ? await gameLogR.json() : null;
     const stats = statsData?.stats?.[0]?.splits?.[0]?.stat;
     const throws = detailData?.people?.[0]?.pitchHand?.code || null;
     
-    // Statcast disabled - use basic stats only
-    const statcast = null;
-    const xeraMap = {};
-    const xstats = null;
-
-    
+    // Last 3 starts rolling stats
+    let last3 = null;
+    try {
+      const gamelog = gameLogData?.stats?.[0]?.splits || [];
+      const starts = gamelog.filter(g=>parseFloat(g.stat?.inningsPitched||0)>=1.0).slice(-3);
+      if (starts.length >= 2) {
+        const er3 = starts.reduce((a,g)=>a+parseFloat(g.stat?.earnedRuns||0),0);
+        const ip3 = starts.reduce((a,g)=>a+parseFloat(g.stat?.inningsPitched||0),0);
+        const h3 = starts.reduce((a,g)=>a+parseFloat(g.stat?.hits||0),0);
+        const bb3 = starts.reduce((a,g)=>a+parseFloat(g.stat?.baseOnBalls||0),0);
+        const k3 = starts.reduce((a,g)=>a+parseFloat(g.stat?.strikeOuts||0),0);
+        const era3 = ip3>0 ? parseFloat((er3*9/ip3).toFixed(2)) : null;
+        const seasonEra = parseFloat(stats?.era||0);
+        last3 = {
+          starts: starts.length, era: era3,
+          whip: ip3>0 ? parseFloat(((h3+bb3)/ip3).toFixed(2)) : null,
+          ip: parseFloat(ip3.toFixed(1)), k: k3,
+          trend: era3&&seasonEra ? (era3>seasonEra+1.0?'DECLINING⚠️':era3<seasonEra-1.0?'IMPROVING✅':'STABLE') : null
+        };
+      }
+    } catch {}
     return stats ? {
+      name: pitcherName, throws,
+      era: stats.era, whip: stats.whip,
+      inningsPitched: stats.inningsPitched,
+      strikeouts: stats.strikeOuts,
+      walks: stats.baseOnBalls,
+      homeRunsAllowed: stats.homeRuns,
+      last3,
+    } : { name: pitcherName, throws, last3 };
       name: pitcherName,
       throws: throws,
       era: stats.era,
