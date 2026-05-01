@@ -201,8 +201,16 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     
     // Pitcher ERA comparison
     if (home.probablePitcher?.era && away.probablePitcher?.era) {
-      const eraGap = (parseFloat(away.probablePitcher.era) - parseFloat(home.probablePitcher.era)).toFixed(2);
-      lines.push(`  ERA Gap: Home SP ${home.probablePitcher.era} vs Away SP ${away.probablePitcher.era} (${eraGap>0?'+':''}${eraGap} favor home)`);
+      const homeEra = parseFloat(home.probablePitcher.era);
+      const awayEra = parseFloat(away.probablePitcher.era);
+      const eraGap = (awayEra - homeEra).toFixed(2);
+      const eraFavor = eraGap > 0.5 ? 'favor HOME pitcher' : eraGap < -0.5 ? 'favor AWAY pitcher' : 'even matchup';
+      lines.push(`  ERA Gap: Home SP ${home.probablePitcher.era} vs Away SP ${away.probablePitcher.era} (${eraGap>0?'+':''}${eraGap} — ${eraFavor})`);
+      const homeWhip = parseFloat(home.probablePitcher.whip);
+      const awayWhip = parseFloat(away.probablePitcher.whip);
+      const whipGap = (awayWhip - homeWhip).toFixed(2);
+      const whipFavor = whipGap > 0.1 ? 'WHIP favors HOME' : whipGap < -0.1 ? 'WHIP favors AWAY' : 'WHIP even';
+      lines.push(`  WHIP Gap: Home SP ${home.probablePitcher.whip} vs Away SP ${away.probablePitcher.whip} (${whipFavor})`);
     }
     
     // L3/L5 rolling form
