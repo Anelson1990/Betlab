@@ -115,18 +115,6 @@ async function fetchPitcherStats(pitcherName) {
       homeRunsAllowed: stats.homeRuns,
       last3,
     } : { name: pitcherName, throws, last3 };
-      name: pitcherName,
-      throws: throws,
-      era: stats.era,
-      whip: stats.whip,
-      inningsPitched: stats.inningsPitched,
-      strikeouts: stats.strikeOuts,
-      walks: stats.baseOnBalls,
-      homeRunsAllowed: stats.homeRuns,
-      xera: xstats?.xera || null,
-      xwoba: xstats?.xwoba || null,
-      statcast: statcast,
-    } : { name: pitcherName, throws, statcast, xera: xstats?.xera||null };
   } catch { return { name: pitcherName }; }
 }
 
