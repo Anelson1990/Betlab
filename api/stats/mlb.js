@@ -28,7 +28,7 @@ function getTeamId(teamName) {
 
 async function fetchTeamStats(teamId) {
   try {
-    const r = await fetch(`${MLB_API}/teams/${teamId}/stats?stats=season&group=pitching,hitting&season=2025`);
+    const r = await fetch(`${MLB_API}/teams/${teamId}/stats?stats=season&group=pitching,hitting&season=2026`);
     if (!r.ok) return null;
     const data = await r.json();
     const hitting = data.stats?.find(s=>s.group?.displayName==='hitting')?.splits?.[0]?.stat;
@@ -286,7 +286,7 @@ async function fetchESPNWinProb(espnGameId) {
 
 async function fetchRecentForm(teamId) {
   try {
-    const r = await fetch(`${MLB_API}/teams/${teamId}/stats?stats=gameLog&group=hitting&season=2025`);
+    const r = await fetch(`${MLB_API}/teams/${teamId}/stats?stats=gameLog&group=hitting&season=2026`);
     if (!r.ok) return null;
     const data = await r.json();
     const games = data.stats?.[0]?.splits?.slice(-10)||[];
