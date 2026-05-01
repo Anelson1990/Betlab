@@ -390,13 +390,14 @@ export default async function handler(req, res) {
       fetchTodayPitcher(awayId),
     ]);
 
+    const _tout = (p) => Promise.race([p, new Promise(r=>setTimeout(()=>r(null),4000))]);
     const [homePitcher, awayPitcher, homeInjuries, awayInjuries, espnOdds, espnWinProb] = await Promise.all([
-      homePitcherName ? fetchPitcherStats(homePitcherName) : null,
-      awayPitcherName ? fetchPitcherStats(awayPitcherName) : null,
-      fetchMLBInjuries(home),
-      fetchMLBInjuries(away),
-      espnGameId ? fetchESPNOdds(espnGameId) : Promise.resolve(null),
-      espnGameId ? fetchESPNWinProb(espnGameId) : Promise.resolve(null),
+      homePitcherName ? _tout(fetchPitcherStats(homePitcherName)) : null,
+      awayPitcherName ? _tout(fetchPitcherStats(awayPitcherName)) : null,
+      _tout(fetchMLBInjuries(home)),
+      _tout(fetchMLBInjuries(away)),
+      espnGameId ? _tout(fetchESPNOdds(espnGameId)) : Promise.resolve(null),
+      espnGameId ? _tout(fetchESPNWinProb(espnGameId)) : Promise.resolve(null),
     ]);
 
     const homeBullpen = null; const awayBullpen = null;
