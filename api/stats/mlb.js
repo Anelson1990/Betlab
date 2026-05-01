@@ -69,7 +69,8 @@ async function fetchTodayPitcher(teamId) {
 
 async function fetchPitcherStats(pitcherName) {
   try {
-    const r = await fetch(`${MLB_API}/people/search?names=${encodeURIComponent(pitcherName)}`);
+    const _t = (ms) => new Promise((_,r) => setTimeout(() => r(new Error('timeout')), ms));
+    const r = await Promise.race([fetch(`${MLB_API}/people/search?names=${encodeURIComponent(pitcherName)}`), _t(3000)]);
     if (!r.ok) return null;
     const data = await r.json();
     const pitcher = data.people?.[0];
