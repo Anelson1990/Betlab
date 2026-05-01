@@ -63,26 +63,37 @@ async function fetchTodayPitcher(teamId) {
     if (!game) return null;
     const isHome = game.teams?.home?.team?.id===teamId;
     const pitcher = isHome?game.teams?.home?.probablePitcher:game.teams?.away?.probablePitcher;
-    return pitcher?.fullName||null;
+    if (!pitcher) return null;
+    return { name: pitcher.fullName, id: pitcher.id };
   } catch { return null; }
 }
 
-async function fetchPitcherStats(pitcherName) {
+async function fetchPitcherStats(pitcherInput) {
   try {
     const _t = (ms) => new Promise((_,r) => setTimeout(() => r(new Error('timeout')), ms));
-    const r = await Promise.race([fetch(`${MLB_API}/people/search?names=${encodeURIComponent(pitcherName)}`), _t(3000)]);
-    if (!r.ok) return null;
-    const data = await r.json();
-    const pitcher = data.people?.[0];
-    if (!pitcher) return null;
+    // Accept either {name, id} object or plain string name
+    let pitcherName, pitcherId;
+    if (typeof pitcherInput === 'object' && pitcherInput?.id) {
+      pitcherName = pitcherInput.name;
+      pitcherId = pitcherInput.id;
+    } else {
+      pitcherName = pitcherInput;
+      const r = await Promise.race([fetch(`${MLB_API}/people/search?names=${encodeURIComponent(pitcherName)}`), _t(3000)]);
+      if (!r.ok) return null;
+      const data = await r.json();
+      const pitcher = data.people?.[0];
+      if (!pitcher) return null;
+      pitcherId = pitcher.id;
+    }
+    const pitcher = { id: pitcherId };
     const timeout = (ms) => new Promise((_,r) => setTimeout(() => r(new Error('timeout')), ms));
     const safeFetch = (url, ms=2500) => Promise.race([fetch(url), timeout(ms)]);
     const [statsR, detailR] = await Promise.all([
-      safeFetch(`${MLB_API}/people/${pitcher.id}/stats?stats=season&group=pitching&season=2026`),
-      safeFetch(`${MLB_API}/people/${pitcher.id}`),
+      safeFetch(`${MLB_API}/people/${pitcherId}/stats?stats=season&group=pitching&season=2026`),
+      safeFetch(`${MLB_API}/people/${pitcherId}`),
     ]);
     // Fetch gamelog separately with shorter timeout - optional
-    const gameLogR = await safeFetch(`${MLB_API}/people/${pitcher.id}/stats?stats=gameLog&group=pitching&season=2026`, 2000).catch(()=>null);
+    const gameLogR = await safeFetch(`${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=2026`, 2000).catch(()=>null);
     const statsData = statsR.ok ? await statsR.json() : null;
     const detailData = detailR.ok ? await detailR.json() : null;
     const gameLogData = gameLogR.ok ? await gameLogR.json() : null;
