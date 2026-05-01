@@ -157,6 +157,8 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     }
     if (home.bullpen) lines.push(`  Bullpen: ${home.bullpen.status}${home.bullpen.closerUsed?' — closer used':''}`); 
     if (home.lineup?.length) lines.push(`  Today's Lineup (1-6): ${home.lineup.map(p=>`${p.order}.${p.name}(${p.position})`).join(', ')}`);
+    if (home.daysRest!=null) lines.push(`  Rest: ${home.daysRest} day(s)${home.daysRest===0?' ⚠️ NO REST':home.daysRest>=2?' ✅ Well rested':''}`);
+    if (home.platoon) lines.push(`  Platoon: ${home.platoon.note}`);
     if (home.recentForm) lines.push(`  Last 10: ${home.recentForm}`);
     if (home.homeRecord) lines.push(`  Home: ${home.homeRecord} | Away: ${home.awayRecord}`);
     if (home.streak) lines.push(`  Streak: ${home.streak}`);
@@ -176,6 +178,8 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
     }
     if (away.bullpen) lines.push(`  Bullpen: ${away.bullpen.status}${away.bullpen.closerUsed?' — closer used':''}`); 
     if (away.lineup?.length) lines.push(`  Today's Lineup (1-6): ${away.lineup.map(p=>`${p.order}.${p.name}(${p.position})`).join(', ')}`);
+    if (away.daysRest!=null) lines.push(`  Rest: ${away.daysRest} day(s)${away.daysRest===0?' ⚠️ NO REST':away.daysRest>=2?' ✅ Well rested':''}`);
+    if (away.platoon) lines.push(`  Platoon: ${away.platoon.note}`);
     if (away.recentForm) lines.push(`  Last 10: ${away.recentForm}`);
     if (away.homeRecord) lines.push(`  Home: ${away.homeRecord} | Away: ${away.awayRecord}`);
     if (away.streak) lines.push(`  Streak: ${away.streak}`);
