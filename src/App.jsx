@@ -1536,7 +1536,7 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
         const objStart=clean.indexOf('{');
         if(arrStart!==-1&&(objStart===-1||arrStart<objStart)){
           const parsed=JSON.parse(clean.slice(arrStart,clean.lastIndexOf(']')+1));
-          betsToPlace=parsed.filter(p=>p.shouldBet!==false);
+          betsToPlace=parsed.filter(p=>p.shouldBet===true);
           gameAnalysis=parsed.filter(p=>p.shouldBet===false);
         } else if(objStart!==-1){
           const parsed=JSON.parse(clean.slice(objStart,clean.lastIndexOf('}')+1));
