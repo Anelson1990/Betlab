@@ -14,10 +14,20 @@ PLAYOFF CONTEXT (NHL/NBA):
 - Rest advantage: team with more days off has meaningful edge in Game 1
 
 MATCHUP SCORING:
+- WHIP gap is more predictive than ERA gap — weight WHIP first
 - Starter ERA/GAA difference >1.0 = strong pitching/goalie edge
+- L3 starts ERA/WHIP trend matters more than season ERA — check for DECLINING⚠️ starters
 - Rest advantage of 2+ days = meaningful edge
 - Home/away splits matter more in playoffs than regular season
 - Flag when confidence is BELOW market implied probability — that is a PASS not a BET
+
+CALIBRATION RULES (from 455-game MLB historical backtest):
+- Only recommend BET at 75%+ confidence — lower confidence loses money
+- Away picks hit only 44% historically — require strong evidence for away team picks
+- Pitching-focused analysis wins 8% more than offense-focused — de-emphasize offensive stats
+- Pass on at least 50% of games — be highly selective, quality over quantity
+- DECLINING⚠️ pitchers (L3 ERA worse than season ERA by 1.0+) are unreliable — downgrade confidence
+- Minimum 7% edge over market required — 4% is not enough after juice
 
 Return ONLY a valid JSON object with no markdown, no explanation, no code blocks:
 {"verdict":"BET","side":"NRFI or YRFI or team name","confidence":72,"edge_summary":"brief edge description","simulation_read":"what sims show","sharp_factors":"factors supporting bet","risk_factors":"risks","line_value":"line assessment","recommended_units":1.5,"full_analysis":"detailed 3-4 paragraph analysis covering stats, situational factors, sim results, and edge"}
