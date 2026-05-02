@@ -1500,10 +1500,36 @@ CRITICAL RULES:
 CALIBRATION RULES (from 455-game historical backtest):
 - ONLY bet 75%+ confidence — below 75% loses money historically
 - WHIP gap is 4x more predictive than ERA gap — weight WHIP heavily
+- WHIP gap correlation to wins: 0.205 vs ERA gap 0.052 — ERA gap is nearly random
 - Pitching reasoning wins 8% more than offense reasoning — de-emphasize offensive stats
 - Away picks hit only 44% — require strong evidence before picking away team
 - L3 starts trend matters — DECLINING pitchers are unreliable regardless of season ERA
 - Pass when reasoning relies primarily on offensive stats or vague advantage language
+- Do not contradict these findings in lessons or reasoning — they are empirically verified
+
+MLB BETTING RESEARCH (verified by academic and industry studies):
+- Best ML models achieve 55-65% accuracy — anything above 65% is likely overfitting
+- Starting pitcher WHIP under 1.15 wins 58%+ of starts historically
+- Home teams win ~54% of MLB games as a baseline before any analysis
+- Favorites win at expected rates but juice eliminates most edge — require 7%+ true edge
+- Starter ERA vs season ERA gap of 1.0+ in L3 starts = meaningful performance shift
+- Park factors: Coors Field adds ~15% to scoring, Great American Ball Park similar
+- Day game after night game: slight underperformance, not significant enough alone
+- Public betting on heavy favorites (-200+) loses money long term due to juice
+- Closing line value: if line moves in your direction after bet, confirms real edge
+- Fading heavy public sides (80%+ public) has shown positive ROI historically
+
+NHL BETTING RESEARCH (verified by academic and industry studies):
+- Goalie is the single most impactful variable in NHL betting — confirmed starting goalie required
+- GSAx (Goals Saved Above Expected) is more predictive than raw save percentage
+- xG (Expected Goals) is more predictive than raw goals — use xGF% as primary team metric
+- Corsi/Fenwick more useful in playoffs than regular season for identifying true team strength
+- PDO (shooting% + save%) above 102 or below 98 indicates likely regression to mean
+- Home ice advantage is stronger in playoffs than regular season
+- Back-to-back games significantly impact goalie performance — note rest days
+- Teams with high xG but low actual goals are due for positive regression
+- Special teams (PP% and PK%) are significant factors in tight matchups
+- Sharp money on NHL underdogs with strong underlying metrics (xG, Corsi) = value signal
 
 PLAYOFF CONTEXT (NHL/NBA):
 - Playoff games are fundamentally different from regular season

@@ -28,6 +28,29 @@ CALIBRATION RULES (from 455-game MLB historical backtest):
 - Pass on at least 50% of games — be highly selective, quality over quantity
 - DECLINING⚠️ pitchers (L3 ERA worse than season ERA by 1.0+) are unreliable — downgrade confidence
 - Minimum 7% edge over market required — 4% is not enough after juice
+- WHIP gap correlation to wins: 0.205 vs ERA gap 0.052 — ERA gap is nearly random
+- Do not contradict these findings — they are empirically verified from real outcomes
+
+MLB BETTING RESEARCH (verified by academic and industry studies):
+- Best ML models achieve 55-65% accuracy — anything above 65% is likely overfitting
+- Starting pitcher WHIP under 1.15 wins 58%+ of starts historically
+- Home teams win ~54% of MLB games as baseline before any analysis
+- Favorites win at expected rates but juice eliminates edge — require 7%+ true edge
+- Park factors: Coors Field adds ~15% to scoring, Great American Ball Park similar
+- Public betting on heavy favorites (-200+) loses money long term due to juice
+- Closing line value: if line moves in your direction after bet, confirms real edge
+- Fading heavy public sides (80%+ public) has shown positive ROI historically
+
+NHL BETTING RESEARCH (verified by academic and industry studies):
+- Goalie is the single most impactful variable — confirmed starting goalie required
+- GSAx (Goals Saved Above Expected) more predictive than raw save percentage
+- xG (Expected Goals) more predictive than raw goals — use xGF% as primary team metric
+- Corsi/Fenwick more useful in playoffs than regular season
+- PDO above 102 or below 98 indicates likely regression to mean
+- Home ice advantage stronger in playoffs than regular season
+- Back-to-back games significantly impact goalie performance
+- Teams with high xG but low actual goals are due for positive regression
+- Special teams (PP% and PK%) significant in tight matchups
 
 Return ONLY a valid JSON object with no markdown, no explanation, no code blocks:
 {"verdict":"BET","side":"NRFI or YRFI or team name","confidence":72,"edge_summary":"brief edge description","simulation_read":"what sims show","sharp_factors":"factors supporting bet","risk_factors":"risks","line_value":"line assessment","recommended_units":1.5,"full_analysis":"detailed 3-4 paragraph analysis covering stats, situational factors, sim results, and edge"}
