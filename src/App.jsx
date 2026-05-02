@@ -1636,6 +1636,15 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
           addLog(`🔍 Matching ML: "${pickRaw}" against ${mlPredictions.length} predictions`);
           const firstFew = mlPredictions.slice(0,3).map(m=>m.home_team).join(', ');
           addLog(`🔍 Sample ML teams: ${firstFew}`);
+          const mlMatch2 = mlPredictions.find(ml => {
+            const ht = ml.home_team?.toLowerCase() || '';
+            const at = ml.away_team?.toLowerCase() || '';
+            const lastWord = pickRaw.split(' ').pop();
+            return ht.includes(pickRaw) || at.includes(pickRaw) ||
+                   pickRaw.includes(ht) || pickRaw.includes(at) ||
+                   ht.includes(lastWord) || at.includes(lastWord);
+          });
+          addLog(`🔍 ML match found: ${mlMatch2 ? mlMatch2.home_team + ' home_prob:' + mlMatch2.home_prob : 'NONE'}`);
           const mlMatch = mlPredictions.find(ml => {
             const ht = ml.home_team?.toLowerCase() || '';
             const at = ml.away_team?.toLowerCase() || '';
