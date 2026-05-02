@@ -157,6 +157,12 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, onTail,
               {bet.simResult.nrfiProb!=null&&<span style={{fontSize:9,color:'#475569'}}>NRFI {bet.simResult.nrfiProb}%</span>}
             </div>
           )}
+          {bet.mlProb!=null&&(
+            <div style={{marginTop:2,padding:'3px 8px',background:'rgba(34,197,94,0.08)',borderRadius:4,border:'1px solid rgba(34,197,94,0.2)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:9,color:'#22c55e',fontWeight:700,letterSpacing:1}}>🤖 ML MODEL</span>
+              <span style={{fontSize:11,color:'#22c55e',fontWeight:700}}>{bet.mlProb}% {bet.mlSignal||''}</span>
+            </div>
+          )}
           {bet.weather&&bet.weather.source&&(
             <div style={{marginTop:4,fontSize:10,color:'#64748b'}}>
               🌤 {bet.weather.temp_f}°F · {bet.weather.wind_mph}mph wind
@@ -1465,6 +1471,19 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
       .filter(Boolean)
       .join(' | ');
 
+    // Fetch ML model predictions
+    let mlPredictions = [];
+    if (pickSport === 'MLB') {
+      try {
+        const mlRes = await fetch('/api/mlb-ml');
+        const mlData = await mlRes.json();
+        if (mlData.success && mlData.predictions?.length) {
+          mlPredictions = mlData.predictions;
+          addLog(`🤖 ML Model: ${mlData.summary?.strong_picks||0} strong + ${mlData.summary?.moderate_picks||0} moderate picks`);
+        }
+      } catch(e) { addLog('⚠️ ML model unavailable'); }
+    }
+
     // Fetch today's games with stats for Claude context
     let gamesWithStats = '';
     try {
@@ -1604,7 +1623,23 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
         } else { stake=10; }
         const simResult = runSim(pickSport, p.homeOdds||p.odds, p.awayOdds||p.odds, p.totalLine||null, 5000);
         const simConf = simResult ? getSimConfidence(simResult, p.betType||'', p.pick||'', p.odds) : null;
-        addAIPick({...p,sport:pickSport,stake,simConfidence:simConf,simResult:simResult?{
+        // Find ML model prediction for this pick
+        let mlProb = null, mlSignal = null;
+        if (mlPredictions.length) {
+          const pickTeam = (p.pick||'').toLowerCase();
+          const mlMatch = mlPredictions.find(ml => 
+            ml.home_team?.toLowerCase().includes(pickTeam) ||
+            ml.away_team?.toLowerCase().includes(pickTeam) ||
+            pickTeam.includes(ml.home_team?.toLowerCase()) ||
+            pickTeam.includes(ml.away_team?.toLowerCase())
+          );
+          if (mlMatch) {
+            const isHome = pickTeam.includes(mlMatch.home_team?.toLowerCase()) || mlMatch.home_team?.toLowerCase().includes(pickTeam);
+            mlProb = isHome ? mlMatch.home_prob : Math.round((100 - mlMatch.home_prob) * 10) / 10;
+            mlSignal = mlMatch.signal || '';
+          }
+        }
+        addAIPick({...p,sport:pickSport,stake,mlProb,mlSignal,simConfidence:simConf,simResult:simResult?{
           homeWinProb:Math.round(simResult.homeWinProb*100),
           awayWinProb:Math.round(simResult.awayWinProb*100),
           overProb:Math.round(simResult.overProb*100),
