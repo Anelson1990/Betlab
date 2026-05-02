@@ -218,9 +218,9 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
       // OPS gap vs pitcher handedness - #1 ML predictor
       if (home.platoon?.ops) lines.push(`  Home Lineup vs ${away.probablePitcher.throws||'R'}HP: OPS ${home.platoon.ops} | OBP ${home.platoon.obp} | SLG ${home.platoon.slg}`);
       if (away.platoon?.ops) lines.push(`  Away Lineup vs ${home.probablePitcher.throws||'R'}HP: OPS ${away.platoon.ops} | OBP ${away.platoon.obp} | SLG ${away.platoon.slg}`);
-      if (data.opsGap!=null) {
-        const opsEdge = data.opsGap > 0.020 ? '⭐ HOME lineup advantage' : data.opsGap < -0.020 ? '⭐ AWAY lineup advantage' : 'Even matchup';
-        lines.push(`  OPS Gap (home - away vs pitcher hand): ${data.opsGap > 0 ? '+' : ''}${data.opsGap} — ${opsEdge}`);
+      if (stats.opsGap!=null) {
+        const opsEdge = stats.opsGap > 0.020 ? '⭐ HOME lineup advantage' : stats.opsGap < -0.020 ? '⭐ AWAY lineup advantage' : 'Even matchup';
+        lines.push(`  OPS Gap (home - away vs pitcher hand): ${stats.opsGap > 0 ? '+' : ''}${stats.opsGap} — ${opsEdge}`);
       }
     }
     
