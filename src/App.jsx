@@ -1634,6 +1634,8 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
         if (mlPredictions.length) {
           const pickRaw = (p.pick||'').toLowerCase().replace(' ml','').replace(' moneyline','').replace('-1.5','').replace('+1.5','').trim();
           addLog(`🔍 Matching ML: "${pickRaw}" against ${mlPredictions.length} predictions`);
+          const firstFew = mlPredictions.slice(0,3).map(m=>m.home_team).join(', ');
+          addLog(`🔍 Sample ML teams: ${firstFew}`);
           const mlMatch = mlPredictions.find(ml => {
             const ht = ml.home_team?.toLowerCase() || '';
             const at = ml.away_team?.toLowerCase() || '';
