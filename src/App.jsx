@@ -1626,15 +1626,21 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
         // Find ML model prediction for this pick
         let mlProb = null, mlSignal = null;
         if (mlPredictions.length) {
-          const pickTeam = (p.pick||'').toLowerCase();
-          const mlMatch = mlPredictions.find(ml => 
-            ml.home_team?.toLowerCase().includes(pickTeam) ||
-            ml.away_team?.toLowerCase().includes(pickTeam) ||
-            pickTeam.includes(ml.home_team?.toLowerCase()) ||
-            pickTeam.includes(ml.away_team?.toLowerCase())
-          );
+          const pickRaw = (p.pick||'').toLowerCase().replace(' ml','').replace(' moneyline','').replace('-1.5','').replace('+1.5','').trim();
+          const mlMatch = mlPredictions.find(ml => {
+            const ht = ml.home_team?.toLowerCase() || '';
+            const at = ml.away_team?.toLowerCase() || '';
+            // Check last word of team name (e.g. "cubs" matches "chicago cubs")
+            const pickWords = pickRaw.split(' ');
+            const lastWord = pickWords[pickWords.length-1];
+            return ht.includes(pickRaw) || at.includes(pickRaw) ||
+                   pickRaw.includes(ht) || pickRaw.includes(at) ||
+                   ht.includes(lastWord) || at.includes(lastWord);
+          });
           if (mlMatch) {
-            const isHome = pickTeam.includes(mlMatch.home_team?.toLowerCase()) || mlMatch.home_team?.toLowerCase().includes(pickTeam);
+            const ht = mlMatch.home_team?.toLowerCase() || '';
+            const isHome = ht.includes(pickRaw) || pickRaw.includes(ht) || 
+                          ht.includes(pickRaw.split(' ').pop());
             mlProb = isHome ? mlMatch.home_prob : Math.round((100 - mlMatch.home_prob) * 10) / 10;
             mlSignal = mlMatch.signal || '';
           }
