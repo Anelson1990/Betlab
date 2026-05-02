@@ -2297,6 +2297,17 @@ Be specific with numbers. This goes directly to the model developer.`}],
     setGroqLoading(true);
     addLog(`🧠 Groq finding value in ${groqSport}...`);
     try {
+      // Fetch ML predictions for MLB
+      if (groqSport === 'MLB') {
+        try {
+          const mlRes = await fetch('/api/context?ml=1');
+          const mlData = await mlRes.json();
+          if (mlData.predictions?.length) {
+            setState(s=>({...s, mlPredictions: mlData.predictions}));
+            addLog(`🤖 ML Model: ${mlData.summary?.strong_picks||0} strong picks loaded`);
+          }
+        } catch(e) { addLog(`⚠️ ML model: ${e.message}`); }
+      }
       // Step 1: Load today's games
       const gamesRes = await fetch(`/api/games?sport=${groqSport}`);
       const gamesData = await gamesRes.json();
