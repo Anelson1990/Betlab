@@ -1035,7 +1035,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     }
     if (groqCalibResult.warning) addLog(groqCalibResult.warning);
 
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:groqCalibResult.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,tracked:true};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:groqCalibResult.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,tracked:true};
     setState(s=>({...s,groqBankroll:parseFloat((s.groqBankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🧠 Groq pick: ${bet.pick}`);
   },[]);
