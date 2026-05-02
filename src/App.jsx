@@ -1479,6 +1479,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
         const mlData = await mlRes.json();
         if (mlData.success && mlData.predictions?.length) {
           mlPredictions = mlData.predictions;
+          setState(s=>({...s, mlPredictions: mlData.predictions}));
           addLog(`🤖 ML Model: ${mlData.summary?.strong_picks||0} strong + ${mlData.summary?.moderate_picks||0} moderate picks`);
         }
       } catch(e) { addLog('⚠️ ML model unavailable'); }
@@ -2385,6 +2386,24 @@ Be specific with numbers. This goes directly to the model developer.`}],
             if (analyzeData.analysis.confidence < 58) { addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} conf too low (${analyzeData.analysis.confidence}%)`); continue; }
             if (halfKelly < 0.01) { addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} Kelly too small`); continue; }
 
+            // Find ML model prediction for Groq pick
+            let groqMlProb = null, groqMlSignal = null;
+            if (g.sport === 'MLB' && state.mlPredictions?.length) {
+              const pickTeam = analyzeData.analysis.side?.toLowerCase() || '';
+              const mlMatch = state.mlPredictions.find(ml => {
+                const ht = ml.home_team?.toLowerCase() || '';
+                const at = ml.away_team?.toLowerCase() || '';
+                const lastWord = pickTeam.split(' ').pop();
+                return ht.includes(pickTeam) || at.includes(pickTeam) ||
+                       pickTeam.includes(ht) || pickTeam.includes(at) ||
+                       ht.includes(lastWord) || at.includes(lastWord);
+              });
+              if (mlMatch) {
+                const isHome = mlMatch.home_team?.toLowerCase().includes(pickTeam.split(' ').pop());
+                groqMlProb = isHome ? mlMatch.home_prob : Math.round((100 - mlMatch.home_prob) * 10) / 10;
+                groqMlSignal = mlMatch.signal || '';
+              }
+            }
             addGroqPick({
               pick:`${analyzeData.analysis.side} — ${g.awayTeam} @ ${g.homeTeam}`,
               sport:g.sport, betType:'Moneyline', odds, stake,
@@ -2394,6 +2413,8 @@ Be specific with numbers. This goes directly to the model developer.`}],
               modelProb:analyzeData.analysis.side===g.homeTeam?g.sim.simulation?.homeWinProb:g.sim.simulation?.awayWinProb,
               edge:`${analyzeData.analysis.confidence}% conf`,
               simConfidence:analyzeData.analysis.confidence,
+              mlProb:groqMlProb,
+              mlSignal:groqMlSignal,
             });
             addLog(`🤖 Groq: ${analyzeData.analysis.side} (${analyzeData.analysis.confidence}% conf)`);
           }

@@ -29,6 +29,7 @@ export const EMPTY_STATE = {
     mid: { wins: 0, total: 0 },    // 65-74%
     high: { wins: 0, total: 0 },   // 75%+
   },
+  mlPredictions: [],
 };
 
 const KEY = 'betlab_v3';
