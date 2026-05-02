@@ -405,10 +405,94 @@ export default async function handler(req, res) {
       homeId ? fetchMLBLineup(homeId, true) : null,
       awayId ? fetchMLBLineup(awayId, false) : null,
     ]);
+
+    // Rest days calculation
+    async function getDaysRest(teamId) {
+      try {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const fiveDaysAgo = new Date(today);
+        fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+        const start = fiveDaysAgo.toISOString().split('T')[0];
+        const end = yesterday.toISOString().split('T')[0];
+        const r = await Promise.race([
+          fetch(`${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${start}&endDate=${end}`),
+          new Promise((_,rej) => setTimeout(()=>rej(new Error('timeout')),3000))
+        ]);
+        if (!r.ok) return null;
+        const data = await r.json();
+        const dates = data.dates || [];
+        if (!dates.length) return { daysRest: 3, lastGame: null };
+        const lastDate = dates[dates.length-1].date;
+        const last = new Date(lastDate);
+        const diff = Math.floor((today - last) / (1000*60*60*24));
+        return { daysRest: diff, lastGame: lastDate };
+      } catch { return null; }
+    }
+
+    // Fetch team batting splits vs LHP or RHP
+    async function fetchTeamPlatoonSplits(teamId, pitcherHand) {
+      try {
+        const sitCode = pitcherHand === 'L' ? 'vl' : 'vr';
+        const r = await Promise.race([
+          fetch(`${MLB_API}/teams/${teamId}/stats?stats=statSplits&group=hitting&season=2026&sitCodes=${sitCode}`),
+          new Promise((_,rej) => setTimeout(()=>rej(new Error('timeout')),3000))
+        ]);
+        if (!r.ok) return null;
+        const data = await r.json();
+        const split = data.stats?.[0]?.splits?.[0]?.stat;
+        if (!split) return null;
+        return {
+          ops: parseFloat(split.ops)||null,
+          obp: parseFloat(split.obp)||null,
+          slg: parseFloat(split.slg)||null,
+          avg: parseFloat(split.avg)||null,
+          hand: pitcherHand,
+        };
+      } catch { return null; }
+    }
+
+    // Platoon matchup calculation
+    function calcPlatoon(lineup, pitcher, homeSplits, awaySplits) {
+      const pitcherHand = pitcher?.throws || 'R';
+      const result = {
+        pitcherHand,
+        note: pitcherHand === 'L' ? 'LHP vs mostly RHB lineup — batters have platoon edge' : 'RHP vs mixed lineup — standard matchup'
+      };
+      if (homeSplits) {
+        result.ops = homeSplits.ops;
+        result.obp = homeSplits.obp;
+        result.slg = homeSplits.slg;
+        result.note = `${pitcherHand === 'L' ? 'LHP' : 'RHP'} vs lineup — OPS ${homeSplits.ops} | OBP ${homeSplits.obp} | SLG ${homeSplits.slg}`;
+      }
+      return result;
+    }
+
+    const [homeRest, awayRest] = await Promise.all([
+      getDaysRest(homeId),
+      getDaysRest(awayId),
+    ]);
+
+    // Fetch platoon splits - home lineup vs away pitcher hand, away lineup vs home pitcher hand
+    const [homePlatoonSplits, awayPlatoonSplits] = await Promise.all([
+      awayPitcher?.throws ? fetchTeamPlatoonSplits(homeId, awayPitcher.throws) : null,
+      homePitcher?.throws ? fetchTeamPlatoonSplits(awayId, homePitcher.throws) : null,
+    ]);
+
+    const homePlatoon = calcPlatoon(homeLineup, awayPitcher, homePlatoonSplits, null);
+    const awayPlatoon = calcPlatoon(awayLineup, homePitcher, null, awayPlatoonSplits);
+    
+    // OPS gap - key finding from ML model (most predictive feature)
+    const opsGap = homePlatoonSplits?.ops && awayPlatoonSplits?.ops 
+      ? parseFloat((homePlatoonSplits.ops - awayPlatoonSplits.ops).toFixed(3))
+      : null;
+
     return res.status(200).json({
       success:true,
-      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries, bullpen:homeBullpen, lineup:homeLineup },
-      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, last5:awayForm?.last5, last3:awayForm?.last3, avgRS_L5:awayForm?.avgRS_L5, avgRA_L5:awayForm?.avgRA_L5, probablePitcher:awayPitcher, injuries:awayInjuries, bullpen:awayBullpen, lineup:awayLineup },
+      home:{ team:home, id:homeId, stats:homeStats, recentForm:homeForm?.last10, last5:homeForm?.last5, last3:homeForm?.last3, avgRS_L5:homeForm?.avgRS_L5, avgRA_L5:homeForm?.avgRA_L5, probablePitcher:homePitcher, injuries:homeInjuries, bullpen:homeBullpen, lineup:homeLineup, daysRest:homeRest?.daysRest, lastGame:homeRest?.lastGame, platoon:homePlatoon },
+      away:{ team:away, id:awayId, stats:awayStats, recentForm:awayForm?.last10, last5:awayForm?.last5, last3:awayForm?.last3, avgRS_L5:awayForm?.avgRS_L5, avgRA_L5:awayForm?.avgRA_L5, probablePitcher:awayPitcher, injuries:awayInjuries, bullpen:awayBullpen, lineup:awayLineup, daysRest:awayRest?.daysRest, lastGame:awayRest?.lastGame, platoon:awayPlatoon },
+      opsGap,
       espnOdds, espnWinProb,
       fetchedAt: new Date().toISOString(),
     });
