@@ -1475,14 +1475,18 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     let mlPredictions = [];
     if (pickSport === 'MLB') {
       try {
+        addLog('🤖 Fetching ML model predictions...');
         const mlRes = await fetch('/api/mlb-ml');
         const mlData = await mlRes.json();
+        addLog(`🤖 ML response: success=${mlData.success} predictions=${mlData.predictions?.length||0}`);
         if (mlData.success && mlData.predictions?.length) {
           mlPredictions = mlData.predictions;
           setState(s=>({...s, mlPredictions: mlData.predictions}));
-          addLog(`🤖 ML Model: ${mlData.summary?.strong_picks||0} strong + ${mlData.summary?.moderate_picks||0} moderate picks`);
+          addLog(`🤖 ML Model loaded: ${mlData.summary?.strong_picks||0} strong + ${mlData.summary?.moderate_picks||0} moderate picks`);
+        } else {
+          addLog(`⚠️ ML model: ${mlData.error||'no predictions'}`);
         }
-      } catch(e) { addLog('⚠️ ML model unavailable'); }
+      } catch(e) { addLog(`⚠️ ML model error: ${e.message}`); }
     }
 
     // Fetch today's games with stats for Claude context
