@@ -1053,7 +1053,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     if (calibResult.warning) addLog(calibResult.warning);
     
     const adjustedConf = calibResult.confidence;
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:adjustedConf,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'ai',tracked:true};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:adjustedConf,edge:pickData.edge||'',modelProb:pickData.modelProb||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,lesson:null,source:'ai',tracked:true};
     setState(s=>({...s,bankroll:parseFloat((s.bankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🤖 AI: ${bet.pick}`);
   },[]);
