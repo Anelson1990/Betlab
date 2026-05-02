@@ -215,6 +215,13 @@ function formatContext(sport, homeTeam, awayTeam, stats, gameSummary) {
       const whipGap = (awayWhip - homeWhip).toFixed(2);
       const whipFavor = whipGap > 0.1 ? 'WHIP favors HOME' : whipGap < -0.1 ? 'WHIP favors AWAY' : 'WHIP even';
       lines.push(`  WHIP Gap: Home SP ${home.probablePitcher.whip} vs Away SP ${away.probablePitcher.whip} (${whipFavor})`);
+      // OPS gap vs pitcher handedness - #1 ML predictor
+      if (home.platoon?.ops) lines.push(`  Home Lineup vs ${away.probablePitcher.throws||'R'}HP: OPS ${home.platoon.ops} | OBP ${home.platoon.obp} | SLG ${home.platoon.slg}`);
+      if (away.platoon?.ops) lines.push(`  Away Lineup vs ${home.probablePitcher.throws||'R'}HP: OPS ${away.platoon.ops} | OBP ${away.platoon.obp} | SLG ${away.platoon.slg}`);
+      if (data.opsGap!=null) {
+        const opsEdge = data.opsGap > 0.020 ? '⭐ HOME lineup advantage' : data.opsGap < -0.020 ? '⭐ AWAY lineup advantage' : 'Even matchup';
+        lines.push(`  OPS Gap (home - away vs pitcher hand): ${data.opsGap > 0 ? '+' : ''}${data.opsGap} — ${opsEdge}`);
+      }
     }
     
     // L3/L5 rolling form
