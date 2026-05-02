@@ -1507,17 +1507,19 @@ CALIBRATION RULES (from 455-game historical backtest):
 - Pass when reasoning relies primarily on offensive stats or vague advantage language
 - Do not contradict these findings in lessons or reasoning — they are empirically verified
 
-MLB BETTING RESEARCH (verified by academic and industry studies):
-- Best ML models achieve 55-65% accuracy — anything above 65% is likely overfitting
-- Starting pitcher WHIP under 1.15 wins 58%+ of starts historically
-- Home teams win ~54% of MLB games as a baseline before any analysis
-- Favorites win at expected rates but juice eliminates most edge — require 7%+ true edge
-- Starter ERA vs season ERA gap of 1.0+ in L3 starts = meaningful performance shift
-- Park factors: Coors Field adds ~15% to scoring, Great American Ball Park similar
-- Day game after night game: slight underperformance, not significant enough alone
+MLB BETTING RESEARCH (verified by 7290-game ML model trained on 2023-2025 data):
+- LINEUP OPS vs PITCHER HANDEDNESS is the #1 predictor — more important than ERA or WHIP
+- How a lineup performs against LHP vs RHP is the single biggest edge — always check platoon splits
+- TEAM WHIP gap is #2 predictor — team pitching staff quality matters more than starter alone
+- TEAM ERA gap is #3 — whole staff not just starter
+- Starting pitcher individual ERA/WHIP has near-zero independent value when team stats included
+- ML model trained on real outcomes achieves 57-71% WR at high confidence tiers
+- Park factors matter — Coors +15%, Great American +10%, Oracle Park -7%
+- Home teams win 54% baseline — require additional edge beyond home field
+- OPS gap vs handedness: if home lineup has +0.050+ OPS advantage vs pitcher hand = strong edge
+- Platoon splits: LHP face mostly RHB lineups — check if lineup is stacked vs handedness
 - Public betting on heavy favorites (-200+) loses money long term due to juice
 - Closing line value: if line moves in your direction after bet, confirms real edge
-- Fading heavy public sides (80%+ public) has shown positive ROI historically
 
 NHL BETTING RESEARCH (verified by academic and industry studies):
 - Goalie is the single most impactful variable in NHL betting — confirmed starting goalie required

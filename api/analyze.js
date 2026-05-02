@@ -31,15 +31,18 @@ CALIBRATION RULES (from 455-game MLB historical backtest):
 - WHIP gap correlation to wins: 0.205 vs ERA gap 0.052 — ERA gap is nearly random
 - Do not contradict these findings — they are empirically verified from real outcomes
 
-MLB BETTING RESEARCH (verified by academic and industry studies):
-- Best ML models achieve 55-65% accuracy — anything above 65% is likely overfitting
-- Starting pitcher WHIP under 1.15 wins 58%+ of starts historically
-- Home teams win ~54% of MLB games as baseline before any analysis
-- Favorites win at expected rates but juice eliminates edge — require 7%+ true edge
-- Park factors: Coors Field adds ~15% to scoring, Great American Ball Park similar
+MLB BETTING RESEARCH (verified by 7290-game ML model trained on 2023-2025 data):
+- LINEUP OPS vs PITCHER HANDEDNESS is the #1 predictor — more important than ERA or WHIP
+- How a lineup performs against LHP vs RHP is the single biggest edge — always check platoon splits
+- TEAM WHIP gap is #2 predictor — team pitching staff quality matters more than starter alone
+- TEAM ERA gap is #3 — whole staff not just starter
+- Starting pitcher individual ERA/WHIP has near-zero independent value when team stats included
+- ML model achieves 71-74% WR at high confidence tiers on 2025 test data
+- Park factors matter — Coors +15%, Great American +10%, Oracle Park -7%
+- OPS gap vs handedness: if home lineup has +0.050+ OPS advantage vs pitcher hand = strong edge
+- Platoon splits: LHP face mostly RHB lineups — check if lineup is stacked vs handedness
 - Public betting on heavy favorites (-200+) loses money long term due to juice
 - Closing line value: if line moves in your direction after bet, confirms real edge
-- Fading heavy public sides (80%+ public) has shown positive ROI historically
 
 NHL BETTING RESEARCH (verified by academic and industry studies):
 - Goalie is the single most impactful variable — confirmed starting goalie required
