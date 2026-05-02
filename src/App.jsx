@@ -1476,7 +1476,7 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     if (pickSport === 'MLB') {
       try {
         addLog('🤖 Fetching ML model predictions...');
-        const mlRes = await fetch('https://api.allorigins.win/raw?url=https://jsonblob.com/api/jsonBlob/019dea3d-883c-7c05-9b2c-1c9324c5d861');
+        const mlRes = await fetch('/api/context?ml=1');
         const mlData = await mlRes.json();
         mlData.success = mlData.predictions?.length > 0;
         addLog(`🤖 ML response: success=${mlData.success} predictions=${mlData.predictions?.length||0}`);
