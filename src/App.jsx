@@ -1655,12 +1655,13 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
                    pickRaw.includes(ht) || pickRaw.includes(at) ||
                    ht.includes(lastWord) || at.includes(lastWord);
           });
-          if (mlMatch) {
-            const ht = mlMatch.home_team?.toLowerCase() || '';
+          if (mlMatch2) {
+            const ht = mlMatch2.home_team?.toLowerCase() || '';
             const isHome = ht.includes(pickRaw) || pickRaw.includes(ht) || 
                           ht.includes(pickRaw.split(' ').pop());
-            mlProb = isHome ? mlMatch.home_prob : Math.round((100 - mlMatch.home_prob) * 10) / 10;
-            mlSignal = mlMatch.signal || '';
+            mlProb = isHome ? mlMatch2.home_prob : Math.round((100 - mlMatch2.home_prob) * 10) / 10;
+            mlSignal = mlMatch2.signal || '';
+            addLog(`🤖 ML prob set: ${mlProb}% for ${pickRaw}`);
           }
         }
         addAIPick({...p,sport:pickSport,stake,mlProb,mlSignal,simConfidence:simConf,simResult:simResult?{
