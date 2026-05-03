@@ -916,13 +916,13 @@ function App() {
     return parseFloat((state.groqStartingBankroll - pendingStaked + pnl).toFixed(2));
   })();
 
-  const calcROI = graded => {
+  const calcROI = (graded, bankrollDiff=null) => {
     const wins=graded.filter(b=>b.result==='win').length;
     const staked=graded.reduce((a,b)=>a+b.stake,0);
-    const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+    const profit=bankrollDiff!==null ? bankrollDiff : graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
     return {wins,total:graded.length,staked,profit,roi:staked?profit/staked*100:0,wr:graded.length?wins/graded.length*100:0};
   };
-  const aiStats=calcROI(aiGraded), myStats=calcROI(myGraded);
+  const aiStats=calcROI(aiGraded, state.bankroll-state.startingBankroll), myStats=calcROI(myGraded, state.myBankroll-state.myStartingBankroll);
 
   // Streak tracker - auto calculated
   const calcStreak = (bets) => {
