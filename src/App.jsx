@@ -2408,7 +2408,13 @@ Be specific with numbers. This goes directly to the model developer.`}],
             const halfKelly = kellyFrac/2;
             // Use half Kelly capped at 5% bankroll, min $5
             const currentGroqBankroll = parseFloat(computedGroqBankroll||state.groqBankroll)||146;
-            const kellyStake = currentGroqBankroll * Math.min(halfKelly, 0.05);
+            // Odds-aware Kelly cap — bet more on underdogs, less on heavy favorites
+            const maxPct = odds >= 100 ? 0.08 :   // underdog: up to 8%
+                           odds >= -120 ? 0.06 :   // pick em: up to 6%
+                           odds >= -150 ? 0.04 :   // mild fav: up to 4%
+                           odds >= -200 ? 0.025 :  // heavy fav: up to 2.5%
+                           0.015;                  // huge fav: up to 1.5%
+            const kellyStake = currentGroqBankroll * Math.min(halfKelly, maxPct);
             const stake = Math.max(5, Math.round(kellyStake/5)*5);
             
             // Skip if low confidence or tiny Kelly
