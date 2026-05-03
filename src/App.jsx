@@ -2933,10 +2933,10 @@ Rules: ${report.rules?.join(' | ')}`,
                     const graded=bets.filter(b=>b.result!=='pending');
                     const wins=graded.filter(b=>b.result==='win').length;
                     const staked=graded.reduce((a,b)=>a+b.stake,0);
-                    const profit=graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
+                    const bankrollDiff=bankroll&&startBankroll?bankroll-startBankroll:null;
+                    const profit=bankrollDiff!==null?bankrollDiff:graded.reduce((a,b)=>b.result==='win'?a+(americanToDecimal(b.odds)-1)*b.stake:b.result==='loss'?a-b.stake:a,0);
                     const roi=staked?profit/staked*100:0;
                     const wr=graded.length?wins/graded.length*100:0;
-                    const bankrollDiff=bankroll&&startBankroll?bankroll-startBankroll:null;
                     return (
                       <div key={label} style={{background:'rgba(5,8,16,0.8)',borderRadius:8,padding:'8px 10px',border:`1px solid ${color}22`}}>
                         <div style={{fontSize:10,color,fontWeight:700,marginBottom:4}}>{label}</div>
