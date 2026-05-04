@@ -1471,6 +1471,17 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
       .filter(Boolean)
       .join(' | ');
 
+    // Fetch calibration stats from real graded bets
+    let calibrationContext = '';
+    try {
+      const calRes = await fetch('/api/context?calibration=1');
+      const calData = await calRes.json();
+      if (calData.success && calData.summary) {
+        calibrationContext = calData.summary;
+        addLog(`📊 Calibration loaded: ${calData.total_bets} graded bets`);
+      }
+    } catch(e) { addLog('⚠️ Calibration unavailable'); }
+
     // Fetch ML model predictions
     let mlPredictions = [];
     if (pickSport === 'MLB') {
@@ -1521,6 +1532,9 @@ CRITICAL RULES:
 - Never fabricate stats — only use what is provided
 - Pass on at least 50% of games — be highly selective
 - Maximum 2 picks total — quality over quantity
+
+REAL OUTCOME DATA (from your actual graded bets):
+${calibrationContext || 'No graded bets yet — calibration data will appear after grading picks'}
 
 CALIBRATION RULES (from 455-game historical backtest):
 - ONLY bet 75%+ confidence — below 75% loses money historically
