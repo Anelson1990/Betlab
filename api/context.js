@@ -25,8 +25,42 @@ async function fetchESPNGameSummary(sport, gameId) {
 }
 
 const JSONBLOB_URL = 'https://jsonblob.com/api/jsonBlob/019dea3d-883c-7c05-9b2c-1c9324c5d861';
+const GRADED_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df34e-8a76-78ed-b827-84c182540d51';
 
 export default async function handler(req, res) {
+  // Calibration stats endpoint
+  if (req.query.calibration === '1') {
+    try {
+      const r = await fetch(GRADED_BLOB_URL, {headers:{'Accept':'application/json'}});
+      if (!r.ok) throw new Error(`Blob error: ${r.status}`);
+      const data = await r.json();
+      const cal = data.calibration || {};
+      const bets = data.bets || [];
+      
+      // Format calibration for prompt
+      const fmt = (stat) => stat?.total > 0 ? 
+        `${stat.wins}W-${stat.total-stat.wins}L (${(stat.wins/stat.total*100).toFixed(0)}%)` : 
+        'no data';
+      
+      const summary = [
+        `Total graded: ${fmt(cal.total)}`,
+        `Home picks: ${fmt(cal.home)}`,
+        `Away picks: ${fmt(cal.away)}`,
+        `Claude 75%+ picks: ${fmt(cal.claude_75plus)}`,
+        `Claude below 75%: ${fmt(cal.claude_below75)}`,
+        `Groq 75%+ picks: ${fmt(cal.groq_75plus)}`,
+        `ML Strong (62%+): ${fmt(cal.ml_strong)}`,
+        `When ML agrees with model: ${fmt(cal.ml_agrees)}`,
+        `When ML conflicts with model: ${fmt(cal.ml_conflicts)}`,
+      ].join('
+');
+
+      return res.status(200).json({success:true, summary, calibration: cal, total_bets: bets.length});
+    } catch(e) {
+      return res.status(200).json({success:false, error:e.message});
+    }
+  }
+
   // ML model predictions endpoint
   if (req.query.ml === '1') {
     try {
