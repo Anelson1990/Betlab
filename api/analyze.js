@@ -21,6 +21,9 @@ MATCHUP SCORING:
 - Home/away splits matter more in playoffs than regular season
 - Flag when confidence is BELOW market implied probability — that is a PASS not a BET
 
+REAL OUTCOME DATA FROM YOUR ACTUAL BETS:
+{{CALIBRATION_CONTEXT}}
+
 CALIBRATION RULES (from 455-game MLB historical backtest):
 - Only recommend BET at 75%+ confidence — lower confidence loses money
 - Away picks hit only 44% historically — require strong evidence for away team picks
@@ -135,7 +138,7 @@ Return ONLY the JSON object.`;
         max_tokens:1500,
         temperature:0.1,
         messages:[
-          {role:'system',content:SYSTEM_PROMPT},
+          {role:'system',content:SYSTEM_PROMPT.replace('{{CALIBRATION_CONTEXT}}', req.body.calibrationContext||'No graded bets yet')},
           {role:'user',content:prompt}
         ],
       }),

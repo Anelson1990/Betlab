@@ -2361,6 +2361,17 @@ Be specific with numbers. This goes directly to the model developer.`}],
     setGroqLoading(true);
     addLog(`🧠 Groq finding value in ${groqSport}...`);
     try {
+      // Fetch calibration stats
+      let groqCalibrationContext = '';
+      try {
+        const calRes = await fetch('/api/context?calibration=1');
+        const calData = await calRes.json();
+        if (calData.success && calData.summary) {
+          groqCalibrationContext = calData.summary;
+          addLog(`📊 Calibration loaded: ${calData.total_bets} graded bets`);
+        }
+      } catch(e) { addLog('⚠️ Calibration unavailable'); }
+
       // Fetch ML predictions for MLB
       if (groqSport === 'MLB') {
         try {
@@ -2459,6 +2470,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
               betType:'ML',
               nrfiProb:g.sim?.simulation?.nrfiProb,
               yrfiProb:g.sim?.simulation?.yrfiProb,
+              calibrationContext:groqCalibrationContext||'',
             }),
           });
           const analyzeData = await analyzeRes.json();
