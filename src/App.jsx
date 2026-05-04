@@ -1687,6 +1687,56 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
     setState(s=>({...s,[key]:parseFloat((s[key]+payout).toFixed(2)),bets:updatedBets}));
     addLog(`Graded: ${bet.pick} → ${result.toUpperCase()}${score?' ('+score+')':''} (${formatMoney(pl)})`);
 
+    // Export graded bet to JSONBlob for ML model learning
+    try {
+      const GRADED_BLOB = 'https://jsonblob.com/api/jsonBlob/019df34e-8a76-78ed-b827-84c182540d51';
+      const existingRes = await fetch(GRADED_BLOB, {headers:{'Accept':'application/json'}});
+      const existing = await existingRes.json();
+      const gradedBet = {
+        id: bet.id,
+        date: bet.date,
+        graded_date: new Date().toISOString(),
+        pick: bet.pick,
+        sport: bet.sport,
+        betType: bet.betType,
+        odds: bet.odds,
+        stake: bet.stake,
+        result: result,
+        score: score||'',
+        confidence: bet.confidence||0,
+        ml_prob: bet.mlProb||null,
+        ml_signal: bet.mlSignal||null,
+        source: bet.source,
+        reasoning: bet.reasoning||'',
+        home_away: (bet.pick||'').toLowerCase().includes('home') ? 'home' : 'away',
+        profit: pl,
+      };
+      const updatedBets = [...(existing.bets||[]).filter(b=>b.id!==bet.id), gradedBet];
+      
+      // Recalculate calibration stats
+      const graded = updatedBets.filter(b=>b.result!=='pending');
+      const calcStat = (arr) => ({wins: arr.filter(b=>b.result==='win').length, total: arr.length});
+      const calibration = {
+        total: calcStat(graded),
+        home: calcStat(graded.filter(b=>b.home_away==='home')),
+        away: calcStat(graded.filter(b=>b.home_away==='away')),
+        ml_strong: calcStat(graded.filter(b=>b.ml_prob>=62)),
+        ml_moderate: calcStat(graded.filter(b=>b.ml_prob>=60&&b.ml_prob<62)),
+        claude_75plus: calcStat(graded.filter(b=>b.source==='ai'&&b.confidence>=75)),
+        groq_75plus: calcStat(graded.filter(b=>b.source==='groq'&&b.confidence>=75)),
+        claude_below75: calcStat(graded.filter(b=>b.source==='ai'&&b.confidence<75)),
+        ml_conflicts: calcStat(graded.filter(b=>b.ml_prob&&Math.abs((b.confidence||0)-(b.ml_prob||0))>15)),
+        ml_agrees: calcStat(graded.filter(b=>b.ml_prob&&Math.abs((b.confidence||0)-(b.ml_prob||0))<=15)),
+      };
+
+      await fetch(GRADED_BLOB, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({bets: updatedBets, calibration, last_updated: new Date().toISOString()})
+      });
+      addLog(`📊 Outcome synced to ML training data`);
+    } catch(e) { console.warn('Graded bet export failed:', e); }
+
     // Auto-coach: run lightweight analysis in background after every 5th graded bet
     const newGraded = updatedBets.filter(b=>b.result!=='pending'&&(b.source==='ai'||b.source==='paste'));
     if (newGraded.length>=5 && newGraded.length%5===0) {
