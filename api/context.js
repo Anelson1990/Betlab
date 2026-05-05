@@ -62,6 +62,11 @@ export default async function handler(req, res) {
   }
 
   // ML model predictions endpoint
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Access-Control-Allow-Methods','GET,POST,PUT,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers','Content-Type');
+  if (req.method==='OPTIONS') return res.status(200).end();
+
   if (req.query.ml === '1') {
     try {
       const r = await fetch(JSONBLOB_URL, {headers:{'Accept':'application/json'}});
