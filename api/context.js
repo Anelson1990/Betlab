@@ -24,7 +24,8 @@ async function fetchESPNGameSummary(sport, gameId) {
   } catch { return null; }
 }
 
-const JSONBLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df59c-2754-7e95-b125-60bbb333d7a1';
+const XGB_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df59c-2754-7e95-b125-60bbb333d7a1';  // XGBoost
+const LGB_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df5bb-bfbc-7104-ac41-672cbb08700d';  // LightGBM
 const GRADED_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df34e-8a76-78ed-b827-84c182540d51';
 
 export default async function handler(req, res) {
@@ -68,10 +69,62 @@ export default async function handler(req, res) {
 
   if (req.query.ml === '1') {
     try {
-      const r = await fetch(JSONBLOB_URL, {headers:{'Accept':'application/json'}});
-      if (!r.ok) throw new Error(`JSONBlob error: ${r.status}`);
-      const data = await r.json();
-      return res.status(200).json({success:true, ...data});
+      // Fetch both models in parallel
+      const [xgbRes, lgbRes] = await Promise.all([
+        fetch(XGB_BLOB_URL, {headers:{'Accept':'application/json'}}),
+        fetch(LGB_BLOB_URL, {headers:{'Accept':'application/json'}}),
+      ]);
+      const xgbData = xgbRes.ok ? await xgbRes.json() : {predictions:[]};
+      const lgbData = lgbRes.ok ? await lgbRes.json() : {predictions:[]};
+
+      // Build consensus — find games where both models agree at 70%+
+      const xgbPreds = xgbData.predictions || [];
+      const lgbPreds = lgbData.predictions || [];
+
+      const consensus = [];
+      for (const xgb of xgbPreds) {
+        const lgb = lgbPreds.find(l =>
+          l.home_team === xgb.home_team || l.away_team === xgb.away_team ||
+          l.ml_pick === xgb.ml_pick
+        );
+        if (lgb) {
+          const bothStrong = xgb.ml_confidence >= 70 && lgb.ml_confidence >= 70;
+          const agree = xgb.ml_pick === lgb.ml_pick;
+          consensus.push({
+            ...xgb,
+            xgb_confidence: xgb.ml_confidence,
+            xgb_signal: xgb.signal,
+            lgb_confidence: lgb.ml_confidence,
+            lgb_signal: lgb.signal,
+            consensus: agree && bothStrong ? '⚡ BOTH AGREE' : agree ? '✅ AGREE' : '⚠️ CONFLICT',
+            consensus_strong: agree && bothStrong,
+          });
+        } else {
+          consensus.push({
+            ...xgb,
+            xgb_confidence: xgb.ml_confidence,
+            xgb_signal: xgb.signal,
+            lgb_confidence: null,
+            lgb_signal: null,
+            consensus: '📊 XGB ONLY',
+            consensus_strong: false,
+          });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        date: xgbData.date,
+        predictions: consensus,
+        xgb_predictions: xgbPreds,
+        lgb_predictions: lgbPreds,
+        summary: {
+          total_games: consensus.length,
+          strong_picks: consensus.filter(p=>p.consensus_strong).length,
+          xgb_strong: xgbPreds.filter(p=>p.strong_pick).length,
+          lgb_strong: lgbPreds.filter(p=>p.strong_pick).length,
+        }
+      });
     } catch(e) {
       return res.status(200).json({success:false, error:e.message, predictions:[]});
     }
