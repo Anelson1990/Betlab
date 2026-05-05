@@ -2400,7 +2400,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
           const mlData = await mlRes.json();
           if (mlData.predictions?.length) {
             setState(s=>({...s, mlPredictions: mlData.predictions}));
-            addLog(`🤖 ML Model: ${mlData.summary?.strong_picks||0} strong picks loaded`);
+            addLog(`🤖 Groq ML loaded: ${mlData.predictions?.length||0} predictions`);
           }
         } catch(e) { addLog(`⚠️ ML model: ${e.message}`); }
       }
