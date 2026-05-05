@@ -20,6 +20,9 @@ MATCHUP SCORING:
 - Rest advantage of 2+ days = meaningful edge
 - Home/away splits matter more in playoffs than regular season
 - Flag when confidence is BELOW market implied probability — that is a PASS not a BET
+- HARD RULE: If your confidence exceeds market implied probability by MORE than 15% — return PASS. The market has thousands of sharp bettors. A 15%+ gap means you are missing something, not that you found an edge.
+- HARD RULE: Never cite Monte Carlo simulation as the PRIMARY reason to bet. Sim is supplementary only. Primary reasons must be: pitcher matchup, lineup quality, recent form, or specific market inefficiency.
+- HARD RULE: When sim probability and market implied differ by more than 20% — require external validation before betting. If you cannot explain WHY the market is wrong with specific concrete evidence — PASS.
 
 REAL OUTCOME DATA FROM YOUR ACTUAL BETS:
 {{CALIBRATION_CONTEXT}}
