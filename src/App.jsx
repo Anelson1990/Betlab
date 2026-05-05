@@ -2459,12 +2459,42 @@ Be specific with numbers. This goes directly to the model developer.`}],
         return;
       }
 
-      addLog(`📊 Found ${withEdge.length} games with edge — sending to Groq...`);
+      // PRE-FILTER before sending to Groq — saves tokens
+      const mlPreds = state.mlPredictions || [];
+      const filteredEdge = withEdge.filter(g => {
+        const ht = g.homeTeam?.toLowerCase()||'';
+        const at = g.awayTeam?.toLowerCase()||'';
+        const mlMatch = mlPreds.find(ml => {
+          const mht = ml.home_team?.toLowerCase()||'';
+          const mat = ml.away_team?.toLowerCase()||'';
+          return mht===ht || mat===at || mht.includes(ht) || ht.includes(mht);
+        });
+        if (mlMatch) {
+          const maxConf = Math.max(mlMatch.xgb_confidence||0, mlMatch.lgb_confidence||0, mlMatch.ml_confidence||0);
+          if (maxConf < 60) {
+            addLog(`⏭ Skip ${g.homeTeam} — ML too low (${maxConf.toFixed(0)}%)`);
+            return false;
+          }
+        }
+        const simHome = g.sim?.simulation?.homeWinProb || 50;
+        if (simHome >= 45 && simHome <= 55) {
+          addLog(`⏭ Skip ${g.homeTeam} — coin flip (${simHome}%)`);
+          return false;
+        }
+        const homeOdds = parseInt(g.homeML||g.homeOdds||0);
+        const awayOdds = parseInt(g.awayML||g.awayOdds||0);
+        if (homeOdds < -250 || awayOdds < -250) {
+          addLog(`⏭ Skip ${g.homeTeam} — extreme juice`);
+          return false;
+        }
+        return true;
+      });
+      addLog(`📊 Pre-filter: ${withEdge.length} → ${filteredEdge.length} games sending to Groq`);
 
       // Step 4: Get stats and send to Groq for final analysis
       const appContext = buildTuningPrompt(state.simTuning||{}, state.betTypePerf||{}, state.confTiers||{}, []);
 
-      for (const g of withEdge) {
+      for (const g of filteredEdge) {
         try {
           // Get stats context
           let statsContext = '';
