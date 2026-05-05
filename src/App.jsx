@@ -1537,7 +1537,9 @@ REAL OUTCOME DATA (from your actual graded bets):
 ${calibrationContext || 'No graded bets yet — calibration data will appear after grading picks'}
 
 CALIBRATION RULES (from 455-game historical backtest):
-- ONLY bet 75%+ confidence — below 75% loses money historically
+- ONLY bet 70%+ confidence — below 70% loses money historically
+- ML model confirmed: 70%+ confidence = 59.2% WR on 654 picks (profitable)
+- ML model confirmed: 75%+ confidence = 63.1% WR on 217 picks (very profitable)
 - WHIP gap is 4x more predictive than ERA gap — weight WHIP heavily
 - WHIP gap correlation to wins: 0.205 vs ERA gap 0.052 — ERA gap is nearly random
 - Pitching reasoning wins 8% more than offense reasoning — de-emphasize offensive stats
