@@ -24,7 +24,7 @@ async function fetchESPNGameSummary(sport, gameId) {
   } catch { return null; }
 }
 
-const JSONBLOB_URL = 'https://jsonblob.com/api/jsonBlob/019dea3d-883c-7c05-9b2c-1c9324c5d861';
+const JSONBLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df59c-2754-7e95-b125-60bbb333d7a1';
 const GRADED_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df34e-8a76-78ed-b827-84c182540d51';
 
 export default async function handler(req, res) {
