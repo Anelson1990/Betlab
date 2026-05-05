@@ -2519,7 +2519,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
             if (halfKelly < 0.01) { addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} Kelly too small`); continue; }
 
             // Find ML model prediction for Groq pick
-            let groqMlProb = null, groqMlSignal = null;
+            let groqMlProb = null, groqMlSignal = null, groqLgbProb = null, groqLgbSignal = null, groqConsensus = null, groqConsensusStrong = false;
             if (g.sport === 'MLB' && state.mlPredictions?.length) {
               const pickTeam = analyzeData.analysis.side?.toLowerCase() || '';
               const mlMatch = state.mlPredictions.find(ml => {
@@ -2531,10 +2531,40 @@ Be specific with numbers. This goes directly to the model developer.`}],
                        ht.includes(lastWord) || at.includes(lastWord);
               });
               if (mlMatch) {
-                const isHome = mlMatch.home_team?.toLowerCase().includes(pickTeam.split(' ').pop());
-                groqMlProb = isHome ? mlMatch.home_prob : Math.round((100 - mlMatch.home_prob) * 10) / 10;
-                groqMlSignal = mlMatch.signal || '';
+                const ht = mlMatch.home_team?.toLowerCase() || '';
+                const isHome = ht.includes(pickTeam) || pickTeam.includes(ht) ||
+                              ht.includes(pickTeam.split(' ').pop());
+                // XGBoost prob
+                const xgbConf = mlMatch.xgb_confidence || mlMatch.ml_confidence;
+                const homeProb = mlMatch.home_prob || mlMatch.ensemble_home_prob;
+                groqMlProb = isHome ? (xgbConf || homeProb) : Math.round((100 - (xgbConf || homeProb || 50)) * 10) / 10;
+                groqMlSignal = mlMatch.xgb_signal || mlMatch.signal || '';
+                // LightGBM prob
+                groqLgbProb = mlMatch.lgb_confidence || null;
+                groqLgbSignal = mlMatch.lgb_signal || null;
+                // Consensus
+                groqConsensus = mlMatch.consensus || null;
+                groqConsensusStrong = mlMatch.consensus_strong || false;
+
+                // HARD MARKET GAP FILTER — skip if models conflict badly
+                const marketImplied = g.sim?.homeImpliedProb || 50;
+                const groqConf = analyzeData.analysis.confidence || 0;
+                const marketGap = groqConf - (isHome ? marketImplied : 100 - marketImplied);
+                if (marketGap > 15) {
+                  addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} — ${marketGap.toFixed(0)}% above market (max 15%)`);
+                  continue;
+                }
               }
+            }
+
+            // HARD MARKET GAP FILTER even without ML model
+            const marketImpl = g.sim?.homeImpliedProb || 50;
+            const pickIsHome = analyzeData.analysis.side === g.homeTeam;
+            const impliedForSide = pickIsHome ? marketImpl : 100 - marketImpl;
+            const gapFromMarket = (analyzeData.analysis.confidence || 0) - impliedForSide;
+            if (gapFromMarket > 15) {
+              addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} — ${gapFromMarket.toFixed(0)}% above market`);
+              continue;
             }
             addGroqPick({
               pick:`${analyzeData.analysis.side} — ${g.awayTeam} @ ${g.homeTeam}`,
@@ -2547,6 +2577,10 @@ Be specific with numbers. This goes directly to the model developer.`}],
               simConfidence:analyzeData.analysis.confidence,
               mlProb:groqMlProb,
               mlSignal:groqMlSignal,
+              lgbProb:groqLgbProb,
+              lgbSignal:groqLgbSignal,
+              consensusSignal:groqConsensus,
+              consensusStrong:groqConsensusStrong,
             });
             addLog(`🤖 Groq: ${analyzeData.analysis.side} (${analyzeData.analysis.confidence}% conf)`);
           }
