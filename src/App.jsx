@@ -158,9 +158,22 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, onTail,
             </div>
           )}
           {bet.mlProb!=null&&(
-            <div style={{marginTop:2,padding:'3px 8px',background:'rgba(34,197,94,0.08)',borderRadius:4,border:'1px solid rgba(34,197,94,0.2)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <span style={{fontSize:9,color:'#22c55e',fontWeight:700,letterSpacing:1}}>🤖 ML MODEL</span>
-              <span style={{fontSize:11,color:'#22c55e',fontWeight:700}}>{bet.mlProb}% {bet.mlSignal||''}</span>
+            <div style={{marginTop:2,padding:'3px 8px',background:'rgba(34,197,94,0.08)',borderRadius:4,border:'1px solid rgba(34,197,94,0.2)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:9,color:'#22c55e',fontWeight:700,letterSpacing:1}}>🤖 XGBoost</span>
+                <span style={{fontSize:11,color:'#22c55e',fontWeight:700}}>{bet.mlProb}% {bet.mlSignal||''}</span>
+              </div>
+              {bet.lgbProb!=null&&(
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:2}}>
+                  <span style={{fontSize:9,color:'#a78bfa',fontWeight:700,letterSpacing:1}}>🤖 LightGBM</span>
+                  <span style={{fontSize:11,color:'#a78bfa',fontWeight:700}}>{bet.lgbProb}% {bet.lgbSignal||''}</span>
+                </div>
+              )}
+              {bet.consensusSignal&&(
+                <div style={{display:'flex',justifyContent:'center',marginTop:3,padding:'2px 6px',background:bet.consensusStrong?'rgba(251,191,36,0.15)':'rgba(100,116,139,0.1)',borderRadius:3}}>
+                  <span style={{fontSize:9,color:bet.consensusStrong?'#fbbf24':'#64748b',fontWeight:700}}>{bet.consensusSignal}</span>
+                </div>
+              )}
             </div>
           )}
           {bet.weather&&bet.weather.source&&(
@@ -1035,7 +1048,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     }
     if (groqCalibResult.warning) addLog(groqCalibResult.warning);
 
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:groqCalibResult.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,tracked:true};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:groqCalibResult.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,lgbProb:pickData.lgbProb||null,lgbSignal:pickData.lgbSignal||null,consensusSignal:pickData.consensusSignal||null,consensusStrong:pickData.consensusStrong||false,tracked:true};
     setState(s=>({...s,groqBankroll:parseFloat((s.groqBankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🧠 Groq pick: ${bet.pick}`);
   },[]);
@@ -1053,7 +1066,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     if (calibResult.warning) addLog(calibResult.warning);
     
     const adjustedConf = calibResult.confidence;
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:adjustedConf,edge:pickData.edge||'',modelProb:pickData.modelProb||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,lesson:null,source:'ai',tracked:true};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:adjustedConf,edge:pickData.edge||'',modelProb:pickData.modelProb||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,lgbProb:pickData.lgbProb||null,lgbSignal:pickData.lgbSignal||null,consensusSignal:pickData.consensusSignal||null,consensusStrong:pickData.consensusStrong||false,lesson:null,source:'ai',tracked:true};
     setState(s=>({...s,bankroll:parseFloat((s.bankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🤖 AI: ${bet.pick}`);
   },[]);
@@ -1646,7 +1659,7 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
         const simResult = runSim(pickSport, p.homeOdds||p.odds, p.awayOdds||p.odds, p.totalLine||null, 5000);
         const simConf = simResult ? getSimConfidence(simResult, p.betType||'', p.pick||'', p.odds) : null;
         // Find ML model prediction for this pick
-        let mlProb = null, mlSignal = null;
+        let mlProb = null, mlSignal = null, lgbProb = null, lgbSignal = null, consensusSignal = null, consensusStrong = false;
         if (mlPredictions.length) {
           const pickRaw = (p.pick||'').toLowerCase().replace(' ml','').replace(' moneyline','').replace('-1.5','').replace('+1.5','').trim();
           addLog(`🔍 Matching ML: "${pickRaw}" against ${mlPredictions.length} predictions`);
@@ -1676,11 +1689,17 @@ Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
             const isHome = ht.includes(pickRaw) || pickRaw.includes(ht) || 
                           ht.includes(pickRaw.split(' ').pop());
             mlProb = isHome ? mlMatch2.home_prob : Math.round((100 - mlMatch2.home_prob) * 10) / 10;
-            mlSignal = mlMatch2.signal || '';
-            addLog(`🤖 ML prob set: ${mlProb}% for ${pickRaw}`);
+            mlSignal = mlMatch2.xgb_signal || mlMatch2.signal || '';
+            // LightGBM probability
+            lgbProb = mlMatch2.lgb_confidence || null;
+            lgbSignal = mlMatch2.lgb_signal || null;
+            // Consensus signal
+            consensusSignal = mlMatch2.consensus || null;
+            consensusStrong = mlMatch2.consensus_strong || false;
+            addLog(`🤖 ML prob set: XGB ${mlProb}% LGB ${lgbProb||'N/A'}% for ${pickRaw}`);
           }
         }
-        addAIPick({...p,sport:pickSport,stake,mlProb,mlSignal,simConfidence:simConf,simResult:simResult?{
+        addAIPick({...p,sport:pickSport,stake,mlProb,mlSignal,lgbProb,lgbSignal,consensusSignal,consensusStrong,simConfidence:simConf,simResult:simResult?{
           homeWinProb:Math.round(simResult.homeWinProb*100),
           awayWinProb:Math.round(simResult.awayWinProb*100),
           overProb:Math.round(simResult.overProb*100),
