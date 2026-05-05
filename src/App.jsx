@@ -2664,6 +2664,27 @@ Be specific with numbers. This goes directly to the model developer.`}],
         const dec = odds>0?odds/100+1:100/Math.abs(odds)+1;
         const kelly = Math.max(0,((dec-1)*(analyzeData.analysis.confidence/100)-(1-analyzeData.analysis.confidence/100))/(dec-1)*0.25);
         const stake = Math.max(5,Math.min(Math.round(state.bankroll*kelly/5)*5,Math.round(state.bankroll*0.05)));
+        // ML model matching for runGroqAnalysis
+        let rMlProb=null, rMlSignal=null, rLgbProb=null, rLgbSignal=null, rConsensus=null, rConsensusStrong=false;
+        if (game.sport==='MLB' && state.mlPredictions?.length) {
+          const pt = analyzeData.analysis.side?.toLowerCase()||'';
+          const mm = state.mlPredictions.find(ml=>{
+            const ht=ml.home_team?.toLowerCase()||'';
+            const at=ml.away_team?.toLowerCase()||'';
+            const lw=pt.split(' ').pop();
+            return ht.includes(pt)||at.includes(pt)||pt.includes(ht)||pt.includes(at)||ht.includes(lw)||at.includes(lw);
+          });
+          if (mm) {
+            const isH = mm.home_team?.toLowerCase().includes(pt.split(' ').pop());
+            const xgbC = mm.xgb_confidence||mm.ml_confidence||mm.home_prob||50;
+            rMlProb = isH ? xgbC : Math.round((100-xgbC)*10)/10;
+            rMlSignal = mm.xgb_signal||mm.signal||'';
+            rLgbProb = mm.lgb_confidence||null;
+            rLgbSignal = mm.lgb_signal||null;
+            rConsensus = mm.consensus||null;
+            rConsensusStrong = mm.consensus_strong||false;
+          }
+        }
         addGroqPick({
           pick:`${analyzeData.analysis.side} — ${game.awayTeam} @ ${game.homeTeam}`,
           sport:game.sport, betType:'Moneyline', odds, stake,
@@ -2673,6 +2694,9 @@ Be specific with numbers. This goes directly to the model developer.`}],
           modelProb:analyzeData.analysis.side===game.homeTeam?simData.simulation?.homeWinProb:simData.simulation?.awayWinProb,
           edge:`${analyzeData.analysis.confidence}% conf`,
           simConfidence:analyzeData.analysis.confidence,
+          mlProb:rMlProb, mlSignal:rMlSignal,
+          lgbProb:rLgbProb, lgbSignal:rLgbSignal,
+          consensusSignal:rConsensus, consensusStrong:rConsensusStrong,
           simResult:{
             homeWinProb:simData.simulation?.homeWinProb,
             awayWinProb:simData.simulation?.awayWinProb,
