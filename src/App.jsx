@@ -2550,7 +2550,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
                 const marketImplied = g.sim?.homeImpliedProb || 50;
                 const groqConf = analyzeData.analysis.confidence || 0;
                 const marketGap = groqConf - (isHome ? marketImplied : 100 - marketImplied);
-                if (marketGap > 15) {
+                if (marketGap > 20) {
                   addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} — ${marketGap.toFixed(0)}% above market (max 15%)`);
                   continue;
                 }
@@ -2563,7 +2563,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
             const impliedForSide = pickIsHome ? marketImpl : 100 - marketImpl;
             const gapFromMarket = (analyzeData.analysis.confidence || 0) - impliedForSide;
             addLog(`🔍 Market gap check: ${analyzeData.analysis.side} conf=${analyzeData.analysis.confidence}% implied=${impliedForSide.toFixed(1)}% gap=${gapFromMarket.toFixed(1)}%`);
-            if (gapFromMarket > 15) {
+            if (gapFromMarket > 20) {
               addLog(`⚠️ Groq BLOCKED: ${analyzeData.analysis.side} — ${gapFromMarket.toFixed(0)}% above market`);
               continue;
             }
@@ -2656,7 +2656,7 @@ Be specific with numbers. This goes directly to the model developer.`}],
         const rMarketImpl = simData?.homeImpliedProb || 50;
         const rImpliedForSide = rPickIsHome ? rMarketImpl : 100 - rMarketImpl;
         const rGap = (analyzeData.analysis.confidence || 0) - rImpliedForSide;
-        if (rGap > 15) {
+        if (rGap > 20) {
           addLog(`⚠️ Groq BLOCKED: ${analyzeData.analysis.side} — ${rGap.toFixed(0)}% above market`);
           return;
         }
