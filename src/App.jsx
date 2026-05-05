@@ -2562,8 +2562,9 @@ Be specific with numbers. This goes directly to the model developer.`}],
             const pickIsHome = analyzeData.analysis.side === g.homeTeam;
             const impliedForSide = pickIsHome ? marketImpl : 100 - marketImpl;
             const gapFromMarket = (analyzeData.analysis.confidence || 0) - impliedForSide;
+            addLog(`🔍 Market gap check: ${analyzeData.analysis.side} conf=${analyzeData.analysis.confidence}% implied=${impliedForSide.toFixed(1)}% gap=${gapFromMarket.toFixed(1)}%`);
             if (gapFromMarket > 15) {
-              addLog(`⚠️ Groq skip: ${analyzeData.analysis.side} — ${gapFromMarket.toFixed(0)}% above market`);
+              addLog(`⚠️ Groq BLOCKED: ${analyzeData.analysis.side} — ${gapFromMarket.toFixed(0)}% above market`);
               continue;
             }
             addGroqPick({
