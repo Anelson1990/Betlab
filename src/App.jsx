@@ -2651,6 +2651,15 @@ Be specific with numbers. This goes directly to the model developer.`}],
 
       // If BET, add to AI picks
       if (analyzeData.analysis?.verdict==='BET' && analyzeData.analysis?.side) {
+        // HARD MARKET GAP FILTER
+        const rPickIsHome = analyzeData.analysis.side === game.homeTeam;
+        const rMarketImpl = simData?.homeImpliedProb || 50;
+        const rImpliedForSide = rPickIsHome ? rMarketImpl : 100 - rMarketImpl;
+        const rGap = (analyzeData.analysis.confidence || 0) - rImpliedForSide;
+        if (rGap > 15) {
+          addLog(`⚠️ Groq BLOCKED: ${analyzeData.analysis.side} — ${rGap.toFixed(0)}% above market`);
+          return;
+        }
         const odds = analyzeData.analysis.side===game.homeTeam ? parseInt(game.homeOdds) : parseInt(game.awayOdds);
         const dec = odds>0?odds/100+1:100/Math.abs(odds)+1;
         const kelly = Math.max(0,((dec-1)*(analyzeData.analysis.confidence/100)-(1-analyzeData.analysis.confidence/100))/(dec-1)*0.25);
