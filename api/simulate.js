@@ -24,12 +24,46 @@ function normalRandom(mean, stdDev) {
 }
 
 function impliedProbToLambda(impliedProb, sport, isHome) {
+  // FALLBACK ONLY - used when no real stats available
+  // Should never be primary input for MLB/NHL
   const baseline = BASELINE_SCORING[sport];
   const homeAdv = HOME_ADVANTAGE[sport];
   const baseRate = isHome ? baseline.home : baseline.away;
   const adjustment = isHome ? homeAdv : 1 / homeAdv;
   const strengthFactor = 0.5 + (impliedProb - 0.5) * 1.2;
   return baseRate * strengthFactor * adjustment;
+}
+
+function statsToMLBLambda(teamStats, opponentStats, isHome, spEra) {
+  // Proper MLB lambda from real stats - never uses market odds
+  const LEAGUE_AVG_ERA = 4.20;
+  const LEAGUE_AVG_RPG = 4.35;
+  const HOME_ADV = 1.04; // 4% home scoring boost
+  
+  // Team offensive strength - runs per game last 10
+  const teamRPG = parseFloat(teamStats?.avgRS_L5) || 
+                  parseFloat(teamStats?.runsPerGame) || 
+                  LEAGUE_AVG_RPG;
+  
+  // Opponent pitching strength - ERA based adjustment
+  const oppTeamERA = parseFloat(opponentStats?.era) || LEAGUE_AVG_ERA;
+  const spEraAdj = spEra ? parseFloat(spEra) : oppTeamERA;
+  
+  // Weight SP ERA 40% and team ERA 60%
+  const effectiveERA = (spEraAdj * 0.4) + (oppTeamERA * 0.6);
+  
+  // ERA factor: better pitching reduces scoring
+  // League avg ERA 4.20 = factor 1.0
+  // ERA 3.00 = factor 0.71 (29% fewer runs)
+  // ERA 5.50 = factor 1.31 (31% more runs)
+  const eraFactor = effectiveERA / LEAGUE_AVG_ERA;
+  
+  // Final lambda: team offense * opponent pitching * home advantage
+  let lambda = teamRPG * eraFactor;
+  if (isHome) lambda *= HOME_ADV;
+  
+  // Clamp to realistic range (1.5 to 8.0 runs)
+  return Math.max(1.5, Math.min(8.0, lambda));
 }
 
 function statsToLambda(sport, teamStats, isHome, opponentStats) {
@@ -200,11 +234,19 @@ export default async function handler(req, res) {
   const homeNoVig = homeImpl/total*100;
   const awayNoVig = awayImpl/total*100;
 
-  // Use stats-based lambdas if available — breaks circular dependency
+  // Use stats-based lambdas if available — breaks circular dependency on market odds
   let homeStatLambda = null, awayStatLambda = null;
   if (homeStats && awayStats) {
-    homeStatLambda = statsToLambda(sport, homeStats, true, awayStats);
-    awayStatLambda = statsToLambda(sport, awayStats, false, homeStats);
+    if (sport === 'MLB') {
+      // Use proper stats-based lambda for MLB — never uses market odds
+      const homeSpEra = homeStats?.probablePitcher?.era || homeStats?.pitching?.era;
+      const awaySpEra = awayStats?.probablePitcher?.era || awayStats?.pitching?.era;
+      homeStatLambda = statsToMLBLambda(homeStats, awayStats, true, awaySpEra);
+      awayStatLambda = statsToMLBLambda(awayStats, homeStats, false, homeSpEra);
+    } else {
+      homeStatLambda = statsToLambda(sport, homeStats, true, awayStats);
+      awayStatLambda = statsToLambda(sport, awayStats, false, homeStats);
+    }
   }
 
   const sim = runSimulation(sport, homeNoVig/100, awayNoVig/100, homeStatLambda, awayStatLambda);
