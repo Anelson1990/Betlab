@@ -52,8 +52,7 @@ export default async function handler(req, res) {
         `ML Strong (62%+): ${fmt(cal.ml_strong)}`,
         `When ML agrees with model: ${fmt(cal.ml_agrees)}`,
         `When ML conflicts with model: ${fmt(cal.ml_conflicts)}`,
-      ].join('
-');
+      ].join('\n');
 
       return res.status(200).json({success:true, summary, calibration: cal, total_bets: bets.length});
     } catch(e) {
