@@ -2483,8 +2483,8 @@ Be specific with numbers. This goes directly to the model developer.`}],
         }
         const homeOdds = parseInt(g.homeML||g.homeOdds||0);
         const awayOdds = parseInt(g.awayML||g.awayOdds||0);
-        if (homeOdds < -250 || awayOdds < -250) {
-          addLog(`⏭ Skip ${g.homeTeam} — extreme juice`);
+        if (homeOdds < -300 || awayOdds < -300) {
+          addLog(`⏭ Skip ${g.homeTeam} — extreme juice (>${Math.min(homeOdds,awayOdds)})`);
           return false;
         }
         return true;
