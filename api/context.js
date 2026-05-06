@@ -112,15 +112,25 @@ export default async function handler(req, res) {
         }
       }
 
+      // Use LGB as fallback if XGB is empty
+      const primaryPreds = xgbPreds.length > 0 ? consensus : lgbPreds.map(p => ({
+        ...p,
+        xgb_confidence: null,
+        xgb_signal: null,
+        lgb_confidence: p.ml_confidence,
+        lgb_signal: p.signal,
+        consensus: '📊 LGB ONLY',
+        consensus_strong: false,
+      }));
       return res.status(200).json({
         success: true,
-        date: xgbData.date,
-        predictions: consensus,
+        date: xgbData.date || lgbData.date,
+        predictions: primaryPreds,
         xgb_predictions: xgbPreds,
         lgb_predictions: lgbPreds,
         summary: {
-          total_games: consensus.length,
-          strong_picks: consensus.filter(p=>p.consensus_strong).length,
+          total_games: primaryPreds.length,
+          strong_picks: primaryPreds.filter(p=>p.consensus_strong||p.strong_pick).length,
           xgb_strong: xgbPreds.filter(p=>p.strong_pick).length,
           lgb_strong: lgbPreds.filter(p=>p.strong_pick).length,
         }
