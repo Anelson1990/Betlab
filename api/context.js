@@ -24,8 +24,8 @@ async function fetchESPNGameSummary(sport, gameId) {
   } catch { return null; }
 }
 
-const XGB_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df59c-2754-7e95-b125-60bbb333d7a1';  // XGBoost
-const LGB_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019dfddf-a762-7a77-82a8-a3b7aa4c0f6e';  // LightGBM
+const XGB_BLOB_URL = 'https://raw.githubusercontent.com/Anelson1990/Betlab/main/public/xgb_predictions.json';
+const LGB_BLOB_URL = 'https://raw.githubusercontent.com/Anelson1990/Betlab/main/public/lgb_predictions.json';
 const GRADED_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019df34e-8a76-78ed-b827-84c182540d51';
 
 export default async function handler(req, res) {
