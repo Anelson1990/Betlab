@@ -3852,6 +3852,54 @@ Rules: ${report.rules?.join(' | ')}`,
                       );
                     })()}
 
+                    {/* By Model Source */}
+                    {graded.length>=3&&(()=>{
+                      const byModel = {};
+                      graded.forEach(p=>{
+                        const src = p.modelSource||p.source||'unknown';
+                        const label = src==='claude'?'Claude ML':src==='groq'?'Groq ML':
+                                     p.rating?.includes('NRFI')?'NRFI Model':
+                                     p.rating?.includes('YRFI')?'YRFI Model':
+                                     p.rating?.includes('HR')?'HR Model':
+                                     src==='manual'?'Manual':'Other';
+                        if(!byModel[label]) byModel[label]={wins:0,total:0,probs:[]};
+                        byModel[label].total++;
+                        if(p.result==='win') byModel[label].wins++;
+                        if(p.modelProb) byModel[label].probs.push(parseFloat(p.modelProb));
+                      });
+
+                      // Separate by bet type within each model
+                      const byModelAndType = {};
+                      graded.forEach(p=>{
+                        const src = p.modelSource||p.source||'unknown';
+                        const isNRFI = p.rating?.includes('NRFI')||p.pick?.includes('NRFI');
+                        const isYRFI = p.rating?.includes('YRFI')||p.pick?.includes('YRFI');
+                        const isHR = p.rating?.includes('HR')||p.pick?.includes('HR');
+                        const betType = isNRFI?'NRFI':isYRFI?'YRFI':isHR?'HR':'ML';
+                        const key = `${src}_${betType}`;
+                        if(!byModelAndType[key]) byModelAndType[key]={wins:0,total:0,label:`${src==='claude'?'Claude':src==='groq'?'Groq':src} ${betType}`,color:src==='claude'?'#38bdf8':src==='groq'?'#f97316':betType==='NRFI'?'#22c55e':betType==='HR'?'#a78bfa':'#64748b'};
+                        byModelAndType[key].total++;
+                        if(p.result==='win') byModelAndType[key].wins++;
+                      });
+
+                      return (
+                        <div style={{marginBottom:12}}>
+                          <div style={{fontSize:9,color:'#475569',letterSpacing:1.5,marginBottom:6}}>BY MODEL & BET TYPE</div>
+                          {Object.entries(byModelAndType).filter(([,v])=>v.total>0).map(([key,v])=>{
+                            const wr=(v.wins/v.total*100).toFixed(0);
+                            const c=parseFloat(wr)>=60?'#22c55e':parseFloat(wr)>=50?'#f59e0b':'#ef4444';
+                            return (
+                              <div key={key} style={{display:'flex',justifyContent:'space-between',padding:'4px 8px',background:'rgba(5,8,16,0.5)',borderRadius:6,marginBottom:4,fontSize:11,borderLeft:`3px solid ${v.color}`}}>
+                                <span style={{color:v.color,fontWeight:700}}>{v.label}</span>
+                                <span style={{color:c}}>{v.wins}W-{v.total-v.wins}L ({wr}%)</span>
+                                <span style={{color:parseFloat(wr)>=55?'#22c55e':'#ef4444'}}>{parseFloat(wr)>=52.4?'✅':'❌'}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
                     <div style={{display:'flex',gap:8}}>
                       <button onClick={analyzeTracker} disabled={trackerAnalyzing||graded.length<5} style={{flex:1,padding:'10px 0',borderRadius:8,border:'none',cursor:trackerAnalyzing||graded.length<5?'not-allowed':'pointer',background:graded.length>=5?'linear-gradient(135deg,#a78bfa,#7c3aed)':'#1e293b',color:graded.length>=5?'#fff':'#475569',fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>
                         {trackerAnalyzing?'ANALYZING...':'🤖 AI ANALYZE MODEL'}
