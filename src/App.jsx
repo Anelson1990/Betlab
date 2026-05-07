@@ -3450,7 +3450,7 @@ Rules: ${report.rules?.join(' | ')}`,
               )}
 
               {(()=>{
-                const graded=state.bets.filter(b=>b.result!=='pending'&&b.confidence);
+                const graded=state.bets.filter(b=>b.result!=='pending'&&b.confidence&&(btModel==='claude'?b.source==='ai':btModel==='groq'?b.source==='groq':b.source==='paste'));
                 if(graded.length<5) return null;
                 const buckets={};
                 graded.forEach(b=>{
