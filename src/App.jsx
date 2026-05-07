@@ -884,6 +884,7 @@ function App() {
   const [coachReport, setCoachReport] = useState(null);
   const [coachLoading, setCoachLoading] = useState(false);
   const [trackerSport, setTrackerSport] = useState('MLB');
+  const [btModel, setBtModel] = useState('claude');
   const [trackerPaste, setTrackerPaste] = useState('');
   const [trackerParsing, setTrackerParsing] = useState(false);
   const [trackerError, setTrackerError] = useState('');
@@ -3490,6 +3491,13 @@ Rules: ${report.rules?.join(' | ')}`,
                   </div>
                 );
               })()}
+
+              {/* Model selector */}
+              <div style={{display:'flex',gap:4,background:'rgba(10,18,35,0.8)',padding:4,borderRadius:10,border:'1px solid #1e293b',marginBottom:14}}>
+                {[['claude','🤖 CLAUDE','#38bdf8'],['groq','🧠 GROQ','#f97316'],['paste','📋 MY PICKS','#ef4444']].map(([key,label,color])=>(
+                  <button key={key} onClick={()=>setBtModel(key)} style={{flex:1,padding:'8px 0',borderRadius:7,border:'none',cursor:'pointer',background:btModel===key?`rgba(${key==='claude'?'56,189,248':key==='groq'?'249,115,22':'239,68,68'},0.15)`:'transparent',color:btModel===key?color:'#64748b',fontSize:10,fontWeight:700,letterSpacing:1}}>{label}</button>
+                ))}
+              </div>
 
               {(()=>{
                 const graded=state.bets.filter(b=>b.result!=='pending'&&(btModel==='claude'?b.source==='ai':btModel==='groq'?b.source==='groq':b.source==='paste'));
