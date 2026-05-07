@@ -3872,12 +3872,22 @@ Rules: ${report.rules?.join(' | ')}`,
                       const byModelAndType = {};
                       graded.forEach(p=>{
                         const src = p.modelSource||p.source||'unknown';
-                        const isNRFI = p.rating?.includes('NRFI')||p.pick?.includes('NRFI');
-                        const isYRFI = p.rating?.includes('YRFI')||p.pick?.includes('YRFI');
-                        const isHR = p.rating?.includes('HR')||p.pick?.includes('HR');
+                        const isNRFI = p.rating?.includes('NRFI')||p.pick?.includes('NRFI')||p.recommendation?.includes('NRFI');
+                        const isYRFI = p.rating?.includes('YRFI')||p.pick?.includes('YRFI')||p.recommendation?.includes('YRFI');
+                        const isHR = p.rating?.includes('HR')||p.pick?.includes('HR')||p.recommendation?.includes('HR');
                         const betType = isNRFI?'NRFI':isYRFI?'YRFI':isHR?'HR':'ML';
-                        const key = `${src}_${betType}`;
-                        if(!byModelAndType[key]) byModelAndType[key]={wins:0,total:0,label:`${src==='claude'?'Claude':src==='groq'?'Groq':src} ${betType}`,color:src==='claude'?'#38bdf8':src==='groq'?'#f97316':betType==='NRFI'?'#22c55e':betType==='HR'?'#a78bfa':'#64748b'};
+                        // Detect model from rating/source
+                        const isLGB = p.rating?.includes('LGB')||p.modelVersion?.includes('lgb')||p.modelVersion?.includes('v4');
+                        const isXGB = p.rating?.includes('XGB')||p.modelVersion?.includes('xgb');
+                        const modelName = isNRFI?'NRFI':isYRFI?'YRFI':isHR?'HR Model':
+                                         isLGB?'LightGBM':isXGB?'XGBoost':
+                                         src==='claude'?'Claude':src==='groq'?'Groq':
+                                         src==='manual'?'Manual':'ML Model';
+                        const key = `${modelName}_${betType}`;
+                        const color = isNRFI?'#22c55e':isYRFI?'#f59e0b':isHR?'#a78bfa':
+                                     isLGB?'#f97316':isXGB?'#38bdf8':
+                                     src==='claude'?'#38bdf8':src==='groq'?'#f97316':'#64748b';
+                        if(!byModelAndType[key]) byModelAndType[key]={wins:0,total:0,label:`${modelName} ${betType==='ML'?'Moneyline':betType}`,color};
                         byModelAndType[key].total++;
                         if(p.result==='win') byModelAndType[key].wins++;
                       });
