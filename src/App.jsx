@@ -3492,7 +3492,7 @@ Rules: ${report.rules?.join(' | ')}`,
               })()}
 
               {(()=>{
-                const graded=state.bets.filter(b=>b.result!=='pending');
+                const graded=state.bets.filter(b=>b.result!=='pending'&&(btModel==='claude'?b.source==='ai':btModel==='groq'?b.source==='groq':b.source==='paste'));
                 if(graded.length<5) return null;
                 const wins=graded.filter(b=>b.result==='win').length;
                 const wr=wins/graded.length;
