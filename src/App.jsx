@@ -3887,7 +3887,8 @@ Rules: ${report.rules?.join(' | ')}`,
                         const color = isNRFI?'#22c55e':isYRFI?'#f59e0b':isHR?'#a78bfa':
                                      isLGB?'#f97316':isXGB?'#38bdf8':
                                      src==='claude'?'#38bdf8':src==='groq'?'#f97316':'#64748b';
-                        if(!byModelAndType[key]) byModelAndType[key]={wins:0,total:0,label:`${modelName} ${betType==='ML'?'Moneyline':betType}`,color};
+                        const displayLabel = isNRFI?'NRFI Model':isYRFI?'YRFI Model':isHR?'HR Model':`${modelName} Moneyline`;
+                        if(!byModelAndType[key]) byModelAndType[key]={wins:0,total:0,label:displayLabel,color};
                         byModelAndType[key].total++;
                         if(p.result==='win') byModelAndType[key].wins++;
                       });
