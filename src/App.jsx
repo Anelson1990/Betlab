@@ -239,6 +239,24 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, onTail,
             placeholder={bet.sport==='MLB'?'e.g. 3-1 or 1st inn: 2-0':bet.sport==='NHL'?'e.g. 4-2 OT':bet.sport==='NBA'?'e.g. 114-108':'e.g. 24-17'}
             style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px 10px',fontSize:13,fontFamily:"'Rajdhani',sans-serif",marginBottom:10}}
           />
+          {grading==='push'&&(
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:10,color:'#94a3b8',fontWeight:700,letterSpacing:1,marginBottom:6}}>WAS THIS THE RIGHT DECISION?</div>
+              <div style={{display:'flex',gap:6,marginBottom:6}}>
+                {[['yes','✅ Right Call','#14532d','#86efac'],['no','❌ Wrong Call','#7f1d1d','#fca5a5'],['unknown','🤷 Too Early','#1e293b','#94a3b8']].map(([v,label,bg,color])=>(
+                  <button key={v} onClick={()=>setScore(prev=>prev.includes('decision:')?prev.replace(/decision:\w+/,`decision:${v}`):(prev?prev+` decision:${v}`:`decision:${v}`))} 
+                    style={{flex:1,padding:'6px 0',borderRadius:6,border:'none',cursor:'pointer',
+                    background:score.includes(`decision:${v}`)?bg:'#0f172a',
+                    color:score.includes(`decision:${v}`)?color:'#475569',fontSize:10,fontWeight:700}}>{label}</button>
+                ))}
+              </div>
+              <div style={{fontSize:9,color:'#475569',marginBottom:6}}>Optional: why did you cash out?</div>
+              <input value={score.replace(/decision:\w+\s?/,'')} onChange={e=>setScore(prev=>{const dec=prev.match(/decision:\w+/);return dec?e.target.value+' '+dec[0]:e.target.value;})} placeholder="e.g. Sharp money on other side, model conflict..." style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px 10px',fontSize:12,fontFamily:"'Rajdhani',sans-serif"}}/>
+            </div>
+          )}
+          {grading!=='push'&&(
+            <input value={score} onChange={e=>setScore(e.target.value)} placeholder={bet.sport==='MLB'?'e.g. 3-1':bet.sport==='NHL'?'e.g. 4-2 OT':''} style={{width:'100%',background:'#0f172a',border:'1px solid #334155',borderRadius:6,color:'#e2e8f0',padding:'8px 10px',fontSize:13,fontFamily:"'Rajdhani',sans-serif",marginBottom:10}}/>
+          )}
           <div style={{display:'flex',gap:6}}>
             <button onClick={()=>{onGrade(bet.id,grading,score);setGrading(null);setScore('');}} style={{flex:2,padding:'8px 0',borderRadius:6,border:'none',cursor:'pointer',background:grading==='win'?'#14532d':grading==='loss'?'#7f1d1d':'#1e293b',color:grading==='win'?'#86efac':grading==='loss'?'#fca5a5':'#94a3b8',fontSize:11,fontWeight:700,letterSpacing:1,textTransform:'uppercase'}}>CONFIRM {grading.toUpperCase()}</button>
             <button onClick={()=>{setGrading(null);setScore('');}} style={{flex:1,padding:'8px 0',borderRadius:6,border:'1px solid #334155',background:'transparent',color:'#64748b',fontSize:11,fontWeight:700,cursor:'pointer'}}>CANCEL</button>
