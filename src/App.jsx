@@ -163,6 +163,10 @@ function BetCard({ bet, onGrade, onTeach, onDelete, onEdit, onUndoGrade, onTail,
                 <span style={{fontSize:9,color:'#22c55e',fontWeight:700,letterSpacing:1}}>🤖 XGBoost</span>
                 <span style={{fontSize:11,color:'#22c55e',fontWeight:700}}>{bet.mlProb}% {bet.mlSignal||''}</span>
               </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:1}}>
+                <span style={{fontSize:9,color:'#475569',letterSpacing:1}}>H:{bet.homeProb||Math.round(100-bet.mlProb)}% A:{bet.awayProb||bet.mlProb}%</span>
+                <span style={{fontSize:9,color:'#475569'}}>{bet.homePick||''} vs {bet.awayPick||''}</span>
+              </div>
               {bet.lgbProb!=null&&(
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:2}}>
                   <span style={{fontSize:9,color:'#a78bfa',fontWeight:700,letterSpacing:1}}>🤖 LightGBM</span>
