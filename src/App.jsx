@@ -1523,7 +1523,9 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     if (pickSport === 'MLB') {
       try {
         addLog('🤖 Fetching ML model predictions...');
-        const mlRes = await fetch('/api/context?ml=1');
+        // ML DISABLED — models being rebuilt, re-enable when bias fixed
+        // const mlRes = await fetch('/api/context?ml=1');
+        throw new Error('ML models temporarily disabled');
         const mlData = await mlRes.json();
         mlData.success = mlData.predictions?.length > 0;
         addLog(`🤖 ML response: success=${mlData.success} predictions=${mlData.predictions?.length||0}`);
@@ -2419,7 +2421,9 @@ Be specific with numbers. This goes directly to the model developer.`}],
       // Fetch ML predictions for MLB
       if (groqSport === 'MLB') {
         try {
-          const mlRes = await fetch('/api/context?ml=1');
+          // ML DISABLED — models being rebuilt, re-enable when bias fixed
+        // const mlRes = await fetch('/api/context?ml=1');
+        throw new Error('ML models temporarily disabled');
           const mlData = await mlRes.json();
           if (mlData.predictions?.length) {
             setState(s=>({...s, mlPredictions: mlData.predictions}));
