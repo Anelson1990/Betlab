@@ -632,6 +632,8 @@ Each object must have exactly:
   keyFactors - array of exactly 5 short strings: most important data points (K%, xG, edge tier, NRFI%, rest days, park factor, GSAx etc.)
   rating     - string: model rating label e.g. "STRONG NRFI", "T1_STRONG", "LEAN", "VALUE BET"
   edge       - string: edge percentage if present e.g. "+6.2%" or "STRONG BET"
+  stake      - integer: recommended stake in dollars based on Kelly criterion and bankroll. Min $5 max $50. Use confidence and edge to size. High confidence + good odds = higher stake. Heavy juice (-150+) = lower stake.
+  kellyDollars - integer: same as stake field
 Rules:
 - Return TOP 5 ranked by model win probability, include ALL picks even if no edge/SKIP
 - For Tennis output format: look for "Win% -> Player1: X% | Player2: Y%" and extract BOTH players as separate picks
@@ -1071,7 +1073,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     }
     if (groqCalibResult.warning) addLog(groqCalibResult.warning);
 
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||10,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:groqCalibResult.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,lgbProb:pickData.lgbProb||null,lgbSignal:pickData.lgbSignal||null,consensusSignal:pickData.consensusSignal||null,consensusStrong:pickData.consensusStrong||false,tracked:true};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:Math.min(Math.max(parseInt(pickData.kellyDollars||pickData.stake||10),5),50),result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:groqCalibResult.confidence||60,edge:pickData.edge||'',modelProb:pickData.modelProb||null,lesson:null,source:'groq',simConfidence:pickData.simConfidence||null,simResult:pickData.simResult||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,lgbProb:pickData.lgbProb||null,lgbSignal:pickData.lgbSignal||null,consensusSignal:pickData.consensusSignal||null,consensusStrong:pickData.consensusStrong||false,tracked:true};
     setState(s=>({...s,groqBankroll:parseFloat((s.groqBankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🧠 Groq pick: ${bet.pick}`);
   },[]);
@@ -1089,13 +1091,13 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     if (calibResult.warning) addLog(calibResult.warning);
     
     const adjustedConf = calibResult.confidence;
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:adjustedConf,edge:pickData.edge||'',modelProb:pickData.modelProb||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,lgbProb:pickData.lgbProb||null,lgbSignal:pickData.lgbSignal||null,consensusSignal:pickData.consensusSignal||null,consensusStrong:pickData.consensusStrong||false,lesson:null,source:'ai',tracked:true};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'NHL',betType:pickData.betType||'Moneyline',betCategory:'straight',odds:parseInt(pickData.odds)||-110,stake:Math.min(Math.max(parseInt(pickData.kellyDollars||pickData.stake||10),5),50),result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:adjustedConf,edge:pickData.edge||'',modelProb:pickData.modelProb||null,mlProb:pickData.mlProb||null,mlSignal:pickData.mlSignal||null,lgbProb:pickData.lgbProb||null,lgbSignal:pickData.lgbSignal||null,consensusSignal:pickData.consensusSignal||null,consensusStrong:pickData.consensusStrong||false,lesson:null,source:'ai',tracked:true};
     setState(s=>({...s,bankroll:parseFloat((s.bankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`🤖 AI: ${bet.pick}`);
   },[]);
 
   const addMyPick = useCallback(pickData=>{
-    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'MLB',betType:pickData.betType||'Moneyline',betCategory:pickData.betCategory||'straight',odds:parseInt(pickData.odds)||-110,stake:pickData.stake||25,result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,modelProb:pickData.modelProb||null,rating:pickData.rating||'',edge:pickData.edge||'',legs:pickData.legs||[],lesson:null,source:'paste',tracked:true};
+    const bet={id:uid(),pick:pickData.pick||'Unknown',sport:pickData.sport||'MLB',betType:pickData.betType||'Moneyline',betCategory:pickData.betCategory||'straight',odds:parseInt(pickData.odds)||-110,stake:Math.min(Math.max(parseInt(pickData.kellyDollars||pickData.stake||10),5),50),result:'pending',date:new Date().toISOString(),reasoning:pickData.reasoning||'',keyFactors:pickData.keyFactors||[],confidence:pickData.confidence||60,modelProb:pickData.modelProb||null,rating:pickData.rating||'',edge:pickData.edge||'',legs:pickData.legs||[],lesson:null,source:'paste',tracked:true};
     setState(s=>({...s,myBankroll:parseFloat((s.myBankroll-bet.stake).toFixed(2)),bets:[bet,...s.bets]}));
     addLog(`📋 My pick: ${bet.pick}`);
   },[]);
