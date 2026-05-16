@@ -634,6 +634,8 @@ Each object must have exactly:
   edge       - string: edge percentage if present e.g. "+6.2%" or "STRONG BET"
   stake      - integer: recommended stake in dollars based on Kelly criterion and bankroll. Min $5 max $50. Use confidence and edge to size. High confidence + good odds = higher stake. Heavy juice (-150+) = lower stake.
   kellyDollars - integer: same as stake field
+  betCategory - string: "straight" or "parlay"
+  legs       - array: for parlays only, list of objects with {desc, odds} for each leg. Empty array for straight bets.
 Rules:
 - Return TOP 5 ranked by model win probability, include ALL picks even if no edge/SKIP
 - For Tennis output format: look for "Win% -> Player1: X% | Player2: Y%" and extract BOTH players as separate picks
@@ -1437,7 +1439,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     picks.forEach(p=>{
       const w = p._weather;
       const weatherNote = w?.notes?.length ? ` | Weather: ${w.notes[0]}` : '';
-      addMyPick({pick:p.pick,sport,betType:p.betType||'Moneyline',betCategory:'straight',odds:parseInt(p.odds)||-110,stake,confidence:p.confidence||60,reasoning:(p.reasoning||'')+weatherNote,keyFactors:p.keyFactors||[],modelProb:p.modelProb||null,rating:p.rating||'',edge:p.edge||'',legs:[],weather:w||null,official:p.official||null,opponent:p.opponent||null,restTravel:p.restTravel||null});
+      addMyPick({pick:p.pick,sport,betType:p.betType||'Moneyline',betCategory:p.betCategory||'straight',odds:parseInt(p.odds)||-110,stake,confidence:p.confidence||60,reasoning:(p.reasoning||'')+weatherNote,keyFactors:p.keyFactors||[],modelProb:p.modelProb||null,rating:p.rating||'',edge:p.edge||'',legs:p.legs||[],weather:w||null,official:p.official||null,opponent:p.opponent||null,restTravel:p.restTravel||null});
     });
     addLog(`📋 Logged ${picks.length} ${sport} pick(s)`);
     setTab('mine');
@@ -1461,7 +1463,7 @@ Sim confidence: ${bet.simConfidence||'N/A'}%`;
     });
     const sportStr=Object.entries(bySport).map(([s,v])=>`${s}:${v.w}W-${v.l}L`).join(', ');
     const recent=graded.slice(0,5).map(b=>`${b.pick}(${b.result}${b.score?' '+b.score:''})`).join(', ');
-    const recentLessons=state.lessons.slice(0,5).map(l=>l.takeaway||l.body).filter(Boolean).map(l=>l.slice(0,100)).join(' | ');
+    const recentLessons=state.lessons.slice(0,15).map(l=>l.takeaway||l.body||l.lesson).filter(Boolean).map(l=>l.slice(0,200)).join(' | ');
     return `
 
 YOUR BETTING HISTORY (${graded.length} graded bets):
@@ -1504,8 +1506,8 @@ Use this history to adapt your picks — avoid bet types that are losing, favor 
     // Claude-specific recent lessons
     const claudeLessons = state.lessons
       .filter(l=>l.source==='ai'||l.modelSource==='claude')
-      .slice(0,5)
-      .map(l=>(l.takeaway||l.body||l.lesson)?.slice(0,150))
+      .slice(0,15)
+      .map(l=>(l.takeaway||l.body||l.lesson)?.slice(0,250))
       .filter(Boolean)
       .join(' | ');
 
@@ -1641,8 +1643,10 @@ ${topPatterns?'\nREASONING PATTERNS FROM YOUR HISTORY:\nWinning patterns: '+topP
 ${avoidPatterns?'AVOID reasoning around: '+avoidPatterns:''}
 
 Return ONLY a valid JSON array of your TOP 5 games ranked by edge. Each item must have:
-{"pick":"","sport":"","betType":"","odds":0,"homeOdds":0,"awayOdds":0,"reasoning":"2-3 sentences","keyFactors":[""],"confidence":0,"edge":"","shouldBet":true}
-Set shouldBet=true only if edge>=4% AND confirmed stats. Set shouldBet=false for interesting games worth showing but not betting.
+{"pick":"","sport":"","betType":"","betCategory":"straight","legs":[],"odds":0,"homeOdds":0,"awayOdds":0,"reasoning":"2-3 sentences","keyFactors":[""],"confidence":0,"edge":"","shouldBet":true,"stake":10,"kellyDollars":10}
+Set shouldBet=true only if edge>=7% AND confirmed stats AND odds better than -150. Set shouldBet=false for interesting games worth showing but not betting.
+For parlays: set betCategory="parlay", add legs array with [{desc:"Team ML",odds:-134},{desc:"NRFI",odds:-115}], calculate combined odds.
+Stake sizing rules: bankroll*kelly fraction, min $5 max $50. Heavy juice (-150+) = reduce stake 50%. Set kellyDollars to same value as stake.
 Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
     try {
       const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds. Return top 5 games as JSON array with shouldBet flag.`}],sys,false);
