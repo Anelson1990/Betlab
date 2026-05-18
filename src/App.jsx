@@ -1649,7 +1649,7 @@ For parlays: set betCategory="parlay", add legs array with [{desc:"Team ML",odds
 Stake sizing rules: bankroll*kelly fraction, min $5 max $50. Heavy juice (-150+) = reduce stake 50%. Set kellyDollars to same value as stake.
 Return exactly 5 items max. No markdown. No extra text outside the JSON array.`;
     try {
-      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString()}. Review ${pickSport} odds. Return top 5 games as JSON array with shouldBet flag.`}],sys,false);
+      const raw=await callClaude([{role:'user',content:`Today ${new Date().toLocaleDateString('en-US',{timeZone:'America/Chicago'})}. Review ${pickSport} odds. Return top 5 games as JSON array with shouldBet flag.`}],sys,false);
       let betsToPlace=[];
       let gameAnalysis=[];
       try {
