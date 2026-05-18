@@ -889,6 +889,7 @@ function App() {
   const [tuningLog, setTuningLog] = useState([]);
   const [lastTuneCount, setLastTuneCount] = useState(0);
   const [showTuning, setShowTuning] = useState(false);
+  const [propsSheetData, setPropsSheetData] = useState(null);
   const [groqGames, setGroqGames] = useState([]);
   const [groqLoading, setGroqLoading] = useState(false);
   const [groqAnalyzing, setGroqAnalyzing] = useState(null);
@@ -3755,7 +3756,7 @@ Rules: ${report.rules?.join(' | ')}`,
 
           {tab==='props'&&(
             <div style={{animation:'slideIn .3s ease'}}>
-              <PropsCheatSheet />
+              <PropsCheatSheet sheetData={propsSheetData} onSheetBuilt={setPropsSheetData} />
             </div>
           )}
           {tab==='groq'&&(
