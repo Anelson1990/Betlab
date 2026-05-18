@@ -345,7 +345,7 @@ export default function PropsCheatSheet({ sheetData, onSheetBuilt }) {
                 const mu = pitcherMU({oppOPS:row.oppOPS||0.720,oppKpct:row.oppKpct||22});
                 return (
                   <div className="pcs-row" key={i}>
-                    <div><div className="pcs-name">{row.name}</div><div className="pcs-line">{row.line} {row.fraction} {row.pct}</div></div>
+                    <div><div className="pcs-name">{row.name}</div><div className="pcs-line">{row.line} · {row.fraction}</div></div>
                     <div className="pcs-pct">{row.pct}</div>
                     <Pill color={mu}/>
                   </div>
