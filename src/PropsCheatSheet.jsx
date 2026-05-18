@@ -29,8 +29,57 @@ function Pill({ color }) {
   );
 }
 
-// ── Build cheat sheet from master_predictions JSON ────────────
+// ── Build cheat sheet from props_v2.1 JSON ────────────────────
 function buildSheet(json) {
+  // Support both props_v2.1 format and old master_predictions format
+  const isPropsFormat = json.version && json.version.startsWith('props_');
+
+  if (isPropsFormat) {
+    // ── NEW FORMAT: props_v2.1 ──
+    const toRow = (p) => ({
+      name: p.name,
+      line: p.line,
+      fraction: p.fraction || p.pct,
+      pct: p.pct,
+      rate: p.rate,
+      matchup: p.matchup || 'yellow',
+      oppOPS: p.oppOPS || 0.720,
+      oppKpct: p.oppKpct || 22,
+    });
+
+    const toBatterRow = (p) => ({
+      name: p.name,
+      line: p.fraction_1 ? 'O0.5 hits' : 'O0.5 hits',
+      fraction: p.fraction_1 || p.pct,
+      pct: p.rate_1_display || p.pct,
+      rate: p.rate_1 || 0,
+      badge: p.badge || null,
+      matchup: p.matchup || 'yellow',
+      pitcherERA: p.opp_era || 4.5,
+      handAdv: 'neutral',
+      opp_pitcher: p.opp_pitcher || '',
+    });
+
+    const kLocks  = (json.k_locks  || []).map(toRow);
+    const kHot    = (json.k_hot    || []).map(toRow);
+    const kParlay = (json.k_parlay || []).map(toRow);
+    const kUnders = (json.k_unders || []).map(p => ({
+      name: p.name,
+      line: p.line,
+      fraction: p.fraction || p.pct,
+      pct: p.pct,
+      rate: p.rate,
+      matchup: p.matchup || 'yellow',
+      oppOPS: p.oppOPS || 0.720,
+      oppKpct: p.oppKpct || 22,
+    }));
+    const hits    = (json.hits     || []).map(toBatterRow);
+    const hits2   = (json.hits_2   || []).map(toBatterRow);
+
+    return { kLocks, kHot, kParlay, kUnders, hits, hits2, hrs: [] };
+  }
+
+  // ── OLD FORMAT: master_predictions ──
   const preds = json.predictions || [];
   const kLocks = [], kHot = [], kUnders = [], hits = [], hrs = [];
 
@@ -43,7 +92,6 @@ function buildSheet(json) {
     const homeRPG = p.home_rpg || 4.5;
     const awayRPG = p.away_rpg || 4.5;
 
-    // ── K props from props array ──
     props.filter(pr => pr.type === 'K_OVER').forEach(pr => {
       const isHome = pr.team === p.home_team;
       const oppOPS = isHome ? awayOPS : homeOPS;
@@ -51,10 +99,7 @@ function buildSheet(json) {
       const spName = isHome ? p.home_sp : p.away_sp;
       const conf = Math.round((pr.conf || 0.55) * 100);
       const mu = pitcherMU({ oppOPS, oppKpct: oppRPG > 4.8 ? 20 : 24 });
-
-      // Use actual SP name not "Home SP/Away SP"
       const displayName = (spName && spName !== 'TBD') ? spName : pr.player;
-
       if (conf >= 70) {
         kLocks.push({ name: displayName, line: pr.line, fraction: `${conf}%`, pct: `${conf}%`, oppOPS, oppKpct: oppRPG > 4.8 ? 20 : 24, matchup: mu });
       } else if (conf >= 58) {
@@ -62,81 +107,25 @@ function buildSheet(json) {
       }
     });
 
-    // ── K Unders — low K9 pitchers ──
-    const homeK9 = p.home_sp_k9 || 8.0;
-    const awayK9 = p.away_sp_k9 || 8.0;
-    if (homeK9 < 6.5) {
-      const kLine = Math.max(3, Math.round(homeK9 / 9 * 5.5 + 0.5));
-      const mu = pitcherMU({ oppOPS: awayOPS, oppKpct: 18 });
-      kUnders.push({ name: p.home_sp, line: `U${kLine}.5 Ks`, fraction: `~75%`, pct: `~75%`, oppOPS: awayOPS, oppKpct: 18, matchup: mu });
-    }
-    if (awayK9 < 6.5) {
-      const kLine = Math.max(3, Math.round(awayK9 / 9 * 5.5 + 0.5));
-      const mu = pitcherMU({ oppOPS: homeOPS, oppKpct: 18 });
-      kUnders.push({ name: p.away_sp, line: `U${kLine}.5 Ks`, fraction: `~75%`, pct: `~75%`, oppOPS: homeOPS, oppKpct: 18, matchup: mu });
-    }
-
-    // ── Hit props from props array ──
     props.filter(pr => pr.type === 'HIT_OVER').forEach(pr => {
       const isHome = pr.team === p.home_team;
       const oppERA = isHome ? awayERA : homeERA;
       const handAdv = oppERA > 4.5 ? "favor" : oppERA < 3.5 ? "against" : "neutral";
       const conf = Math.round((pr.conf || 0.65) * 100);
       const mu = batterMU({ era: oppERA, handAdv });
-      const mlConf = p.rb_ml_conf || 50;
-      const isMLPick = p.rb_ml_pick === pr.team || p.con_ml_pick === pr.team;
-
       hits.push({
-        name: pr.player,
-        line: pr.line,
-        fraction: `${conf}%`,
-        pct: `${conf}%`,
-        badge: isMLPick && mlConf >= 65 ? "hot" : null,
-        pitcherERA: oppERA,
-        handAdv,
-        matchup: mu,
-        avg: pr.avg,
-        avg_l10: pr.avg_l10,
+        name: pr.player, line: pr.line,
+        fraction: `${conf}%`, pct: `${conf}%`,
+        badge: null, pitcherERA: oppERA, handAdv, matchup: mu,
       });
     });
-
-    // ── HR props — high park factor ──
-    const pf = p.home_sp_fip ? (p.home_ops > 0.750 ? 1.10 : 1.0) : 1.0;
-    const parkFactor = p.matchup?.includes('Colorado') ? 1.15 :
-                       p.matchup?.includes('Cincinnati') ? 1.10 :
-                       p.matchup?.includes('Philadelphia') ? 1.08 : 1.0;
-    if (parkFactor >= 1.08) {
-      props.filter(pr => pr.type === 'HIT_OVER').slice(0,1).forEach(pr => {
-        const isHome = pr.team === p.home_team;
-        const oppERA = isHome ? awayERA : homeERA;
-        if (oppERA >= 4.5) {
-          hrs.push({
-            name: pr.player,
-            line: "Anytime HR",
-            fraction: "30-35%",
-            pct: "~32%",
-            badge: parkFactor >= 1.10 ? "hot" : null,
-            pitcherERA: oppERA,
-            handAdv: "neutral",
-            matchup: batterMU({ era: oppERA, handAdv: "neutral" }),
-          });
-        }
-      });
-    }
   });
 
-  // Sort
   kLocks.sort((a,b) => parseFloat(b.pct) - parseFloat(a.pct));
   kHot.sort((a,b) => parseFloat(b.pct) - parseFloat(a.pct));
   hits.sort((a,b) => parseFloat(b.pct) - parseFloat(a.pct));
 
-  return {
-    kLocks: kLocks.slice(0,8),
-    kHot: kHot.slice(0,8),
-    kUnders: kUnders.slice(0,5),
-    hits: hits.slice(0,8),
-    hrs: hrs.slice(0,5)
-  };
+  return { kLocks, kHot: kHot.slice(0,8), kParlay: [], kUnders: [], hits: hits.slice(0,8), hits2: [], hrs: [] };
 }
 
 // ── Styles ───────────────────────────────────────────────────
@@ -204,10 +193,10 @@ const PITCHER_SECTIONS = [
   { key:"kUnders", label:"K Unders",     icon:"⬇️", subtitle:"Fade These",     cls:"pcs-red"    },
 ];
 
-export default function PropsCheatSheet() {
+export default function PropsCheatSheet({ sheetData, onSheetBuilt }) {
   const today = new Date().toLocaleDateString('en-US',{timeZone:'America/Chicago',weekday:'short',month:'short',day:'numeric'});
   const [paste, setPaste] = useState('');
-  const [sheet, setSheet] = useState(null);
+  const [sheet, setSheet] = useState(sheetData || null);
   const [err, setErr]     = useState('');
   const [activeHit, setActiveHit] = useState('hits');
 
@@ -226,6 +215,7 @@ export default function PropsCheatSheet() {
       const json = JSON.parse(raw);
       const result = buildSheet(json);
       setSheet(result);
+      if (onSheetBuilt) onSheetBuilt(result);
     } catch(e) {
       setErr('Could not parse JSON: ' + e.message);
     }
@@ -259,8 +249,8 @@ export default function PropsCheatSheet() {
     </>
   );
 
-  const { kLocks, kHot, kUnders, hits, hrs } = sheet;
-  const hitRows = activeHit === 'hits' ? hits : hrs;
+  const { kLocks, kHot, kParlay, kUnders, hits, hits2, hrs } = sheet;
+  const hitRows = activeHit === 'hits' ? hits : (hits2 || []);
 
   return (
     <>
@@ -269,7 +259,7 @@ export default function PropsCheatSheet() {
         <div className="pcs-title">⚾ Props Cheat Sheet</div>
         <div className="pcs-date">{today}</div>
 
-        <button className="pcs-btn-reset" onClick={()=>setSheet(null)}>
+        <button className="pcs-btn-reset" onClick={()=>{ setSheet(null); if(onSheetBuilt) onSheetBuilt(null); }}>
           🔄 Load New Day
         </button>
 
@@ -318,7 +308,7 @@ export default function PropsCheatSheet() {
             </div>
             <div className="pcs-tabs">
               <button className={`pcs-tab ${activeHit==='hits'?'active':''}`} onClick={()=>setActiveHit('hits')}>1+ Hits</button>
-              <button className={`pcs-tab ${activeHit==='hrs'?'active':''}`} onClick={()=>setActiveHit('hrs')}>💣 HRs</button>
+              <button className={`pcs-tab ${activeHit==='hits2'?'active':''}`} onClick={()=>setActiveHit('hits2')}>2+ Hits</button>
             </div>
             <div className="pcs-th"><span>Batter</span><span>Conf</span><span>Matchup</span></div>
             {hitRows.length===0
@@ -340,6 +330,30 @@ export default function PropsCheatSheet() {
             }
           </div>
         </div>
+
+        {/* Parlay Legs */}
+        {(kParlay||[]).length > 0 && (
+          <div style={{marginBottom:12}}>
+            <div className="pcs-section"><span className="pcs-section-text">🎯 Parlay Legs — High Rate Any Odds</span></div>
+            <div className="pcs-card pcs-gold">
+              <div className="pcs-ch">
+                <div className="pcs-ct">🎯 Parlay Legs</div>
+                <div className="pcs-cs">75%+ Hit Rate — Good SGP Legs</div>
+              </div>
+              <div className="pcs-th"><span>Pitcher</span><span>Conf</span><span>Matchup</span></div>
+              {(kParlay||[]).map((row,i)=>{
+                const mu = pitcherMU({oppOPS:row.oppOPS||0.720,oppKpct:row.oppKpct||22});
+                return (
+                  <div className="pcs-row" key={i}>
+                    <div><div className="pcs-name">{row.name}</div><div className="pcs-line">{row.line} {row.fraction} {row.pct}</div></div>
+                    <div className="pcs-pct">{row.pct}</div>
+                    <Pill color={mu}/>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Summary counts */}
         <div style={{background:'rgba(10,18,35,0.8)',border:'1px solid #1e293b',borderRadius:10,padding:'12px 16px',textAlign:'center'}}>
