@@ -228,17 +228,15 @@ export default function PropsCheatSheet({ sheetData, onSheetBuilt }) {
         <div className="pcs-title">⚾ Props Cheat Sheet</div>
         <div className="pcs-date">{today}</div>
         <div className="pcs-paste-box">
-          <div className="pcs-paste-label">📋 Paste Master Predictions JSON</div>
+          <div className="pcs-paste-label">📋 Paste Props JSON</div>
           <div className="pcs-paste-hint">
-            After running MLB Master in Colab, open the saved file:<br/>
-            <code style={{color:'#f97316'}}>master_predictions_{'{date}'}.json</code><br/>
-            Copy the full contents and paste below.
+            After running MLB Props Calculator in Colab, copy the JSON from the bottom of the output and paste below.
           </div>
           <textarea
             className="pcs-textarea"
             value={paste}
             onChange={e=>setPaste(e.target.value)}
-            placeholder='Paste master_predictions JSON here...'
+            placeholder='Paste props JSON here (copy from BETLAB JSON section at bottom of Colab output)...'
           />
           <button className="pcs-btn-build" disabled={!paste.trim()} onClick={build}>
             ⚾ BUILD CHEAT SHEET
@@ -248,6 +246,8 @@ export default function PropsCheatSheet({ sheetData, onSheetBuilt }) {
       </div>
     </>
   );
+
+  // Sheet is loaded — show cheat sheet
 
   const { kLocks, kHot, kParlay, kUnders, hits, hits2, hrs } = sheet;
   const hitRows = activeHit === 'hits' ? hits : (hits2 || []);
