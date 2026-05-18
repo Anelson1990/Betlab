@@ -35,91 +35,108 @@ function buildSheet(json) {
   const kLocks = [], kHot = [], kUnders = [], hits = [], hrs = [];
 
   preds.forEach(p => {
-    const homeSP = p.home_sp || "TBD";
-    const awaySP = p.away_sp || "TBD";
+    const props = p.props || [];
     const homeERA = p.home_sp_era || 4.5;
     const awayERA = p.away_sp_era || 4.5;
-    const homeK9  = p.home_sp_k9  || 8.0;
-    const awayK9  = p.away_sp_k9  || 8.0;
-    const homeFIP = p.home_sp_fip || 4.5;
-    const awayFIP = p.away_sp_fip || 4.5;
-    const homeRPG = p.home_rpg || 4.5;
-    const awayRPG = p.away_rpg || 4.5;
     const homeOPS = p.home_ops || 0.720;
     const awayOPS = p.away_ops || 0.720;
+    const homeRPG = p.home_rpg || 4.5;
+    const awayRPG = p.away_rpg || 4.5;
 
-    // Pitcher K props
-    // Home pitcher vs away lineup
-    const homeKLine = Math.max(3, Math.round(homeK9 / 9 * 5.5 - 0.5));
-    const homeKProj = homeK9 / 9 * 5.5;
-    const homeKConf = Math.min(95, Math.round(50 + (homeKProj - homeKLine) * 12));
-    const homeKMU = pitcherMU({ oppOPS: awayOPS, oppKpct: awayRPG > 4.8 ? 20 : 24 });
+    // ── K props from props array ──
+    props.filter(pr => pr.type === 'K_OVER').forEach(pr => {
+      const isHome = pr.team === p.home_team;
+      const oppOPS = isHome ? awayOPS : homeOPS;
+      const oppRPG = isHome ? awayRPG : homeRPG;
+      const spName = isHome ? p.home_sp : p.away_sp;
+      const conf = Math.round((pr.conf || 0.55) * 100);
+      const mu = pitcherMU({ oppOPS, oppKpct: oppRPG > 4.8 ? 20 : 24 });
 
-    if (homeKConf >= 80) {
-      kLocks.push({ name: homeSP, line: `O${homeKLine}.5 Ks`, fraction: `${homeKConf}%`, pct: `${homeKConf}%`, oppOPS: awayOPS, oppKpct: awayRPG > 4.8 ? 20 : 24, matchup: homeKMU });
-    } else if (homeKConf >= 65) {
-      kHot.push({ name: homeSP, line: `O${homeKLine}.5 Ks`, fraction: `${homeKConf}%`, pct: `${homeKConf}%`, oppOPS: awayOPS, oppKpct: awayRPG > 4.8 ? 20 : 24, matchup: homeKMU });
-    } else if (homeK9 < 7.0) {
-      kUnders.push({ name: homeSP, line: `U${homeKLine + 1}.5 Ks`, fraction: `${100-homeKConf}%`, pct: `${100-homeKConf}%`, oppOPS: awayOPS, oppKpct: 18, matchup: "green" });
+      // Use actual SP name not "Home SP/Away SP"
+      const displayName = (spName && spName !== 'TBD') ? spName : pr.player;
+
+      if (conf >= 70) {
+        kLocks.push({ name: displayName, line: pr.line, fraction: `${conf}%`, pct: `${conf}%`, oppOPS, oppKpct: oppRPG > 4.8 ? 20 : 24, matchup: mu });
+      } else if (conf >= 58) {
+        kHot.push({ name: displayName, line: pr.line, fraction: `${conf}%`, pct: `${conf}%`, oppOPS, oppKpct: oppRPG > 4.8 ? 20 : 24, matchup: mu });
+      }
+    });
+
+    // ── K Unders — low K9 pitchers ──
+    const homeK9 = p.home_sp_k9 || 8.0;
+    const awayK9 = p.away_sp_k9 || 8.0;
+    if (homeK9 < 6.5) {
+      const kLine = Math.max(3, Math.round(homeK9 / 9 * 5.5 + 0.5));
+      const mu = pitcherMU({ oppOPS: awayOPS, oppKpct: 18 });
+      kUnders.push({ name: p.home_sp, line: `U${kLine}.5 Ks`, fraction: `~75%`, pct: `~75%`, oppOPS: awayOPS, oppKpct: 18, matchup: mu });
+    }
+    if (awayK9 < 6.5) {
+      const kLine = Math.max(3, Math.round(awayK9 / 9 * 5.5 + 0.5));
+      const mu = pitcherMU({ oppOPS: homeOPS, oppKpct: 18 });
+      kUnders.push({ name: p.away_sp, line: `U${kLine}.5 Ks`, fraction: `~75%`, pct: `~75%`, oppOPS: homeOPS, oppKpct: 18, matchup: mu });
     }
 
-    // Away pitcher
-    const awayKLine = Math.max(3, Math.round(awayK9 / 9 * 5.5 - 0.5));
-    const awayKProj = awayK9 / 9 * 5.5;
-    const awayKConf = Math.min(95, Math.round(50 + (awayKProj - awayKLine) * 12));
-    const awayKMU = pitcherMU({ oppOPS: homeOPS, oppKpct: homeRPG > 4.8 ? 20 : 24 });
-
-    if (awayKConf >= 80) {
-      kLocks.push({ name: awaySP, line: `O${awayKLine}.5 Ks`, fraction: `${awayKConf}%`, pct: `${awayKConf}%`, oppOPS: homeOPS, oppKpct: homeRPG > 4.8 ? 20 : 24, matchup: awayKMU });
-    } else if (awayKConf >= 65) {
-      kHot.push({ name: awaySP, line: `O${awayKLine}.5 Ks`, fraction: `${awayKConf}%`, pct: `${awayKConf}%`, oppOPS: homeOPS, oppKpct: homeRPG > 4.8 ? 20 : 24, matchup: awayKMU });
-    } else if (awayK9 < 7.0) {
-      kUnders.push({ name: awaySP, line: `U${awayKLine + 1}.5 Ks`, fraction: `${100-awayKConf}%`, pct: `${100-awayKConf}%`, oppOPS: homeOPS, oppKpct: 18, matchup: "green" });
-    }
-
-    // Hit props — use ML pick as likely scorer
-    const mlPick = p.rb_ml_pick || p.ml_pick;
-    const mlConf = p.rb_ml_conf || p.ml_conf || 50;
-    if (mlPick && mlConf >= 58) {
-      const isHome = mlPick === p.home_team;
+    // ── Hit props from props array ──
+    props.filter(pr => pr.type === 'HIT_OVER').forEach(pr => {
+      const isHome = pr.team === p.home_team;
       const oppERA = isHome ? awayERA : homeERA;
       const handAdv = oppERA > 4.5 ? "favor" : oppERA < 3.5 ? "against" : "neutral";
-      const hitConf = Math.min(75, Math.round(45 + mlConf * 0.3));
+      const conf = Math.round((pr.conf || 0.65) * 100);
+      const mu = batterMU({ era: oppERA, handAdv });
+      const mlConf = p.rb_ml_conf || 50;
+      const isMLPick = p.rb_ml_pick === pr.team || p.con_ml_pick === pr.team;
+
       hits.push({
-        name: `${mlPick} stack`,
-        line: "1+ Hit",
-        fraction: `${hitConf}%`,
-        pct: `${hitConf}%`,
-        badge: mlConf >= 65 ? "hot" : null,
+        name: pr.player,
+        line: pr.line,
+        fraction: `${conf}%`,
+        pct: `${conf}%`,
+        badge: isMLPick && mlConf >= 65 ? "hot" : null,
         pitcherERA: oppERA,
         handAdv,
-        matchup: batterMU({ era: oppERA, handAdv }),
+        matchup: mu,
+        avg: pr.avg,
+        avg_l10: pr.avg_l10,
       });
-    }
+    });
 
-    // HR props — high park factor + strong lineup
-    const pf = p.park_factor || 1.0;
-    const oppPitcherERA = p.rb_ml_pick === p.home_team ? awayERA : homeERA;
-    if (pf >= 1.05 && oppPitcherERA >= 4.5) {
-      hrs.push({
-        name: `${mlPick || p.home_team} power`,
-        line: "Anytime HR",
-        fraction: "30-35%",
-        pct: "~32%",
-        badge: pf >= 1.10 ? "hot" : null,
-        pitcherERA: oppPitcherERA,
-        handAdv: "neutral",
-        matchup: batterMU({ era: oppPitcherERA, handAdv: "neutral" }),
+    // ── HR props — high park factor ──
+    const pf = p.home_sp_fip ? (p.home_ops > 0.750 ? 1.10 : 1.0) : 1.0;
+    const parkFactor = p.matchup?.includes('Colorado') ? 1.15 :
+                       p.matchup?.includes('Cincinnati') ? 1.10 :
+                       p.matchup?.includes('Philadelphia') ? 1.08 : 1.0;
+    if (parkFactor >= 1.08) {
+      props.filter(pr => pr.type === 'HIT_OVER').slice(0,1).forEach(pr => {
+        const isHome = pr.team === p.home_team;
+        const oppERA = isHome ? awayERA : homeERA;
+        if (oppERA >= 4.5) {
+          hrs.push({
+            name: pr.player,
+            line: "Anytime HR",
+            fraction: "30-35%",
+            pct: "~32%",
+            badge: parkFactor >= 1.10 ? "hot" : null,
+            pitcherERA: oppERA,
+            handAdv: "neutral",
+            matchup: batterMU({ era: oppERA, handAdv: "neutral" }),
+          });
+        }
       });
     }
   });
 
-  // Sort by confidence descending
+  // Sort
   kLocks.sort((a,b) => parseFloat(b.pct) - parseFloat(a.pct));
   kHot.sort((a,b) => parseFloat(b.pct) - parseFloat(a.pct));
   hits.sort((a,b) => parseFloat(b.pct) - parseFloat(a.pct));
 
-  return { kLocks, kHot, kUnders: kUnders.slice(0,5), hits: hits.slice(0,5), hrs: hrs.slice(0,5) };
+  return {
+    kLocks: kLocks.slice(0,8),
+    kHot: kHot.slice(0,8),
+    kUnders: kUnders.slice(0,5),
+    hits: hits.slice(0,8),
+    hrs: hrs.slice(0,5)
+  };
 }
 
 // ── Styles ───────────────────────────────────────────────────
@@ -197,17 +214,20 @@ export default function PropsCheatSheet() {
   const build = () => {
     setErr('');
     try {
-      // Try to parse JSON — handle if user pastes just the predictions array or full object
       let raw = paste.trim();
-      // Extract JSON if wrapped in other text
+      // Extract JSON object
       const start = raw.indexOf('{');
       const end   = raw.lastIndexOf('}');
       if (start !== -1 && end !== -1) raw = raw.slice(start, end+1);
+      // Fix NaN values that Python writes (not valid JSON)
+      raw = raw.replace(/:\s*NaN/g, ': 0');
+      raw = raw.replace(/:\s*Infinity/g, ': 0');
+      raw = raw.replace(/:\s*-Infinity/g, ': 0');
       const json = JSON.parse(raw);
       const result = buildSheet(json);
       setSheet(result);
     } catch(e) {
-      setErr('Could not parse JSON. Make sure you paste the full master_predictions_{date}.json content.');
+      setErr('Could not parse JSON: ' + e.message);
     }
   };
 
